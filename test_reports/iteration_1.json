@@ -1,0 +1,58 @@
+{
+  "summary": "First testing run for SafarWay ride-sharing app (Expo + FastAPI + MongoDB). Backend: 18/18 pytest cases pass (100%) — auth (request-otp with dev code, invalid phone → 422, invalid OTP → 400, verify-otp returns token/user), /me (401 without token, 200 with), /me/verify-id (aadhaar), /rides list + filters (mode commercial/petrol_save, vehicle_type=cab, from_location=Hyderabad), /rides create + /rides/mine + visible in /rides, /rides/{id}/book (blocked without id_verified, WEEKLY50 gives 50 discount, total = 450, boarding OTP 4 digits), /bookings/active, seats_left decrements for DB ride, /rides/{id}/sos returns status=received & call_number=112. Frontend (Expo Web at 390x844 mobile viewport): every requested flow works end-to-end — auth OTP login using auth-dev-code, passenger home with mode toggles + vehicle filters + from-location search (ride-count updates: commercial=1, petrol_save=3, filter-bike=0, filter-cab under commercial=1), ID verification via id-type-aadhaar + id-number-input, book-before-verify shows correct checkout-error 'Verify your government ID before booking', successful booking with seat-option-1 + coupon WEEKLY50 (discount-amount=-₹50, checkout-total=₹450), active-booking-card with 4-digit boarding-otp, toggle-tracking reveals sos-button, driver mode publish (vehicle-car, seats 3, price 400) lists ride under 'Your published rides' and it becomes discoverable in passenger petrol_save mode, session persists across page reload, logout-button returns to auth screen. No React Native red screens, no deprecated Expo packages detected.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "CheckoutSheet Modal",
+        "issue": "One-off race condition observed: an immediate click on seat-option-1 right after ride-select-{id} intermittently reports 'Element is outside of the viewport' because the slide-in modal animation may not yet be settled. A small wait (~400ms) after modal open resolves it. Real-user taps are unaffected, but consider making the CheckoutSheet content scrollable (wrap inside a ScrollView) as future-proofing for smaller devices / larger seat lists. Reference: /app/frontend/src/components/CheckoutSheet.tsx:57",
+        "testID": "checkout-sheet",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "PassengerHome + RoleSwitcher",
+        "issues": [
+          "RoleSwitcher (bottom=insets.bottom+18 on web) can overlap the last RideCard 'Select ride' CTA when the list is scrolled to bottom. Padding is already 110px on ScrollView which mostly handles this, but on tall content the switcher still sits above the card. Consider increasing paddingBottom or lifting cards slightly. Reference: /app/frontend/src/screens/PassengerHome.tsx:66"
+        ]
+      }
+    ],
+    "react_native_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_safarway_api.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional) Wrap CheckoutSheet content inside a ScrollView so it degrades gracefully when seat list grows or device height shrinks",
+    "(Optional) Bump PassengerHome ScrollView paddingBottom or RoleSwitcher shadow so the last ride card is fully tappable without touching the switcher"
+  ],
+  "critical_code_review_comments": [
+    "server.py is a single 327-line file — acceptable for MVP but as models grow, split into /routers /models /services",
+    "All backend endpoints already exclude MongoDB _id via projection {'_id': 0} ✓",
+    "JWT_SECRET falls back to a hard-coded string when env is missing — fine for dev, but production should require the env var to be set",
+    "OTP challenge attempts increment happens BEFORE hash compare — good (prevents brute force)",
+    "sample_rides seats_left is intentionally static; documented in review request",
+    "Frontend uses process.env.EXPO_PUBLIC_BACKEND_URL correctly via Constants.expoConfig.extra fallback ✓",
+    "All interactive elements have testID; text is always inside <Text>; StyleSheet.create used consistently ✓"
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_safarway_api.py (new)",
+    "/app/test_reports/pytest/pytest_results.xml (new)",
+    "/app/test_reports/iteration_1.json (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (18/18)",
+    "frontend": "100% (all requested flows pass)"
+  },
+  "seed_data_creation": "None. Tests use ephemeral phone numbers per run; MongoDB accumulates test users/rides/bookings but is isolated to the dev environment.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend URL: EXPO_PUBLIC_BACKEND_URL from /app/frontend/.env. OTP is returned as development_code by /api/auth/request-otp and rendered under testID auth-dev-code. Sample rides ride-ramesh (cab/commercial/₹500) and ride-suresh (car/petrol_save/₹350) are in-memory (seats_left never decrements). Driver-created rides live in MongoDB and DO decrement seats_left on booking. Coupon WEEKLY50 = ₹50 off. For Playwright, add a ~400ms wait after opening the checkout modal before clicking seat-option-1 to avoid animation race conditions.",
+  "rca_of_issue": "N/A — no blocking issue. The observed intermittent Playwright 'Element outside viewport' on seat-option-1 is caused by clicking during the RN Web Modal slide-in animation; adding a short wait after the modal appears fixes it. Real users tap after seeing the sheet, so this is a test-timing artifact, not a product defect."
+}

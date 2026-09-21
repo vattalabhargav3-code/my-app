@@ -1,0 +1,171 @@
+{
+  "app_name": "SafarWay",
+  "personality": "1 iOS-Native Clean (adapted for transport utility and trust)",
+  "personality_one_liner": "Calm, high-contrast, zero-noise mobility command center engineered for instant clarity and passenger-driver trust.",
+  "color": {
+    "surface": "#121316",
+    "onSurface": "#F4F5F7",
+    "surfaceSecondary": "#1A1C23",
+    "onSurfaceSecondary": "#C7CBD1",
+    "surfaceTertiary": "#252833",
+    "onSurfaceTertiary": "#949AA5",
+    "surfaceInverse": "#FFFFFF",
+    "onSurfaceInverse": "#121316",
+    "brand": "#10B981",
+    "brandPrimary": "#10B981",
+    "onBrandPrimary": "#062319",
+    "brandSecondary": "#059669",
+    "onBrandSecondary": "#FFFFFF",
+    "brandTertiary": "#064E3B",
+    "success": "#10B981",
+    "onSuccess": "#062319",
+    "warning": "#F59E0B",
+    "onWarning": "#2A1C04",
+    "error": "#EF4444",
+    "onError": "#2C0B0B",
+    "info": "#3B82F6",
+    "onInfo": "#0A1D38",
+    "border": "#2D313E",
+    "borderStrong": "#4B5267",
+    "divider": "#1F232D",
+    "muted": "#8C93A3",
+    "onBrand": "#062319"
+  },
+  "typography": {
+    "displayFontFamily": "SpaceGrotesk_500Medium",
+    "textFontFamily": "Inter_400Regular",
+    "scale": {
+      "sm": 12,
+      "base": 14,
+      "lg": 16,
+      "xl": 20,
+      "2xl": 24
+    }
+  },
+  "spacing": {
+    "rule": "Generous vertical breathing room, consistent 16px screen framing, compact 8px stacking for ride metrics and chips.",
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "3xl": 48
+  },
+  "radius_tokens": {
+    "sm": 8,
+    "md": 14,
+    "lg": 22,
+    "pill": 999
+  },
+  "shadow_tier": 2,
+  "navigation": "bottom_tabs",
+  "icon_set": "Lucide",
+  "glassmorphism": {
+    "enabled": true,
+    "do's": [
+      "Use frosted glass on sticky search bars, bottom sheets, and the bottom tab bar.",
+      "Ensure ≥75% surface tint opacity over map and background imagery."
+    ],
+    "dont's": [
+      "Never blur form inputs or active modal buttons.",
+      "Never rely on blur alone without solid surface tint."
+    ]
+  },
+  "platform_libraries": {
+    "glass": {
+      "ios": "expo-glass-effect",
+      "android": "expo-blur",
+      "low_end_android_fallback": "solid surfaceSecondary"
+    },
+    "image": "expo-image",
+    "blur": "expo-blur",
+    "bottom_sheet": "@gorhom/bottom-sheet",
+    "animation": "react-native-reanimated",
+    "gesture": "react-native-gesture-handler"
+  },
+  "screens": [
+    {
+      "name": "AuthOTP",
+      "purpose": "Secure mobile number entry and real SMS OTP verification with instant role-based handoff.",
+      "states": {
+        "loading": "Centered emerald spinner while verifying token with backend",
+        "empty": "Clean phone input with international prefix and clear action state",
+        "error": "Inline error banner with clear retry action for invalid SMS codes"
+      },
+      "layout": "Vertical stacked card with hero brand mark, clean phone text input, sticky bottom verify button with safe area clearance."
+    },
+    {
+      "name": "RoleSwitch",
+      "purpose": "Seamless toggle between Passenger mode and Driver/Host mode to access corresponding toolsets.",
+      "states": {
+        "loading": "Skeleton loading grid for role capabilities",
+        "empty": "Role cards with visual feature summaries",
+        "error": "Retry prompt if role sync fails"
+      },
+      "layout": "Two equal prominent feature cards side-by-side or stacked vertically with distinct icons and active emerald border state."
+    },
+    {
+      "name": "PassengerHome",
+      "purpose": "Interactive map-backed booking hub for searching routes, selecting ride modes, and filtering vehicles.",
+      "states": {
+        "loading": "Skeleton shimmer over map container and ride card slots",
+        "empty": "Recent destinations empty state with quick saved locations",
+        "error": "Map tile loading error banner with offline retry"
+      },
+      "layout": "Full-bleed map background with floating frosted search bar at top, horizontal mode chips, and expandable bottom sheet for ride options."
+    },
+    {
+      "name": "RideList",
+      "purpose": "Browse scheduled and petrol-saving carpool rides matching user query with seat availability.",
+      "states": {
+        "loading": "Vertical card skeleton loaders",
+        "empty": "Friendly illustration with search reset CTA",
+        "error": "Connection error state with reload button"
+      },
+      "layout": "Single-column scrollable feed with 16px side padding, compact ride cards featuring driver avatar, vehicle tag, route stops, and price badge."
+    },
+    {
+      "name": "RideCheckout",
+      "purpose": "Seat selection, coupon application (WEEKLY50), passenger ID verification check, and secure payment confirmation.",
+      "states": {
+        "loading": "Processing payment indicator overlay",
+        "empty": "Select seat grid prompt",
+        "error": "Payment declined alert modal with alternative method prompt"
+      },
+      "layout": "Collapsible summary header, interactive seat grid selector, coupon code input row, breakdown footer with sticky pay button."
+    },
+    {
+      "name": "ActiveTripTracking",
+      "purpose": "Live map tracking, boarding OTP display, SOS emergency button, and driver communication.",
+      "states": {
+        "loading": "Connecting to GPS tracking socket indicator",
+        "empty": "Waiting for driver dispatch state",
+        "error": "GPS signal lost banner with reconnect retry"
+      },
+      "layout": "Full-screen live map with top boarding OTP badge, floating driver detail card in lower third, and prominent SOS emergency action button."
+    },
+    {
+      "name": "DriverDashboard",
+      "purpose": "Driver hub to post rides, specify licence/RC, route stops, vehicle details, seat capacity, and pricing.",
+      "states": {
+        "loading": "Loading active ride list and earnings overview",
+        "empty": "Prompt to publish first carpool ride",
+        "error": "Failed to sync ride data error state"
+      },
+      "layout": "Tabbed dashboard with earnings summary card at top, active rides list below, and floating action button to publish new trip."
+    }
+  ],
+  "images": {
+    "map_bg_light": {
+      "url": "https://images.unsplash.com/photo-1526778548025-fa2f459cd5c1?auto=format&fit=crop&w=1200&q=80",
+      "dark": "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?auto=format&fit=crop&w=1200&q=80",
+      "alt": "Stylized map and urban routing background"
+    },
+    "driver_avatar": {
+      "url": "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80",
+      "alt": "Verified driver headshot"
+    }
+  },
+  "instructions_to_main_agent": "Implement the complete SafarWay passenger and driver ride-sharing experience with backend persistence, real OTP authentication flow, seat selection, coupon code WEEKLY50, SOS emergency simulation, driver ride posting with vehicle RC/licence verification, and glassmorphic bottom sheets. Adhere strictly to the dark utility theme with emerald accents, safe area insets, and ≥44pt touch targets."
+}
