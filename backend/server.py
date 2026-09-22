@@ -6,7 +6,7 @@ import logging
 import os
 import secrets
 import uuid
-
+import requests
 import jwt
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request
