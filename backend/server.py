@@ -159,6 +159,24 @@ async def request_otp(payload: PhoneRequest):
             "attempts": 0,
         }
     )
+           # Send OTP via Fast2SMS
+                fast2sms_key = os.getenv("FAST2SMS_API_KEY")
+                if fast2sms_key:
+                        try:
+            clean_phone = str(phone).replace("+91", "").strip()
+            sms_url = "https://www.fast2sms.com/dev/bulkV2"
+            sms_payload = {
+                "variables_values": str(code),
+                "route": "otp",
+                "numbers": clean_phone
+            }
+               sms_headers = {
+                "authorization": fast2sms_key,
+                "Content-Type": "application/json"
+            }
+                      requests.post(sms_url, json=sms_payload, headers=sms_headers, timeout=5)
+                except Exception as e:
+                      logging.error(f"Fast2SMS error: {e}")
 
     # MSG91 is intentionally opt-in until approved credentials and DLT template are supplied.
     configured = bool(os.getenv("MSG91_AUTH_KEY") and os.getenv("MSG91_TEMPLATE_ID"))
