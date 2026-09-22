@@ -1,9 +1,6 @@
 import Constants from "expo-constants";
 
-const API_BASE = String(
-  Constants.expoConfig?.extra?.backendUrl ?? process.env.EXPO_PUBLIC_BACKEND_URL ?? "",
-).replace(/\/$/, "");
-
+const API_BASE = "";
 export const SESSION_KEY = "safarway.access-token";
 
 export type User = { id: string; phone: string; id_verified: boolean };
@@ -47,4 +44,12 @@ export async function api<T = any>(path: string, options: RequestInit = {}, toke
 
 export function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+export async function saveRideToMongo(rideData: any) {
+  const res = await fetch("/api/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(rideData),
+  });
+  return await res.json();
 }
