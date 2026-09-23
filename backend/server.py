@@ -20,11 +20,19 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 mongo_url = os.environ.get("MONGO_URL", "")
-client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000) if mongo_url else None
-db = client[os.environ["DB_NAME"]] if (client and "DB_NAME" in os.environ) else None
-JWT_SECRET = os.getenv("JWT_SECRET", "safarway-local-development-secret")
-OTP_LENGTH = 6
+db_name = os.environ.get("DB_NAME", "safarway")
 
+client = None
+db = None
+
+if mongo_url:
+    try:
+        client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=3000)
+        db = client[db_name]
+    except Exception as e:
+        logger.error(f"MongoDB client init failed: {e}")
+        client = None
+        db = None
 # Vercel entrypoint
 app = FastAPI(title="SafarWay API")
 
