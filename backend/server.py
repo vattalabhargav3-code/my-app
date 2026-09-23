@@ -150,59 +150,57 @@ SAMPLE_RIDES = [
 @api_router.get("/")
 async def root():
     return {"message": "SafarWay API is ready"}
-
-
-@api_router.get("/health")
-async def health():
-    if db is not None:
-        await db.command("ping")
-    return {"status": "ok", "service": "safarway"}
-
-
-@api_router.post("/auth/request-otp")
+    @api_router.post("/auth/request-otp")
 async def request_otp(payload: PhoneRequest):
-    phone = normalize_phone(payload.phone)
-    challenge_id = str(uuid.uuid4())
-    code = f"{secrets.randbelow(10**OTP_LENGTH):0{OTP_LENGTH}d}"
+    try:
+        phone = normalize_phone(payload.phone)
+        challenge_id = str(uuid.uuid4())
+        code = f"{secrets.randbelow(10**OTP_LENGTH):0{OTP_LENGTH}d}"
+        
+        # MongoDB లో సేవ్ చేసే ప్రయత్నం (ఫెయిల్ అయినా క్రాష్ అవ్వదు)
+        if db is not None:
+            try:
+                await db.otp_challenges.insert_one(
+                    {
+                        "id": challenge_id,
+                        "phone": phone,
+                        "code_hash": hashlib.sha256(code.encode()).hexdigest(),
+                        "created_at": now_iso(),
+                        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
+                        "attempts": 0,
+                    }
+                )
+            except Exception as db_err:
+                logger.error(f"Database error: {db_err}")
 
-    if db is not None:
-        await db.otp_challenges.insert_one(
-            {
-                "id": challenge_id,
-                "phone": phone,
-                "code_hash": hashlib.sha256(code.encode()).hexdigest(),
-                "created_at": now_iso(),
-                "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
-                "attempts": 0,
-            }
-        )
+        # Fast2SMS OTP పంపే భాగం
+        fast2sms_key = os.getenv("FAST2SMS_API_KEY")
+        if fast2sms_key:
+            try:
+                clean_phone = str(phone).replace("+91", "").strip()
+                sms_url = "https://www.fast2sms.com/dev/bulkV2"
+                sms_payload = {
+                    "variables_values": str(code),
+                    "route": "otp",
+                    "numbers": clean_phone,
+                }
+                sms_headers = {
+                    "authorization": fast2sms_key,
+                    "Content-Type": "application/json",
+                }
+                requests.post(sms_url, json=sms_payload, headers=sms_headers, timeout=5)
+            except Exception as sms_err:
+                logger.error(f"Fast2SMS error: {sms_err}")
 
-    # Fast2SMS OTP sending logic
-    fast2sms_key = os.getenv("FAST2SMS_API_KEY")
-    if fast2sms_key:
-        try:
-            clean_phone = str(phone).replace("+91", "").strip()
-            sms_url = "https://www.fast2sms.com/dev/bulkV2"
-            sms_payload = {
-                "variables_values": str(code),
-                "route": "otp",
-                "numbers": clean_phone,
-            }
-            sms_headers = {
-                "authorization": fast2sms_key,
-                "Content-Type": "application/json",
-            }
-            requests.post(sms_url, json=sms_payload, headers=sms_headers, timeout=5)
-        except Exception as e:
-            logger.error(f"Fast2SMS error: {e}")
-
-    configured = bool(os.getenv("MSG91_AUTH_KEY") and os.getenv("MSG91_TEMPLATE_ID"))
-    response: dict[str, Any] = {"challenge_id": challenge_id, "provider": "msg91" if configured else "development"}
-    if not configured:
-        response["development_code"] = code
-    return response
-
-
+        return {
+            "challenge_id": challenge_id,
+            "provider": "fast2sms" if fast2sms_key else "development",
+            "development_code": code,
+        }
+    except Exception as e:
+        logger.error(f"Unhandled error in request_otp: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+        
 @api_router.post("/auth/verify-otp")
 async def verify_otp(payload: VerifyOtpRequest):
     phone = normalize_phone(payload.phone)
