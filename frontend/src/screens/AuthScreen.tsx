@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -8,30 +8,68 @@ import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 import { storage } from "@/src/utils/storage";
 
+// Firebase Imports
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDEOTgln5Gs2LgZqLYTQwQS_s5geHxxMdU",
+  authDomain: "safer-way-9b359.firebaseapp.com",
+  projectId: "safer-way-9b359",
+  storageBucket: "safer-way-9b359.firebasestorage.app",
+  messagingSenderId: "585513390587",
+  appId: "1:585513390587:web:96d3abb813095142e5bb5e"
+};
+
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const auth = getAuth(app);
+
 export function AuthScreen({ onLogin }: { onLogin: (token: string, user: User) => void }) {
   const insets = useSafeAreaInsets();
   const [phone, setPhone] = useState("");
   const [otp, setOtp] = useState("");
-  const [challengeId, setChallengeId] = useState("");
-  const [devCode, setDevCode] = useState("");
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [otpSent, setOtpSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  useEffect(() => {
+    // Web ప్లాట్‌ఫారమ్‌లో invisible reCAPTCHA క్రియేట్ చేయడం
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+          size: "invisible",
+          callback: () => {},
+          "expired-callback": () => {
+            setError("reCAPTCHA expired. Please try again.");
+          }
+        });
+      }
+    }
+  }, []);
+
   const sendOtp = async () => {
     setError("");
-    if (phone.replace(/\D/g, "").length !== 10) {
+    const cleaned = phone.replace(/\D/g, "");
+    if (cleaned.length !== 10) {
       setError("Enter a valid 10-digit mobile number.");
       return;
     }
     setLoading(true);
     try {
-      const result = await api("/auth/request-otp", { method: "POST", body: JSON.stringify({ phone }) });
-      setChallengeId(result.challenge_id);
-      setDevCode(result.development_code ?? "");
+      const phoneNumber = `+91${cleaned}`;
+      const appVerifier = window.recaptchaVerifier;
+      const confirmation = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
+      setConfirmationResult(confirmation);
       setOtpSent(true);
-    } catch (requestError) {
-      setError(errorMessage(requestError, "Could not send OTP"));
+    } catch (requestError: any) {
+      console.error(requestError);
+      setError(requestError?.message || "Failed to send SMS OTP. Please try again.");
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.render().then((widgetId: any) => {
+          (window as any).grecaptcha?.reset(widgetId);
+        });
+      }
     } finally {
       setLoading(false);
     }
@@ -39,16 +77,34 @@ export function AuthScreen({ onLogin }: { onLogin: (token: string, user: User) =
 
   const verifyOtp = async () => {
     setError("");
+    if (!otp || otp.trim().length !== 6) {
+      setError("Enter the 6-digit OTP received via SMS.");
+      return;
+    }
     setLoading(true);
     try {
+      if (!confirmationResult) {
+        throw new Error("No active OTP session found. Please resend OTP.");
+      }
+      // Firebase ద్వారా యూజర్ OTP వెరిఫై చేయడం
+      const userCredential = await confirmationResult.confirm(otp.trim());
+      const firebaseIdToken = await userCredential.user.getIdToken();
+
+      // వెరిఫై అయిన తర్వాత మీ SafarWay బ్యాకెండ్‌లో సెషన్ క్రియేట్ చేయడం
       const result = await api("/auth/verify-otp", {
         method: "POST",
-        body: JSON.stringify({ phone, challenge_id: challengeId, code: otp }),
+        body: JSON.stringify({
+          phone: phone.replace(/\D/g, ""),
+          firebase_token: firebaseIdToken,
+          code: otp.trim()
+        }),
       });
+
       await storage.secureSet(SESSION_KEY, result.access_token);
       onLogin(result.access_token, result.user);
-    } catch (verifyError) {
-      setError(errorMessage(verifyError, "Could not verify OTP"));
+    } catch (verifyError: any) {
+      console.error(verifyError);
+      setError("Invalid or expired OTP. Please check and try again.");
     } finally {
       setLoading(false);
     }
@@ -74,7 +130,7 @@ export function AuthScreen({ onLogin }: { onLogin: (token: string, user: User) =
             <View>
               <Text style={shared.sectionTitle}>{otpSent ? "Enter your code" : "Sign in with mobile"}</Text>
               <Text style={shared.mutedText}>
-                {otpSent ? "We sent a 6-digit code to your number." : "India numbers only for now."}
+                {otpSent ? "We sent a 6-digit SMS code to your number." : "India numbers only for now."}
               </Text>
             </View>
             <Icon name={otpSent ? "shield-check-outline" : "cellphone-lock"} color={colors.brand} size={26} />
@@ -105,18 +161,10 @@ export function AuthScreen({ onLogin }: { onLogin: (token: string, user: User) =
                 label="One-time password"
                 value={otp}
                 onChangeText={setOtp}
-                placeholder="6-digit code"
+                placeholder="6-digit SMS code"
                 keyboardType="number-pad"
                 testID="auth-otp-input"
               />
-              {devCode ? (
-                <View style={styles.devCode}>
-                  <Icon name="information-outline" size={16} color={colors.info} />
-                  <Text style={styles.devCodeText}>
-                    Preview code: <Text style={styles.devCodeStrong} testID="auth-dev-code">{devCode}</Text>
-                  </Text>
-                </View>
-              ) : null}
               <Button label="Verify & enter" onPress={verifyOtp} loading={loading} testID="auth-verify-otp" />
               <Pressable
                 onPress={() => {
@@ -133,9 +181,12 @@ export function AuthScreen({ onLogin }: { onLogin: (token: string, user: User) =
           <ErrorBanner message={error} />
         </View>
 
+        {/* reCAPTCHA కోసం హిడెన్ కంటైనర్ */}
+        <div id="recaptcha-container"></div>
+
         <View style={styles.trustRow}>
           <Icon name="shield-check" color={colors.brand} size={18} />
-          <Text style={styles.trustText}>Your account is secured with phone verification.</Text>
+          <Text style={styles.trustText}>Your account is secured with Google Phone Verification.</Text>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -169,16 +220,6 @@ const styles = StyleSheet.create({
   countryText: { color: colors.onSurface, fontWeight: "700" },
   textButton: { minHeight: 44, alignItems: "center", justifyContent: "center" },
   textButtonLabel: { color: colors.brand, fontSize: 13, fontWeight: "700" },
-  devCode: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 7,
-    padding: 10,
-    borderRadius: 10,
-    backgroundColor: colors.brandTertiary,
-  },
-  devCodeText: { color: colors.onSurfaceSecondary, fontSize: 12 },
-  devCodeStrong: { color: colors.brand, fontWeight: "800", letterSpacing: 1 },
   trustRow: { flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", marginTop: 24 },
   trustText: { color: colors.muted, fontSize: 12 },
 });
