@@ -25,6 +25,13 @@ JWT_SECRET = os.getenv("JWT_SECRET", "safarway-local-development-secret")
 OTP_LENGTH = 6
 
 app = FastAPI(title="SafarWay API")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 api_router = APIRouter(prefix="/api")
 logger = logging.getLogger("safarway")
 
