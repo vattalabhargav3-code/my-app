@@ -6,12 +6,13 @@ import logging
 import os
 import secrets
 import uuid
-import requests
-import jwt
+
 from dotenv import load_dotenv
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Query, Request
+import jwt
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
+import requests
 from starlette.middleware.cors import CORSMiddleware
 
 
@@ -26,10 +27,13 @@ OTP_LENGTH = 6
 
 app = FastAPI(title="SafarWay API")
 
-# 1. CORS Middleware (Router include cheyadaniki munde add cheyali)
+# 1. CORS Middleware (Frontend origin allow cheyadaniki)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://riderx-silk.vercel.app",
+        "http://localhost:3000",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -160,7 +164,7 @@ async def request_otp(payload: PhoneRequest):
     phone = normalize_phone(payload.phone)
     challenge_id = str(uuid.uuid4())
     code = f"{secrets.randbelow(10**OTP_LENGTH):0{OTP_LENGTH}d}"
-    
+
     if db is not None:
         await db.otp_challenges.insert_one(
             {
@@ -241,9 +245,22 @@ async def verify_id(payload: IdVerificationRequest, user: dict[str, Any] = Depen
 
 
 def public_ride(ride: dict[str, Any]) -> dict[str, Any]:
-    return {key: ride.get(key) for key in [
-        "id", "driver_name", "vehicle", "type", "mode", "from", "to", "stops", "seats_left", "price", "rating"
-    ]}
+    return {
+        key: ride.get(key)
+        for key in [
+            "id",
+            "driver_name",
+            "vehicle",
+            "type",
+            "mode",
+            "from",
+            "to",
+            "stops",
+            "seats_left",
+            "price",
+            "rating",
+        ]
+    }
 
 
 @api_router.get("/rides")
@@ -256,10 +273,17 @@ async def list_rides(
 ):
     persisted = await db.rides.find({"status": "open"}, {"_id": 0}).to_list(100)
     rides = SAMPLE_RIDES + [public_ride(ride) for ride in persisted]
+
     def matches(ride: dict[str, Any]) -> bool:
         route_match = not from_location or from_location.lower() in ride["from"].lower()
         destination_match = not to_location or to_location.lower() in ride["to"].lower()
-        return route_match and destination_match and (mode == "all" or ride["mode"] == mode) and (vehicle_type == "all" or ride["type"] == vehicle_type)
+        return (
+            route_match
+            and destination_match
+            and (mode == "all" or ride["mode"] == mode)
+            and (vehicle_type == "all" or ride["type"] == vehicle_type)
+        )
+
     return [ride for ride in rides if matches(ride)]
 
 
@@ -324,7 +348,9 @@ async def book_ride(ride_id: str, payload: RideBookingRequest, user: dict[str, A
 
 @api_router.get("/bookings/active")
 async def active_booking(user: dict[str, Any] = Depends(current_user)):
-    booking = await db.bookings.find_one({"passenger_id": user["id"], "status": "confirmed"}, {"_id": 0}, sort=[("created_at", -1)])
+    booking = await db.bookings.find_one(
+        {"passenger_id": user["id"], "status": "confirmed"}, {"_id": 0}, sort=[("created_at", -1)]
+    )
     return booking
 
 
@@ -345,9 +371,3 @@ async def send_sos(ride_id: str, payload: SosRequest, user: dict[str, Any] = Dep
 
 # Router include
 app.include_router(api_router)
-
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    if client:
-        client.close()
