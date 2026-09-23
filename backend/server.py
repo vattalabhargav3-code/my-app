@@ -20,15 +20,25 @@ ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 mongo_url = os.environ.get("MONGO_URL", "")
-client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=2000) if mongo_url else None
-db = client[os.environ["DB_NAME"]] if (client and "DB_NAME" in os.environ) else None
+db_name = os.environ.get("DB_NAME", "safarway")
+
+client = None
+db = None
+
+if mongo_url:
+    try:
+        client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=3000)
+        db = client[db_name]
+    except Exception as e:
+        logger.error(f"MongoDB client init failed: {e}")
+        client = None
+        db = None
+
 JWT_SECRET = os.getenv("JWT_SECRET", "safarway-local-development-secret")
 OTP_LENGTH = 6
 
-# Vercel entrypoint
 app = FastAPI(title="SafarWay API")
 
-# CORS Middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -83,7 +93,6 @@ async def current_user(authorization: Optional[str] = Header(default=None)) -> d
         except Exception as db_err:
             logger.error(f"Database error in current_user: {db_err}")
 
-    # Database fail unna demo user ga permit chesthundi
     return {"id": user_id, "phone": "+919999999999", "role": "passenger", "id_verified": True}
 
 
@@ -160,7 +169,6 @@ async def root():
     return {"message": "SafarWay API is ready"}
 
 
-# Database check cheyadaniki idi use avthundi
 @api_router.get("/health")
 async def health():
     db_status = "disconnected"
@@ -177,52 +185,50 @@ async def health():
 
 @api_router.post("/auth/request-otp")
 async def request_otp(payload: PhoneRequest):
-    try:
-        phone = normalize_phone(payload.phone)
-        challenge_id = str(uuid.uuid4())
-        code = f"{secrets.randbelow(10**OTP_LENGTH):0{OTP_LENGTH}d}"
-        
-        if db is not None:
-            try:
-                await db.otp_challenges.insert_one(
-                    {
-                        "id": challenge_id,
-                        "phone": phone,
-                        "code_hash": hashlib.sha256(code.encode()).hexdigest(),
-                        "created_at": now_iso(),
-                        "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
-                        "attempts": 0,
-                    }
-                )
-            except Exception as db_err:
-                logger.error(f"Database error in request_otp: {db_err}")
+    phone = normalize_phone(payload.phone)
+    challenge_id = str(uuid.uuid4())
+    code = f"{secrets.randbelow(10**OTP_LENGTH):0{OTP_LENGTH}d}"
 
-        fast2sms_key = os.getenv("FAST2SMS_API_KEY")
-        if fast2sms_key:
-            try:
-                clean_phone = str(phone).replace("+91", "").strip()
-                sms_url = "https://www.fast2sms.com/dev/bulkV2"
-                sms_payload = {
+    if db is not None:
+        try:
+            await db.otp_challenges.insert_one(
+                {
+                    "id": challenge_id,
+                    "phone": phone,
+                    "code_hash": hashlib.sha256(code.encode()).hexdigest(),
+                    "created_at": now_iso(),
+                    "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
+                    "attempts": 0,
+                }
+            )
+        except Exception as db_err:
+            logger.error(f"Database error in request_otp: {db_err}")
+
+    fast2sms_key = os.getenv("FAST2SMS_API_KEY")
+    sms_sent = False
+    if fast2sms_key:
+        try:
+            clean_phone = str(phone).replace("+91", "").strip()
+            res = requests.get(
+                "https://www.fast2sms.com/dev/bulkV2",
+                params={
+                    "authorization": fast2sms_key.strip(),
                     "variables_values": str(code),
                     "route": "otp",
                     "numbers": clean_phone,
-                }
-                sms_headers = {
-                    "authorization": fast2sms_key,
-                    "Content-Type": "application/json",
-                }
-                requests.post(sms_url, json=sms_payload, headers=sms_headers, timeout=5)
-            except Exception as sms_err:
-                logger.error(f"Fast2SMS error: {sms_err}")
+                },
+                timeout=5,
+            )
+            res_data = res.json()
+            sms_sent = res_data.get("return", False)
+        except Exception as sms_err:
+            logger.error(f"Fast2SMS error: {sms_err}")
 
-        return {
-            "challenge_id": challenge_id,
-            "provider": "fast2sms" if fast2sms_key else "development",
-            "development_code": code,
-        }
-    except Exception as e:
-        logger.error(f"Unhandled error in request_otp: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+    return {
+        "challenge_id": challenge_id,
+        "provider": "fast2sms" if sms_sent else "development",
+        "preview_code": None if sms_sent else code,
+    }
 
 
 @api_router.post("/auth/verify-otp")
@@ -230,7 +236,7 @@ async def verify_otp(payload: VerifyOtpRequest):
     try:
         phone = normalize_phone(payload.phone)
         user_id = str(uuid.uuid4())
-        
+
         if db is not None:
             try:
                 challenge = await db.otp_challenges.find_one({"id": payload.challenge_id}, {"_id": 0})
@@ -239,7 +245,7 @@ async def verify_otp(payload: VerifyOtpRequest):
                         raise HTTPException(status_code=400, detail="OTP expired. Request a new one")
                     if hashlib.sha256(payload.code.encode()).hexdigest() != challenge["code_hash"]:
                         raise HTTPException(status_code=400, detail="Incorrect OTP")
-                
+
                 user = await db.users.find_one({"phone": phone}, {"_id": 0})
                 if not user:
                     user = {
@@ -435,5 +441,4 @@ async def send_sos(ride_id: str, payload: SosRequest, user: dict[str, Any] = Dep
     return {"id": event["id"], "status": "received", "call_number": "112"}
 
 
-# Router include
 app.include_router(api_router)
