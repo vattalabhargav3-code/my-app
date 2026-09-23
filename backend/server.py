@@ -211,22 +211,25 @@ async def request_otp(payload: PhoneRequest):
             clean_phone = str(phone).replace("+91", "").strip()
             headers = {
                 "authorization": fast2sms_key.strip(),
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Cache-Control": "no-cache",
+                "Content-Type": "application/json",
             }
-            data = {
-                "variables_values": str(code),
-                "route": "otp",
+            body = {
+                "route": "q",
+                "message": f"Your SafarWay verification code is: {code}",
+                "language": "english",
+                "flash": 0,
                 "numbers": clean_phone,
             }
             res = requests.post(
                 "https://www.fast2sms.com/dev/bulkV2",
                 headers=headers,
-                data=data,
+                json=body,
                 timeout=5,
             )
             res_data = res.json()
             sms_sent = res_data.get("return", False)
+            if not sms_sent:
+                logger.error(f"Fast2SMS API Response: {res_data}")
         except Exception as sms_err:
             logger.error(f"Fast2SMS error: {sms_err}")
 
