@@ -1,6 +1,6 @@
 import Constants from "expo-constants";
 
-const API_BASE = "";
+const API_BASE = "https://backend-alpha-gray.vercel.app";
 export const SESSION_KEY = "safarway.access-token";
 
 export type User = { id: string; phone: string; id_verified: boolean };
