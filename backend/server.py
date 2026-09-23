@@ -207,26 +207,31 @@ async def request_otp(payload: PhoneRequest):
             except Exception as db_err:
                 logger.error(f"Database error in request_otp: {db_err}")
 
-        fast2sms_key = os.getenv("FAST2SMS_API_KEY")
+    fast2sms_key = os.getenv("FAST2SMS_API_KEY")
         sms_sent = False
         if fast2sms_key:
             try:
-                res = requests.post(
+                clean_phone = str(phone).replace("+91", "").strip()
+                res = requests.get(
                     "https://www.fast2sms.com/dev/bulkV2",
-                    data=sms_payload,
-                    headers=sms_headers,
+                    params={
+                        "authorization": fast2sms_key.strip(),
+                        "variables_values": str(code),
+                        "route": "otp",
+                        "numbers": clean_phone
+                    },
                     timeout=5
                 )
                 res_data = res.json()
                 sms_sent = res_data.get("return", False)
-            except Exception as sms_err:
-                logger.error(f"Fast2SMS error: {sms_err}")
+             except Exception as sms_err:
+                    logger.error(f"Fast2SMS error: {sms_err}")
 
         return {
             "challenge_id": challenge_id,
             "provider": "fast2sms" if sms_sent else "development",
             "preview_code": None if sms_sent else code
-        }           
+        }
 @api_router.post("/auth/verify-otp")
 async def verify_otp(payload: VerifyOtpRequest):
     try:
