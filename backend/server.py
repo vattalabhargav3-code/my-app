@@ -209,14 +209,20 @@ async def request_otp(payload: PhoneRequest):
     if fast2sms_key:
         try:
             clean_phone = str(phone).replace("+91", "").strip()
-            res = requests.get(
+            headers = {
+                "authorization": fast2sms_key.strip(),
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Cache-Control": "no-cache",
+            }
+            data = {
+                "variables_values": str(code),
+                "route": "otp",
+                "numbers": clean_phone,
+            }
+            res = requests.post(
                 "https://www.fast2sms.com/dev/bulkV2",
-                params={
-                    "authorization": fast2sms_key.strip(),
-                    "variables_values": str(code),
-                    "route": "otp",
-                    "numbers": clean_phone,
-                },
+                headers=headers,
+                data=data,
                 timeout=5,
             )
             res_data = res.json()
