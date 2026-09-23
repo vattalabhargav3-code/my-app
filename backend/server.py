@@ -18,13 +18,15 @@ from starlette.middleware.cors import CORSMiddleware
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
-mongo_url = os.environ["MONGO_URL"]
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ["DB_NAME"]]
+mongo_url = os.environ.get("MONGO_URL", "")
+client = AsyncIOMotorClient(mongo_url) if mongo_url else None
+db = client[os.environ["DB_NAME"]] if (client and "DB_NAME" in os.environ) else None
 JWT_SECRET = os.getenv("JWT_SECRET", "safarway-local-development-secret")
 OTP_LENGTH = 6
 
 app = FastAPI(title="SafarWay API")
+
+# 1. CORS Middleware (Router include cheyadaniki munde add cheyali)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -32,6 +34,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 api_router = APIRouter(prefix="/api")
 logger = logging.getLogger("safarway")
 
@@ -147,7 +150,8 @@ async def root():
 
 @api_router.get("/health")
 async def health():
-    await db.command("ping")
+    if db is not None:
+        await db.command("ping")
     return {"status": "ok", "service": "safarway"}
 
 
@@ -156,36 +160,38 @@ async def request_otp(payload: PhoneRequest):
     phone = normalize_phone(payload.phone)
     challenge_id = str(uuid.uuid4())
     code = f"{secrets.randbelow(10**OTP_LENGTH):0{OTP_LENGTH}d}"
-    await db.otp_challenges.insert_one(
-        {
-            "id": challenge_id,
-            "phone": phone,
-            "code_hash": hashlib.sha256(code.encode()).hexdigest(),
-            "created_at": now_iso(),
-            "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
-            "attempts": 0,
-        }
-    )
-           # Send OTP via Fast2SMS
-                fast2sms_key = os.getenv("FAST2SMS_API_KEY")
-                if fast2sms_key:
-                        try:
+    
+    if db is not None:
+        await db.otp_challenges.insert_one(
+            {
+                "id": challenge_id,
+                "phone": phone,
+                "code_hash": hashlib.sha256(code.encode()).hexdigest(),
+                "created_at": now_iso(),
+                "expires_at": (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat(),
+                "attempts": 0,
+            }
+        )
+
+    # Fast2SMS OTP sending logic
+    fast2sms_key = os.getenv("FAST2SMS_API_KEY")
+    if fast2sms_key:
+        try:
             clean_phone = str(phone).replace("+91", "").strip()
             sms_url = "https://www.fast2sms.com/dev/bulkV2"
             sms_payload = {
                 "variables_values": str(code),
                 "route": "otp",
-                "numbers": clean_phone
+                "numbers": clean_phone,
             }
-               sms_headers = {
+            sms_headers = {
                 "authorization": fast2sms_key,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             }
-                      requests.post(sms_url, json=sms_payload, headers=sms_headers, timeout=5)
-                except Exception as e:
-                      logging.error(f"Fast2SMS error: {e}")
+            requests.post(sms_url, json=sms_payload, headers=sms_headers, timeout=5)
+        except Exception as e:
+            logger.error(f"Fast2SMS error: {e}")
 
-    # MSG91 is intentionally opt-in until approved credentials and DLT template are supplied.
     configured = bool(os.getenv("MSG91_AUTH_KEY") and os.getenv("MSG91_TEMPLATE_ID"))
     response: dict[str, Any] = {"challenge_id": challenge_id, "provider": "msg91" if configured else "development"}
     if not configured:
@@ -337,16 +343,11 @@ async def send_sos(ride_id: str, payload: SosRequest, user: dict[str, Any] = Dep
     return {"id": event["id"], "status": "received", "call_number": "112"}
 
 
+# Router include
 app.include_router(api_router)
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=["*"],
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
 
 @app.on_event("shutdown")
 async def shutdown_db_client():
-    client.close()
+    if client:
+        client.close()
