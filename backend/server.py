@@ -33,6 +33,8 @@ if mongo_url:
         logger.error(f"MongoDB client init failed: {e}")
         client = None
         db = None
+JWT_SECRET = os.getenv("JWT_SECRET", "safarway-local-development-secret")
+OTP_LENGTH = 6
 # Vercel entrypoint
 app = FastAPI(title="SafarWay API")
 
