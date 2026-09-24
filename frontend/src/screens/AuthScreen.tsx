@@ -13,7 +13,7 @@ import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDEOTgln5Gs2LgZqLYTQwQS_s5geHxxMdU",
+  apiKey: "AIzaSyDEOTgln5Gs2lgZqLYTQwQS_s5geHxxMdU",
   authDomain: "safer-way-9b359.firebaseapp.com",
   projectId: "safer-way-9b359",
   storageBucket: "safer-way-9b359.firebasestorage.app",
