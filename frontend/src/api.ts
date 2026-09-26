@@ -27,16 +27,23 @@ export type Booking = {
   seat: string;
   ride: Ride;
 };
- export async function api<T = any>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
-  const savedToken = token || (await storage.secureGet(SESSION_KEY));
+export async function api<T = any>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
+  const savedToken = token || (await storage.secureGet(SESSION_KEY)) || (typeof window !== "undefined" ? localStorage.getItem(SESSION_KEY) : null);
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(options.headers as Record<string, string> ?? {}),
+  };
+
+  if (savedToken) {
+    headers["Authorization"] = `Bearer ${savedToken}`;
+  }
+
   const response = await fetch(`${API_BASE}/api${path}`, {
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(savedToken ? { Authorization: `Bearer ${savedToken}` } : {}),
-      ...(options.headers ?? {}),
-    },
+    headers,
   });
+
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.detail ?? "Something went wrong");
   return body as T;
