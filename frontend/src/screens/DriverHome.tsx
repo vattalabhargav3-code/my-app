@@ -105,7 +105,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         setForm((prev: any) => ({ ...prev, start_point: placeName }));
       }
     } catch {
-      Alert.alert("GPS Error", "Location permission allow చేయండి లేదా GPS ఆన్ చేయండి.");
+      Alert.alert("GPS Error", "Location permission allow cheyandi leda GPS on cheyandi.");
     } finally {
       setDetectingLocation(false);
     }
@@ -233,7 +233,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           }
         />
 
-        {/* Weekly Petrol Card */}
         <View style={styles.petrolCard}>
           <View style={styles.petrolHeader}>
             <View style={styles.petrolBadge}>
@@ -243,7 +242,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             <Text style={styles.rewardText}>Win ₹500 Free Petrol</Text>
           </View>
           <Text style={styles.petrolDesc}>
-            ఈ వారం 10 రైడ్స్ పూర్తి చేయండి, ₹500 ఉచిత పెట్రోల్ కూపన్ పొందండి!
+            Ee varam 10 rides poorthi cheyandi, ₹500 free petrol coupon pondandi!
           </Text>
 
           <View style={styles.progressContainer}>
@@ -338,7 +337,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           <Text style={shared.fieldLabel}>Vehicle type</Text>
           <Segmented options={["bike", "car", "cab"]} value={form.vehicle_type} onChange={update("vehicle_type")} testIDPrefix="vehicle" />
 
-          {/* Ride Vibe Picker */}
           <Text style={[shared.fieldLabel, { marginTop: 10 }]}>Ride Vibe</Text>
           <View style={styles.vibeSelector}>
             {[
@@ -370,7 +368,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             </View>
           </View>
 
-          {/* Women Only Pool Toggle */}
           <View style={styles.toggleRow}>
             <View style={styles.toggleTextWrap}>
               <View style={styles.toggleTitleWrap}>
@@ -560,4 +557,6 @@ const styles = StyleSheet.create({
   toggleTitle: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
   toggleSubtitle: { color: colors.muted, fontSize: 11, marginTop: 2 },
   rideItemWrapper: { marginBottom: 14 },
-  driverActionsRow: { fle
+  driverActionsRow: { flexDirection: "row", gap: 10, marginHorizontal: 18, marginTop: -4 },
+  trackingActionBtn: {
+    flex: 2,
