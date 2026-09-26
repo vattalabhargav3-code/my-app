@@ -11,7 +11,22 @@ import { Button, ErrorBanner, Field, Icon, Segmented } from "@/src/components/ui
 import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 
-const EMPTY_FORM = {
+interface DriverFormState {
+  driver_dl: string;
+  driver_rc: string;
+  start_point: string;
+  end_point: string;
+  stops: string;
+  departure_time: string;
+  vehicle_type: string;
+  available_seats: string;
+  seat_price: string;
+  women_only: boolean;
+  ride_vibe: string;
+  affiliation_badge: string;
+}
+
+const EMPTY_FORM: DriverFormState = {
   driver_dl: "",
   driver_rc: "",
   start_point: "",
@@ -42,7 +57,7 @@ const fetchDriverGPS = (): Promise<{ latitude: number; longitude: number }> => {
 
 export function DriverHome({ token, onLogout }: { token: string; onLogout: () => void }) {
   const insets = useSafeAreaInsets();
-  const [form, setForm] = useState(EMPTY_FORM);
+  const [form, setForm] = useState<DriverFormState>(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [posted, setPosted] = useState<Ride[]>([]);
   const [error, setError] = useState("");
@@ -54,7 +69,10 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
   const [selectedSosRide, setSelectedSosRide] = useState<Ride | null>(null);
 
   const watchIdRef = useRef<number | null>(null);
-  const update = (key: keyof typeof form) => (value: any) => setForm((current) => ({ ...current, [key]: value }));
+
+  const update = (key: keyof DriverFormState) => (value: any) => {
+    setForm((current) => ({ ...current, [key]: value }));
+  };
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -255,21 +273,19 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             <Text style={shared.mutedText}>Schedule a route from anywhere at your chosen time.</Text>
           </View>
 
-          {/* Affiliation / Campus Badge Selection */}
           <Field
             label="College / Company Badge"
             value={form.affiliation_badge}
             onChangeText={update("affiliation_badge")}
             placeholder="e.g. Campus • JNTU or Corporate • Hitec City"
-            testID="affiliation-badge-input"
           />
 
           <View style={styles.grid}>
             <View style={shared.flex}>
-              <Field label="Driving licence" value={form.driver_dl} onChangeText={update("driver_dl")} placeholder="DL number" testID="driver-dl-input" />
+              <Field label="Driving licence" value={form.driver_dl} onChangeText={update("driver_dl")} placeholder="DL number" />
             </View>
             <View style={shared.flex}>
-              <Field label="Vehicle RC" value={form.driver_rc} onChangeText={update("driver_rc")} placeholder="RC number" testID="driver-rc-input" />
+              <Field label="Vehicle RC" value={form.driver_rc} onChangeText={update("driver_rc")} placeholder="RC number" />
             </View>
           </View>
 
@@ -278,7 +294,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             value={form.departure_time}
             onChangeText={update("departure_time")}
             placeholder="e.g. Tomorrow 07:30 AM"
-            testID="departure-time-input"
           />
 
           <Field
@@ -286,7 +301,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             value={form.start_point}
             onChangeText={update("start_point")}
             placeholder="e.g. Hyderabad LB Nagar"
-            testID="ride-start-input"
           />
 
           <View style={styles.locationHelpers}>
@@ -315,7 +329,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             value={form.end_point}
             onChangeText={update("end_point")}
             placeholder="e.g. Vijayawada Benz Circle"
-            testID="ride-end-input"
           />
 
           <View style={styles.locationHelpers}>
@@ -328,18 +341,18 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             </TouchableOpacity>
           </View>
 
-          <Field label="En-route stops (optional)" value={form.stops} onChangeText={update("stops")} placeholder="Suryapet, Nalgonda" testID="ride-stops-input" />
+          <Field label="En-route stops (optional)" value={form.stops} onChangeText={update("stops")} placeholder="Suryapet, Nalgonda" />
           
           <Text style={shared.fieldLabel}>Vehicle type</Text>
           <Segmented options={["bike", "car", "cab"]} value={form.vehicle_type} onChange={update("vehicle_type")} testIDPrefix="vehicle" />
 
-          {/* Gen-Z Ride Vibe Picker */}
+          {/* Ride Vibe Picker */}
           <Text style={[shared.fieldLabel, { marginTop: 10 }]}>Ride Vibe</Text>
           <View style={styles.vibeSelector}>
             {[
-              { id: "music", label: "🎵 Music Lover", icon: "music" },
-              { id: "silent", label: "🎧 Silent Work", icon: "headphones" },
-              { id: "chitchat", label: "☕ Chit-Chat", icon: "chat-processing-outline" },
+              { id: "music", label: "🎵 Music Lover" },
+              { id: "silent", label: "🎧 Silent Work" },
+              { id: "chitchat", label: "☕ Chit-Chat" },
             ].map((v) => (
               <TouchableOpacity
                 key={v.id}
@@ -349,7 +362,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
                   form.ride_vibe === v.id && styles.vibeOptionActive,
                 ]}
               >
-                <Icon name={v.icon as any} size={15} color={form.ride_vibe === v.id ? "#0F172A" : colors.muted} />
                 <Text style={[styles.vibeOptionText, form.ride_vibe === v.id && styles.vibeOptionTextActive]}>
                   {v.label}
                 </Text>
@@ -359,10 +371,10 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           
           <View style={styles.grid}>
             <View style={shared.flex}>
-              <Field label="Seats available" value={form.available_seats} onChangeText={update("available_seats")} placeholder="3" keyboardType="number-pad" testID="ride-seats-input" />
+              <Field label="Seats available" value={form.available_seats} onChangeText={update("available_seats")} placeholder="3" keyboardType="number-pad" />
             </View>
             <View style={shared.flex}>
-              <Field label="Price per seat" value={form.seat_price} onChangeText={update("seat_price")} placeholder="₹ amount" keyboardType="number-pad" testID="ride-price-input" />
+              <Field label="Price per seat" value={form.seat_price} onChangeText={update("seat_price")} placeholder="₹ amount" keyboardType="number-pad" />
             </View>
           </View>
 
@@ -519,15 +531,13 @@ const styles = StyleSheet.create({
   },
   vibeOption: {
     flex: 1,
-    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 5,
     backgroundColor: "#0F172A",
     borderWidth: 1,
     borderColor: "#334155",
-    paddingVertical: 9,
-    paddingHorizontal: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
     borderRadius: 10,
   },
   vibeOptionActive: {
@@ -536,7 +546,7 @@ const styles = StyleSheet.create({
   },
   vibeOptionText: {
     color: colors.muted,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "700",
   },
   vibeOptionTextActive: {
@@ -554,4 +564,8 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   toggleTextWrap: { flex: 1, paddingRight: 8 },
-  toggleTitleWrap: { flexDirection: "row", alignItems: "center", gap: 6 }
+  toggleTitleWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
+  toggleTitle: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
+  toggleSubtitle: { color: colors.muted, fontSize: 11, marginTop: 2 },
+  rideItemWrapper: { marginBottom: 14 },
+  driverActionsRow: { flexDire
