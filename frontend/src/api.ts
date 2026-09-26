@@ -17,6 +17,7 @@ export type Ride = {
   seats_left: number;
   price: number;
   rating: string;
+  departure_time?: string;
 };
 
 export type Booking = {
@@ -27,12 +28,52 @@ export type Booking = {
   seat: string;
   ride: Ride;
 };
+
+// Safe గా plain string లేదా JSON token ను లాగే ఫంక్షన్
+async function getCleanToken(explicitToken?: string): Promise<string | null> {
+  if (explicitToken) return explicitToken.replace(/^"(.*)"$/, "$1");
+
+  let raw: any = null;
+
+  // 1. Direct Web localStorage Check
+  if (typeof window !== "undefined" && window.localStorage) {
+    raw = window.localStorage.getItem(SESSION_KEY);
+  }
+
+  // 2. Fallback to storage helper
+  if (!raw) {
+    try {
+      raw = await storage.secureGet(SESSION_KEY);
+    } catch {
+      raw = null;
+    }
+  }
+
+  if (!raw) return null;
+
+  // ఒకవేళ raw అనేది ఆబ్జెక్ట్ లేదా స్ట్రింగ్ అయితే క్లీన్ చేయడం
+  let tokenStr = typeof raw === "string" ? raw : JSON.stringify(raw);
+  
+  // Extra double quotes తీసివేయడం
+  tokenStr = tokenStr.trim().replace(/^"(.*)"$/, "$1");
+
+  // Unexpected JSON unwrap
+  if (tokenStr.startsWith("{") && tokenStr.endsWith("}")) {
+    try {
+      const parsed = JSON.parse(tokenStr);
+      tokenStr = parsed.token || parsed.access_token || tokenStr;
+    } catch {}
+  }
+
+  return tokenStr;
+}
+
 export async function api<T = any>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
-  const savedToken = token || (await storage.secureGet(SESSION_KEY)) || (typeof window !== "undefined" ? localStorage.getItem(SESSION_KEY) : null);
+  const savedToken = await getCleanToken(token);
 
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
-    ...(options.headers as Record<string, string> ?? {}),
+    ...((options.headers as Record<string, string>) ?? {}),
   };
 
   if (savedToken) {
@@ -45,12 +86,16 @@ export async function api<T = any>(path: string, options: RequestInit = {}, toke
   });
 
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.detail ?? "Something went wrong");
+  if (!response.ok) {
+    throw new Error(body.detail ?? body.message ?? "Something went wrong");
+  }
   return body as T;
 }
+
 export function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
+
 export async function saveRideToMongo(rideData: any) {
   const res = await fetch("/api/save", {
     method: "POST",
