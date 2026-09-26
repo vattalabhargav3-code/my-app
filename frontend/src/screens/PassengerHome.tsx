@@ -49,8 +49,22 @@ export function PassengerHome({
   const [error, setError] = useState("");
   const [detectingLocation, setDetectingLocation] = useState(false);
 
-  // Map Picker State (Pickup లేదా Destination ఎంచుకోవడానికి)
+  // Map Picker State (Pickup or Destination)
   const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
+
+  // Persistent verification state check
+  const isAlreadyVerified =
+    user.id_verified ||
+    (typeof window !== "undefined" && localStorage.getItem("safarway_passenger_verified") === "true");
+
+  useEffect(() => {
+    if (!user.id_verified && typeof window !== "undefined") {
+      const savedVerification = localStorage.getItem("safarway_passenger_verified");
+      if (savedVerification === "true") {
+        onUserUpdate({ ...user, id_verified: true });
+      }
+    }
+  }, [user, onUserUpdate]);
 
   const handleUseCurrentLocation = async () => {
     try {
@@ -72,7 +86,7 @@ export function PassengerHome({
         setSearch((prev) => ({ ...prev, fromLocation: placeName }));
       }
     } catch {
-      alert("Location permission allow చేయండి లేదా GPS ఆన్ చేయండి.");
+      alert("Location permission allow cheyandi leda GPS on cheyandi.");
     } finally {
       setDetectingLocation(false);
     }
@@ -174,7 +188,19 @@ export function PassengerHome({
           </TouchableOpacity>
         </View>
 
-        <IdVerifyCard token={token} user={user} onVerified={() => onUserUpdate({ ...user, id_verified: true })} />
+        {/* Okasari verify aithe e card malli kanapadadhu */}
+        {!isAlreadyVerified ? (
+          <IdVerifyCard
+            token={token}
+            user={user}
+            onVerified={() => {
+              if (typeof window !== "undefined") {
+                localStorage.setItem("safarway_passenger_verified", "true");
+              }
+              onUserUpdate({ ...user, id_verified: true });
+            }}
+          />
+        ) : null}
 
         {booking ? <ActiveBookingCard booking={booking} token={token} /> : null}
 
