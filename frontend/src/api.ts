@@ -1,5 +1,5 @@
 import Constants from "expo-constants";
-
+import { storage } from "./utils/storage";
 const API_BASE = "https://backend-alpha-gray.vercel.app";
 export const SESSION_KEY = "safarway.access-token";
 
@@ -27,13 +27,13 @@ export type Booking = {
   seat: string;
   ride: Ride;
 };
-
-export async function api<T = any>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
+ export async function api<T = any>(path: string, options: RequestInit = {}, token?: string): Promise<T> {
+  const savedToken = token || (await storage.secureGet(SESSION_KEY));
   const response = await fetch(`${API_BASE}/api${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(savedToken ? { Authorization: `Bearer ${savedToken}` } : {}),
       ...(options.headers ?? {}),
     },
   });
@@ -41,7 +41,6 @@ export async function api<T = any>(path: string, options: RequestInit = {}, toke
   if (!response.ok) throw new Error(body.detail ?? "Something went wrong");
   return body as T;
 }
-
 export function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
