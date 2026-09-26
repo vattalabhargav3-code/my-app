@@ -3,6 +3,7 @@ import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, To
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, errorMessage, Ride } from "@/src/api";
+import { LocationPickerModal } from "@/src/components/LocationPickerModal";
 import { ScreenHeader } from "@/src/components/navigation";
 import { RideCard } from "@/src/components/RideCard";
 import { Button, ErrorBanner, Field, Icon, Segmented } from "@/src/components/ui";
@@ -15,12 +16,13 @@ const EMPTY_FORM = {
   start_point: "",
   end_point: "",
   stops: "",
+  departure_time: "",
   vehicle_type: "car",
   available_seats: "3",
   seat_price: "",
 };
 
-// GPS Coordinates helper function
+// Current GPS helper
 const fetchDriverGPS = (): Promise<{ latitude: number; longitude: number }> => {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined" || !navigator.geolocation) {
@@ -44,6 +46,9 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
   const [detectingLocation, setDetectingLocation] = useState(false);
   const [activeTrackingRideId, setActiveTrackingRideId] = useState<string | null>(null);
 
+  // Map Picker State
+  const [pickerTarget, setPickerTarget] = useState<"start" | "end" | null>(null);
+
   const watchIdRef = useRef<number | null>(null);
 
   const update = (key: keyof typeof form) => (value: string) => setForm((current) => ({ ...current, [key]: value }));
@@ -52,7 +57,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
     api<Ride[]>("/rides/mine", {}, token).then(setPosted).catch(() => undefined);
   }, [token]);
 
-  // Clean up location watcher when unmounting
   useEffect(() => {
     return () => {
       if (watchIdRef.current !== null && typeof window !== "undefined" && navigator.geolocation) {
@@ -81,10 +85,19 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         setForm((prev) => ({ ...prev, start_point: placeName }));
       }
     } catch {
-      Alert.alert("GPS Error", "Location permission allow చేయండి లేదా GPS ఆన్ చేయండి.");
+      Alert.alert("GPS Error", "Location permission allow cheyandi leda GPS on cheyandi.");
     } finally {
       setDetectingLocation(false);
     }
+  };
+
+  const handleLocationPicked = (placeName: string) => {
+    if (pickerTarget === "start") {
+      setForm((prev) => ({ ...prev, start_point: placeName }));
+    } else if (pickerTarget === "end") {
+      setForm((prev) => ({ ...prev, end_point: placeName }));
+    }
+    setPickerTarget(null);
   };
 
   const startLiveTracking = (rideId: string) => {
@@ -94,7 +107,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
     }
 
     if (activeTrackingRideId === rideId) {
-      // స్టాప్ ట్రాకింగ్
       if (watchIdRef.current !== null) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
@@ -104,7 +116,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
       return;
     }
 
-    // స్టార్ట్ లైవ్ ట్రాకింగ్
     const id = navigator.geolocation.watchPosition(
       async (pos) => {
         try {
@@ -120,23 +131,15 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             },
             token
           );
-        } catch {
-          // Backend tracking endpoint silent update
-        }
+        } catch {}
       },
-      (err) => {
-        console.warn("GPS tracking error:", err);
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 5000,
-        timeout: 10000,
-      }
+      (err) => console.warn("GPS tracking error:", err),
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
     );
 
     watchIdRef.current = id;
     setActiveTrackingRideId(rideId);
-    Alert.alert("Trip Started", "Live GPS tracking is now broadcasting to your passengers!");
+    Alert.alert("Trip Started", "Live GPS tracking is broadcasting to your passengers!");
   };
 
   const postRide = async () => {
@@ -158,7 +161,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
       );
       setPosted((current) => [ride, ...current]);
       setForm(EMPTY_FORM);
-      Alert.alert("Ride published", "Passengers can now discover your route.");
+      Alert.alert("Ride published", "Passengers can now discover your scheduled route.");
     } catch (postError) {
       setError(errorMessage(postError, "Could not publish ride"));
     } finally {
@@ -198,8 +201,9 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         <View style={shared.card}>
           <View>
             <Text style={shared.sectionTitle}>Publish a ride</Text>
-            <Text style={shared.mutedText}>Add the details passengers need to feel ready.</Text>
+            <Text style={shared.mutedText}>Schedule a route from anywhere at your chosen time.</Text>
           </View>
+
           <View style={styles.grid}>
             <View style={shared.flex}>
               <Field label="Driving licence" value={form.driver_dl} onChangeText={update("driver_dl")} placeholder="DL number" testID="driver-dl-input" />
@@ -209,6 +213,16 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             </View>
           </View>
 
+          {/* Departure Date & Time */}
+          <Field
+            label="Departure date & time"
+            value={form.departure_time}
+            onChangeText={update("departure_time")}
+            placeholder="e.g. Tomorrow 07:30 AM"
+            testID="departure-time-input"
+          />
+
+          {/* Starting Point Selection */}
           <Field
             label="Starting point"
             value={form.start_point}
@@ -217,18 +231,46 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             testID="ride-start-input"
           />
 
-          <TouchableOpacity
-            onPress={handleUseCurrentLocation}
-            disabled={detectingLocation}
-            style={styles.gpsButton}
-          >
-            <Icon name="crosshairs-gps" size={15} color={colors.brand} />
-            <Text style={styles.gpsButtonText}>
-              {detectingLocation ? "Fetching GPS..." : "Use my current location as starting point"}
-            </Text>
-          </TouchableOpacity>
+          <View style={styles.locationHelpers}>
+            <TouchableOpacity
+              onPress={handleUseCurrentLocation}
+              disabled={detectingLocation}
+              style={styles.gpsButton}
+            >
+              <Icon name="crosshairs-gps" size={14} color={colors.brand} />
+              <Text style={styles.gpsButtonText}>
+                {detectingLocation ? "Fetching..." : "Current GPS"}
+              </Text>
+            </TouchableOpacity>
 
-          <Field label="Destination" value={form.end_point} onChangeText={update("end_point")} placeholder="e.g. Vijayawada Benz Circle" testID="ride-end-input" />
+            <TouchableOpacity
+              onPress={() => setPickerTarget("start")}
+              style={styles.mapPickButton}
+            >
+              <Icon name="map-marker-radius" size={14} color="#38BDF8" />
+              <Text style={styles.mapPickButtonText}>Pick on Map / Search</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Destination Selection */}
+          <Field
+            label="Destination"
+            value={form.end_point}
+            onChangeText={update("end_point")}
+            placeholder="e.g. Vijayawada Benz Circle"
+            testID="ride-end-input"
+          />
+
+          <View style={styles.locationHelpers}>
+            <TouchableOpacity
+              onPress={() => setPickerTarget("end")}
+              style={styles.mapPickButton}
+            >
+              <Icon name="map-marker-radius" size={14} color="#38BDF8" />
+              <Text style={styles.mapPickButtonText}>Pick Destination on Map</Text>
+            </TouchableOpacity>
+          </View>
+
           <Field label="En-route stops (optional)" value={form.stops} onChangeText={update("stops")} placeholder="Suryapet, Nalgonda" testID="ride-stops-input" />
           
           <Text style={shared.fieldLabel}>Vehicle type</Text>
@@ -278,6 +320,14 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           </View>
         )}
       </ScrollView>
+
+      {/* Map Picker Modal */}
+      <LocationPickerModal
+        visible={pickerTarget !== null}
+        onClose={() => setPickerTarget(null)}
+        onSelect={handleLocationPicked}
+        title={pickerTarget === "start" ? "Select Starting Point" : "Select Destination"}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -294,20 +344,37 @@ const styles = StyleSheet.create({
   },
   grid: { flexDirection: "row", gap: 10 },
   postedHeading: { marginTop: 28, marginHorizontal: 18, marginBottom: 12 },
+  locationHelpers: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: -8,
+    marginBottom: 14,
+  },
   gpsButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    alignSelf: "flex-start",
-    marginTop: -8,
-    marginBottom: 12,
-    paddingVertical: 5,
-    paddingHorizontal: 8,
-    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
     backgroundColor: "#1E293B",
   },
   gpsButtonText: {
     color: colors.brand,
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  mapPickButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "#1E293B",
+  },
+  mapPickButtonText: {
+    color: "#38BDF8",
     fontSize: 12,
     fontWeight: "600",
   },
