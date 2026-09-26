@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Linking, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { api, Booking } from "@/src/api";
-import { Button, Icon } from "@/src/components/ui";
+import { SafetySosModal } from "@/src/components/SafetySosModal";
+import { Icon } from "@/src/components/ui";
 import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 
@@ -11,8 +12,9 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
   const [driverCoords, setDriverCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isWithinOneHour, setIsWithinOneHour] = useState(false);
   const [tripStatus, setTripStatus] = useState<string>("SCHEDULED");
+  const [sosModalVisible, setSosModalVisible] = useState(false);
 
-  // ప్రయాణానికి 1 గంట లేదా అంతకంటే తక్కువ సమయం ఉందో లేదో తనిఖీ చేయడం
+  // 1 hour departure reminder check
   useEffect(() => {
     const checkDepartureTime = () => {
       if (booking.ride?.departure_time) {
@@ -20,7 +22,6 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
         const now = new Date().getTime();
         const diffMinutes = Math.floor((departure - now) / (1000 * 60));
 
-        // 60 నిమిషాల లోపు మరియు ప్రయాణం ఇంకా మొదలు కాకపోతే
         if (diffMinutes <= 60 && diffMinutes > 0) {
           setIsWithinOneHour(true);
         } else {
@@ -30,11 +31,11 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
     };
 
     checkDepartureTime();
-    const interval = setInterval(checkDepartureTime, 60000); // ప్రతి నిమిషానికి చెక్ చేస్తుంది
+    const interval = setInterval(checkDepartureTime, 60000);
     return () => clearInterval(interval);
   }, [booking.ride?.departure_time]);
 
-  // లైవ్ ట్రాకింగ్ ఆన్ చేసినప్పుడు డ్రైవర్ లొకేషన్ పోలింగ్ చేయడం
+  // Driver live location polling
   useEffect(() => {
     let poller: any;
     if (tracking && booking.ride?.id) {
@@ -51,18 +52,14 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
           if (res?.status) {
             setTripStatus(res.status);
           }
-        } catch {
-          // డ్రైవర్ ఇంకా జర్నీ ప్రారంభించకపోతే డీఫాల్ట్ స్టేటస్ చూపిస్తుంది
-        }
+        } catch {}
       };
 
       fetchDriverLocation();
-      poller = setInterval(fetchDriverLocation, 10000); // ప్రతి 10 సెకన్లకు డ్రైవర్ లొకేషన్ అప్‌డేట్
+      poller = setInterval(fetchDriverLocation, 10000);
     }
     return () => clearInterval(poller);
   }, [tracking, booking.ride?.id, token]);
-
-  const callEmergency = () => Linking.openURL("tel:112");
 
   const openGoogleMapsLive = () => {
     if (driverCoords) {
@@ -71,18 +68,6 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
     } else {
       const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.ride.from)}`;
       Linking.openURL(url);
-    }
-  };
-
-  const triggerSos = async () => {
-    try {
-      await api(`/rides/${booking.ride.id}/sos`, { method: "POST", body: JSON.stringify({ ride_id: booking.ride.id }) }, token);
-      await callEmergency();
-    } catch {
-      Alert.alert("SOS ready", "Your safety alert was recorded. Call 112 now if you are in immediate danger.", [
-        { text: "Call 112", onPress: callEmergency },
-        { text: "Close" },
-      ]);
     }
   };
 
@@ -96,7 +81,7 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
         <Icon name="check-decagram" color={colors.brand} size={28} />
       </View>
 
-      {/* 1 Hour Reminder Banner */}
+      {/* 1 Hour Alert */}
       {isWithinOneHour ? (
         <View style={styles.oneHourAlert}>
           <Icon name="clock-alert-outline" color="#F59E0B" size={22} />
@@ -126,6 +111,15 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
         </View>
       </View>
 
+      {/* 24/7 Women Safety & SOS trigger button */}
+      <TouchableOpacity
+        style={styles.sosButton}
+        onPress={() => setSosModalVisible(true)}
+      >
+        <Icon name="shield-alert" color="#FFFFFF" size={20} />
+        <Text style={styles.sosButtonText}>24x7 Safety Shield & Emergency SOS</Text>
+      </TouchableOpacity>
+
       <Pressable onPress={() => setTracking((value) => !value)} style={styles.trackingButton} testID="toggle-tracking">
         <Icon name="map-marker-path" color={colors.brand} size={19} />
         <Text style={styles.trackingText}>{tracking ? "Hide live tracking" : "Show live trip tracking"}</Text>
@@ -150,10 +144,16 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
               <Text style={styles.mapsLinkText}>Track Driver in Maps</Text>
             </Pressable>
           </View>
-
-          <Button label="Emergency SOS · Call 112" onPress={triggerSos} tone="danger" testID="sos-button" />
         </View>
       ) : null}
+
+      {/* Comprehensive Safety Modal */}
+      <SafetySosModal
+        visible={sosModalVisible}
+        onClose={() => setSosModalVisible(false)}
+        booking={booking}
+        token={token}
+      />
     </View>
   );
 }
@@ -193,6 +193,21 @@ const styles = StyleSheet.create({
   },
   boardingOtp: { color: colors.warning, fontSize: 26, fontWeight: "900", letterSpacing: 4, marginTop: 3 },
   totalBox: { alignItems: "flex-end" },
+  sosButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: "#DC2626",
+  },
+  sosButtonText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
+    letterSpacing: 0.3,
+  },
   trackingButton: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8 },
   trackingText: { color: colors.onSurface, flex: 1, fontSize: 13, fontWeight: "700" },
   trackingContainer: { gap: 12 },
