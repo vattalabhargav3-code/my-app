@@ -59,17 +59,12 @@ export default function Index() {
       />
     );
   }
-
-  return (
+return (
     <View style={shared.screen}>
-      {role === "passenger" ? (
-        <PassengerHome token={token} user={user} onUserUpdate={setUser} onLogout={logout} />
-      ) : (
-        <DriverHome token={token} onLogout={logout} />
-      )}
-      <RoleSwitcher role={role} onChange={setRole} bottom={insets.bottom + (Platform.OS === "web" ? 18 : 12)} />
+      <PassengerHome token={token} user={user} onUserUpdate={setUser} onLogout={logout} />
     </View>
   );
+ 
 }
 
 const styles = StyleSheet.create({
