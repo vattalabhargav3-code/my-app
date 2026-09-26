@@ -14,7 +14,6 @@ import { ErrorBanner, Icon } from "@/src/components/ui";
 import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 
-// GPS Coordinates helper function
 const fetchCurrentGPS = (): Promise<{ latitude: number; longitude: number }> => {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined" || !navigator.geolocation) {
@@ -49,13 +48,9 @@ export function PassengerHome({
   const [error, setError] = useState("");
   const [detectingLocation, setDetectingLocation] = useState(false);
 
-  // Women Only Filter State
   const [womenOnlyFilter, setWomenOnlyFilter] = useState(false);
-
-  // Map Picker State (Pickup or Destination)
   const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
 
-  // Persistent verification state check
   const isAlreadyVerified =
     user.id_verified ||
     (typeof window !== "undefined" && localStorage.getItem("safarway_passenger_verified") === "true");
@@ -130,7 +125,6 @@ export function PassengerHome({
     api<Booking | null>("/bookings/active", {}, token).then((active) => active && setBooking(active)).catch(() => undefined);
   }, [token]);
 
-  // Women only filter apply చేయడం
   const displayedRides = womenOnlyFilter
     ? rides.filter((r) => (r as any).women_only === true)
     : rides;
@@ -143,7 +137,7 @@ export function PassengerHome({
         keyboardShouldPersistTaps="handled"
       >
         <ScreenHeader
-          eyebrow="PASSENGER MODE"
+          eyebrow="PASSENGER DASHBOARD"
           title="Where are you headed?"
           onLogout={onLogout}
           right={
@@ -154,6 +148,17 @@ export function PassengerHome({
           }
         />
 
+        {/* Welcome Promo Coupon Banner */}
+        <View style={styles.promoBanner}>
+          <View style={styles.promoIconWrap}>
+            <Icon name="ticket-percent-outline" size={24} color="#0F172A" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.promoTitle}>FLAT ₹50 OFF on your ride!</Text>
+            <Text style={styles.promoSubtitle}>Use Coupon: <Text style={styles.promoCode}>SAFAR50</Text> at checkout</Text>
+          </View>
+        </View>
+
         <RideSearchPanel
           search={search}
           onChange={(patch) => setSearch((current) => ({ ...current, ...patch }))}
@@ -161,7 +166,6 @@ export function PassengerHome({
           loading={loading}
         />
 
-        {/* Location Picker Quick Actions */}
         <View style={styles.gpsActionWrap}>
           <TouchableOpacity
             onPress={handleUseCurrentLocation}
@@ -180,7 +184,7 @@ export function PassengerHome({
           >
             <Icon name="map-marker-radius" size={15} color="#38BDF8" />
             <Text style={[styles.actionBtnText, { color: "#38BDF8" }]}>
-              Pick Pickup on Map / Search
+              Pick Pickup on Map
             </Text>
           </TouchableOpacity>
 
@@ -195,7 +199,6 @@ export function PassengerHome({
           </TouchableOpacity>
         </View>
 
-        {/* Women Only Pool Filter Toggle */}
         <View style={styles.womenFilterWrap}>
           <TouchableOpacity
             style={[
@@ -223,7 +226,6 @@ export function PassengerHome({
           </TouchableOpacity>
         </View>
 
-        {/* Okasari verify aithe e card malli kanapadadhu */}
         {!isAlreadyVerified ? (
           <IdVerifyCard
             token={token}
@@ -263,7 +265,6 @@ export function PassengerHome({
         )}
       </ScrollView>
 
-      {/* Map Picker Modal for Passenger */}
       <LocationPickerModal
         visible={pickerTarget !== null}
         onClose={() => setPickerTarget(null)}
@@ -302,10 +303,33 @@ const styles = StyleSheet.create({
     backgroundColor: colors.brandTertiary,
   },
   secureBadgeText: { color: colors.brand, fontSize: 11, fontWeight: "800" },
-  ridesHeading: { marginTop: 26 },
+  promoBanner: {
+    marginHorizontal: 18,
+    marginBottom: 14,
+    padding: 12,
+    borderRadius: 14,
+    backgroundColor: "rgba(56, 189, 248, 0.15)",
+    borderWidth: 1,
+    borderColor: "#38BDF8",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+  promoIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: colors.brand,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  promoTitle: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
+  promoSubtitle: { color: "#94A3B8", fontSize: 11, marginTop: 2 },
+  promoCode: { color: colors.brand, fontWeight: "900", letterSpacing: 0.5 },
+  ridesHeading: { marginTop: 24 },
   resultCount: { color: colors.muted, fontSize: 12 },
   errorWrap: { paddingHorizontal: 18 },
-  loader: { marginTop: 26 },
+  loader: { marginTop: 24 },
   modalBackdrop: { flex: 1, backgroundColor: colors.scrim, justifyContent: "flex-end" },
   gpsActionWrap: {
     paddingHorizontal: 18,
@@ -324,15 +348,8 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "#1E293B",
   },
-  actionBtnText: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  womenFilterWrap: {
-    paddingHorizontal: 18,
-    marginBottom: 14,
-  },
+  actionBtnText: { color: colors.brand, fontSize: 12, fontWeight: "600" },
+  womenFilterWrap: { paddingHorizontal: 18, marginBottom: 14 },
   womenFilterBtn: {
     flexDirection: "row",
     alignItems: "center",
@@ -344,16 +361,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
   },
-  womenFilterBtnActive: {
-    backgroundColor: "#DB2777",
-    borderColor: "#DB2777",
-  },
-  womenFilterText: {
-    color: "#EC4899",
-    fontSize: 13,
-    fontWeight: "800",
-  },
-  womenFilterTextActive: {
-    color: "#FFFFFF",
-  },
+  womenFilterBtnActive: { backgroundColor: "#DB2777", borderColor: "#DB2777" },
+  womenFilterText: { color: "#EC4899", fontSize: 13, fontWeight: "800" },
+  womenFilterTextActive: { color: "#FFFFFF" },
 });
