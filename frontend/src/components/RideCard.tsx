@@ -1,118 +1,199 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
-
+import React from "react";
+import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ride } from "@/src/api";
 import { Icon } from "@/src/components/ui";
 import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 
-export function RideCard({ ride, onPress }: { ride: Ride; onPress?: () => void }) {
+interface RideCardProps {
+  ride: Ride & { women_only?: boolean };
+  onPress?: () => void;
+}
+
+export function RideCard({ ride, onPress }: RideCardProps) {
+  const isWomenOnly = (ride as any).women_only;
+
   return (
-    <View style={styles.card} testID={`ride-card-${ride.id}`}>
-      <View style={styles.header}>
-        <View style={styles.avatar}>
-          <Text style={styles.initial}>{ride.driver_name.charAt(0)}</Text>
-        </View>
+    <TouchableOpacity
+      activeOpacity={onPress ? 0.8 : 1}
+      onPress={onPress}
+      style={[styles.card, isWomenOnly && styles.womenOnlyBorder]}
+    >
+      <View style={styles.topRow}>
         <View style={styles.driverInfo}>
-          <Text style={styles.driverName}>{ride.driver_name}</Text>
-          <Text style={styles.vehicleText}>{ride.vehicle}</Text>
+          <View style={[styles.avatar, isWomenOnly && styles.womenAvatar]}>
+            <Icon
+              name={isWomenOnly ? "face-woman" : "account"}
+              size={20}
+              color={isWomenOnly ? "#EC4899" : colors.brand}
+            />
+          </View>
+          <View>
+            <Text style={styles.driverName}>{ride.driver_name || "Verified Driver"}</Text>
+            <Text style={styles.vehicleText}>
+              {ride.vehicle} • {ride.type.toUpperCase()}
+            </Text>
+          </View>
         </View>
-        <View style={styles.priceBox}>
-          <Text style={styles.price}>₹{ride.price}</Text>
-          <Text style={styles.perSeat}>per seat</Text>
-        </View>
+
+        {isWomenOnly ? (
+          <View style={styles.womenBadge}>
+            <Icon name="shield-heart" size={13} color="#FFFFFF" />
+            <Text style={styles.womenBadgeText}>Women Only</Text>
+          </View>
+        ) : (
+          <View style={styles.seatsBadge}>
+            <Icon name="seat-passenger" size={14} color={colors.brand} />
+            <Text style={styles.seatsText}>{ride.seats} seats</Text>
+          </View>
+        )}
       </View>
 
-      <View style={styles.routeRow}>
-        <View style={styles.dotColumn}>
-          <View style={styles.dotStart} />
-          <View style={styles.routeLine} />
-          <View style={styles.dotEnd} />
+      <View style={styles.routeContainer}>
+        <View style={styles.routeRow}>
+          <Icon name="circle-slice-8" size={14} color={colors.brand} />
+          <Text style={styles.routePoint} numberOfLines={1}>{ride.from}</Text>
         </View>
-        <View style={styles.routeLabels}>
-          <Text style={shared.routeText}>{ride.from}</Text>
-          <Text style={styles.stopText}>{ride.stops || "Direct route"}</Text>
-          <Text style={shared.routeText}>{ride.to}</Text>
-        </View>
-        <View style={styles.seatsBox}>
-          <Icon name="seat-outline" color={colors.brand} size={18} />
-          <Text style={styles.seatsText}>{ride.seats_left} left</Text>
+        <View style={styles.routeDivider} />
+        <View style={styles.routeRow}>
+          <Icon name="map-marker" size={16} color="#EF4444" />
+          <Text style={styles.routePoint} numberOfLines={1}>{ride.to}</Text>
         </View>
       </View>
 
       <View style={styles.footer}>
-        <View style={shared.rowCenter}>
-          <Icon name="star" color={colors.warning} size={15} />
-          <Text style={shared.smallStrong}>{ride.rating}</Text>
-          <Text style={shared.mutedText}> · verified driver</Text>
+        <View style={styles.timeWrap}>
+          <Icon name="clock-outline" size={14} color={colors.muted} />
+          <Text style={styles.timeText}>
+            {ride.departure_time ? ride.departure_time : "Scheduled"}
+          </Text>
         </View>
-        {onPress ? (
-          <Pressable
-            testID={`ride-select-${ride.id}`}
-            onPress={onPress}
-            style={({ pressed }) => [styles.selectButton, pressed && shared.pressed]}
-          >
-            <Text style={styles.selectButtonText}>Select ride</Text>
-            <Icon name="arrow-right" color={colors.onBrandPrimary} size={16} />
-          </Pressable>
-        ) : null}
+        <Text style={styles.priceText}>₹{ride.price}<Text style={styles.priceSub}>/seat</Text></Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
+    backgroundColor: "#1E293B",
+    borderRadius: 16,
+    padding: 14,
     marginHorizontal: 18,
     marginBottom: 12,
-    padding: 15,
-    borderRadius: 18,
-    backgroundColor: colors.surfaceSecondary,
-    borderColor: colors.border,
     borderWidth: 1,
-    gap: 14,
+    borderColor: "#334155",
+    gap: 12,
   },
-  header: { flexDirection: "row", alignItems: "center" },
+  womenOnlyBorder: {
+    borderColor: "rgba(236, 72, 153, 0.45)",
+    backgroundColor: "#1A1B35",
+  },
+  topRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  driverInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
   avatar: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: colors.surfaceTertiary,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.brandTertiary,
     alignItems: "center",
     justifyContent: "center",
-    borderColor: colors.borderStrong,
-    borderWidth: 1,
   },
-  initial: { color: colors.brand, fontSize: 18, fontWeight: "800" },
-  driverInfo: { marginLeft: 10, flex: 1 },
-  driverName: { color: colors.onSurface, fontSize: 15, fontWeight: "800" },
-  vehicleText: { color: colors.onSurfaceTertiary, fontSize: 11, marginTop: 3 },
-  priceBox: { alignItems: "flex-end" },
-  price: { color: colors.brand, fontSize: 20, fontWeight: "900" },
-  perSeat: { color: colors.muted, fontSize: 10 },
+  womenAvatar: {
+    backgroundColor: "rgba(236, 72, 153, 0.2)",
+  },
+  driverName: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  vehicleText: {
+    color: colors.muted,
+    fontSize: 11,
+    marginTop: 1,
+  },
+  womenBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#DB2777",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 99,
+  },
+  womenBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  seatsBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.brandTertiary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 99,
+  },
+  seatsText: {
+    color: colors.brand,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  routeContainer: {
+    backgroundColor: "#0F172A",
+    borderRadius: 12,
+    padding: 10,
+    gap: 6,
+  },
   routeRow: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 11,
-    borderRadius: 12,
-    backgroundColor: colors.surfaceTertiary,
+    gap: 8,
   },
-  dotColumn: { alignItems: "center", width: 18 },
-  dotStart: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.brand },
-  dotEnd: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.info },
-  routeLine: { width: 1, height: 20, backgroundColor: colors.borderStrong },
-  routeLabels: { flex: 1, marginLeft: 10, gap: 3 },
-  stopText: { color: colors.muted, fontSize: 10 },
-  seatsBox: { alignItems: "center", gap: 3 },
-  seatsText: { color: colors.brand, fontSize: 11, fontWeight: "800" },
-  footer: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  selectButton: {
-    minHeight: 40,
-    paddingHorizontal: 12,
-    borderRadius: 11,
-    backgroundColor: colors.brand,
+  routePoint: {
+    color: "#F8FAFC",
+    fontSize: 13,
+    fontWeight: "600",
+    flex: 1,
+  },
+  routeDivider: {
+    height: 12,
+    width: 1,
+    backgroundColor: "#334155",
+    marginLeft: 7,
+  },
+  footer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingTop: 4,
+  },
+  timeWrap: {
     flexDirection: "row",
     alignItems: "center",
     gap: 5,
   },
-  selectButtonText: { color: colors.onBrandPrimary, fontSize: 12, fontWeight: "800" },
+  timeText: {
+    color: colors.muted,
+    fontSize: 12,
+  },
+  priceText: {
+    color: colors.brand,
+    fontSize: 17,
+    fontWeight: "900",
+  },
+  priceSub: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: "500",
+  },
 });
