@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, Booking, errorMessage, Ride, User } from "@/src/api";
@@ -12,6 +12,7 @@ import { RideSearchPanel, SearchState } from "@/src/components/RideSearchPanel";
 import { ErrorBanner, Icon } from "@/src/components/ui";
 import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
+import { getCurrentLocation } from "@/src/utils/location";
 
 export function PassengerHome({
   token,
@@ -31,6 +32,33 @@ export function PassengerHome({
   const [booking, setBooking] = useState<Booking | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [detectingLocation, setDetectingLocation] = useState(false);
+
+  const handleUseCurrentLocation = async () => {
+    try {
+      setDetectingLocation(true);
+      const coords = await getCurrentLocation();
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`
+      );
+      const data = await res.json();
+      const placeName =
+        data.address?.suburb ||
+        data.address?.neighbourhood ||
+        data.address?.city ||
+        data.address?.town ||
+        data.address?.village ||
+        data.display_name;
+
+      if (placeName) {
+        setSearch((prev) => ({ ...prev, fromLocation: placeName }));
+      }
+    } catch {
+      alert("Location permission allow cheyandi leda GPS on cheyandi.");
+    } finally {
+      setDetectingLocation(false);
+    }
+  };
 
   const loadRides = useCallback(async () => {
     setLoading(true);
@@ -50,7 +78,6 @@ export function PassengerHome({
     }
   }, [search.fromLocation, search.toLocation, search.mode, search.vehicleType, token]);
 
-  // Refresh automatically when a filter chip or travel mode changes.
   useEffect(() => {
     loadRides();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -85,6 +112,19 @@ export function PassengerHome({
           onSearch={loadRides}
           loading={loading}
         />
+
+        <View style={styles.gpsActionWrap}>
+          <TouchableOpacity
+            onPress={handleUseCurrentLocation}
+            disabled={detectingLocation}
+            style={styles.gpsButton}
+          >
+            <Icon name="crosshairs-gps" size={16} color={colors.brand} />
+            <Text style={styles.gpsButtonText}>
+              {detectingLocation ? "Detecting your location..." : "Use my current location as pickup"}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
         <IdVerifyCard token={token} user={user} onVerified={() => onUserUpdate({ ...user, id_verified: true })} />
 
@@ -146,4 +186,24 @@ const styles = StyleSheet.create({
   errorWrap: { paddingHorizontal: 18 },
   loader: { marginTop: 26 },
   modalBackdrop: { flex: 1, backgroundColor: colors.scrim, justifyContent: "flex-end" },
+  gpsActionWrap: {
+    paddingHorizontal: 18,
+    marginTop: -4,
+    marginBottom: 16,
+  },
+  gpsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    alignSelf: "flex-start",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: colors.surfaceElevated || "#1E293B",
+  },
+  gpsButtonText: {
+    color: colors.brand,
+    fontSize: 13,
+    fontWeight: "600",
+  },
 });
