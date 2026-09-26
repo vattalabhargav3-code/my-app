@@ -6,6 +6,7 @@ import { api, Booking, errorMessage, Ride, User } from "@/src/api";
 import { ActiveBookingCard } from "@/src/components/ActiveBookingCard";
 import { CheckoutSheet } from "@/src/components/CheckoutSheet";
 import { IdVerifyCard } from "@/src/components/IdVerifyCard";
+import { LocationPickerModal } from "@/src/components/LocationPickerModal";
 import { ScreenHeader } from "@/src/components/navigation";
 import { RideCard } from "@/src/components/RideCard";
 import { RideSearchPanel, SearchState } from "@/src/components/RideSearchPanel";
@@ -48,6 +49,9 @@ export function PassengerHome({
   const [error, setError] = useState("");
   const [detectingLocation, setDetectingLocation] = useState(false);
 
+  // Map Picker State (Pickup లేదా Destination ఎంచుకోవడానికి)
+  const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
+
   const handleUseCurrentLocation = async () => {
     try {
       setDetectingLocation(true);
@@ -68,10 +72,19 @@ export function PassengerHome({
         setSearch((prev) => ({ ...prev, fromLocation: placeName }));
       }
     } catch {
-      alert("Location permission allow cheyandi leda GPS on cheyandi.");
+      alert("Location permission allow చేయండి లేదా GPS ఆన్ చేయండి.");
     } finally {
       setDetectingLocation(false);
     }
+  };
+
+  const handleLocationPicked = (placeName: string) => {
+    if (pickerTarget === "from") {
+      setSearch((prev) => ({ ...prev, fromLocation: placeName }));
+    } else if (pickerTarget === "to") {
+      setSearch((prev) => ({ ...prev, toLocation: placeName }));
+    }
+    setPickerTarget(null);
   };
 
   const loadRides = useCallback(async () => {
@@ -127,15 +140,36 @@ export function PassengerHome({
           loading={loading}
         />
 
+        {/* Location Picker Quick Actions */}
         <View style={styles.gpsActionWrap}>
           <TouchableOpacity
             onPress={handleUseCurrentLocation}
             disabled={detectingLocation}
-            style={styles.gpsButton}
+            style={styles.actionBtn}
           >
-            <Icon name="crosshairs-gps" size={16} color={colors.brand} />
-            <Text style={styles.gpsButtonText}>
-              {detectingLocation ? "Detecting your location..." : "Use my current location as pickup"}
+            <Icon name="crosshairs-gps" size={15} color={colors.brand} />
+            <Text style={styles.actionBtnText}>
+              {detectingLocation ? "Detecting GPS..." : "Current Location"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setPickerTarget("from")}
+            style={styles.actionBtn}
+          >
+            <Icon name="map-marker-radius" size={15} color="#38BDF8" />
+            <Text style={[styles.actionBtnText, { color: "#38BDF8" }]}>
+              Pick Pickup on Map / Search
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setPickerTarget("to")}
+            style={styles.actionBtn}
+          >
+            <Icon name="map-marker-check" size={15} color="#FBBF24" />
+            <Text style={[styles.actionBtnText, { color: "#FBBF24" }]}>
+              Pick Drop on Map
             </Text>
           </TouchableOpacity>
         </View>
@@ -163,6 +197,14 @@ export function PassengerHome({
           </View>
         )}
       </ScrollView>
+
+      {/* Map Picker Modal for Passenger */}
+      <LocationPickerModal
+        visible={pickerTarget !== null}
+        onClose={() => setPickerTarget(null)}
+        onSelect={handleLocationPicked}
+        title={pickerTarget === "from" ? "Select Pickup Location" : "Select Drop Location"}
+      />
 
       <Modal visible={Boolean(selectedRide)} animationType="slide" transparent onRequestClose={() => setSelectedRide(null)}>
         <View style={styles.modalBackdrop}>
@@ -204,20 +246,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     marginTop: -4,
     marginBottom: 16,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
   },
-  gpsButton: {
+  actionBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    alignSelf: "flex-start",
+    gap: 6,
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 8,
     backgroundColor: "#1E293B",
   },
-  gpsButtonText: {
+  actionBtnText: {
     color: colors.brand,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "600",
   },
 });
