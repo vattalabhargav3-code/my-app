@@ -89,19 +89,12 @@ export function AuthScreen({ onLogin }: { onLogin: (token: string, user: User) =
       // Firebase ద్వారా యూజర్ OTP వెరిఫై చేయడం
       const userCredential = await confirmationResult.confirm(otp.trim());
       const firebaseIdToken = await userCredential.user.getIdToken();
-
-      // వెరిఫై అయిన తర్వాత మీ SafarWay బ్యాకెండ్‌లో సెషన్ క్రియేట్ చేయడం
-      const result = await api("/auth/verify-otp", {
-        method: "POST",
-        body: JSON.stringify({
-          phone: phone.replace(/\D/g, ""),
-          firebase_token: firebaseIdToken,
-          code: otp.trim()
-        }),
+      await storage.secureSet(SESSION_KEY, firebaseIdToken);
+      onLogin(firebaseIdToken, {
+        id: userCredential.user.uid,
+        phone: userCredential.user.phoneNumber || phone,
+        name: userCredential.user.displayName || "User",
       });
-
-      await storage.secureSet(SESSION_KEY, result.access_token);
-      onLogin(result.access_token, result.user);
     } catch (verifyError: any) {
       console.error(verifyError);
       setError("Invalid or expired OTP. Please check and try again.");
