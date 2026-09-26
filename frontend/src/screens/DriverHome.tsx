@@ -22,6 +22,8 @@ const EMPTY_FORM = {
   available_seats: "3",
   seat_price: "",
   women_only: false,
+  ride_vibe: "music",
+  affiliation_badge: "Campus Verified • Student",
 };
 
 const fetchDriverGPS = (): Promise<{ latitude: number; longitude: number }> => {
@@ -54,7 +56,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
   const watchIdRef = useRef<number | null>(null);
   const update = (key: keyof typeof form) => (value: any) => setForm((current) => ({ ...current, [key]: value }));
 
-  // Auto-fill saved DL & RC details
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedDl = localStorage.getItem("safarway_driver_dl");
@@ -200,7 +201,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
     }
   };
 
-  // Weekly Fuel Target Calculations (10 Rides Target)
   const weeklyTarget = 10;
   const completedCount = Math.min(posted.length, weeklyTarget);
   const progressPercent = (completedCount / weeklyTarget) * 100;
@@ -223,7 +223,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           }
         />
 
-        {/* Weekly Free Petrol Reward Banner */}
+        {/* Weekly Petrol Card */}
         <View style={styles.petrolCard}>
           <View style={styles.petrolHeader}>
             <View style={styles.petrolBadge}>
@@ -236,7 +236,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             ఈ వారం 10 రైడ్స్ పూర్తి చేయండి, ₹500 ఉచిత పెట్రోల్ కూపన్ పొందండి!
           </Text>
 
-          {/* Target Progress Bar */}
           <View style={styles.progressContainer}>
             <View style={[styles.progressBar, { width: `${progressPercent}%` }]} />
           </View>
@@ -255,6 +254,15 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             <Text style={shared.sectionTitle}>Publish a ride</Text>
             <Text style={shared.mutedText}>Schedule a route from anywhere at your chosen time.</Text>
           </View>
+
+          {/* Affiliation / Campus Badge Selection */}
+          <Field
+            label="College / Company Badge"
+            value={form.affiliation_badge}
+            onChangeText={update("affiliation_badge")}
+            placeholder="e.g. Campus • JNTU or Corporate • Hitec City"
+            testID="affiliation-badge-input"
+          />
 
           <View style={styles.grid}>
             <View style={shared.flex}>
@@ -324,6 +332,30 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           
           <Text style={shared.fieldLabel}>Vehicle type</Text>
           <Segmented options={["bike", "car", "cab"]} value={form.vehicle_type} onChange={update("vehicle_type")} testIDPrefix="vehicle" />
+
+          {/* Gen-Z Ride Vibe Picker */}
+          <Text style={[shared.fieldLabel, { marginTop: 10 }]}>Ride Vibe</Text>
+          <View style={styles.vibeSelector}>
+            {[
+              { id: "music", label: "🎵 Music Lover", icon: "music" },
+              { id: "silent", label: "🎧 Silent Work", icon: "headphones" },
+              { id: "chitchat", label: "☕ Chit-Chat", icon: "chat-processing-outline" },
+            ].map((v) => (
+              <TouchableOpacity
+                key={v.id}
+                onPress={() => update("ride_vibe")(v.id)}
+                style={[
+                  styles.vibeOption,
+                  form.ride_vibe === v.id && styles.vibeOptionActive,
+                ]}
+              >
+                <Icon name={v.icon as any} size={15} color={form.ride_vibe === v.id ? "#0F172A" : colors.muted} />
+                <Text style={[styles.vibeOptionText, form.ride_vibe === v.id && styles.vibeOptionTextActive]}>
+                  {v.label}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
           
           <View style={styles.grid}>
             <View style={shared.flex}>
@@ -480,6 +512,36 @@ const styles = StyleSheet.create({
     backgroundColor: "#1E293B",
   },
   mapPickButtonText: { color: "#38BDF8", fontSize: 12, fontWeight: "600" },
+  vibeSelector: {
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: 12,
+  },
+  vibeOption: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    backgroundColor: "#0F172A",
+    borderWidth: 1,
+    borderColor: "#334155",
+    paddingVertical: 9,
+    paddingHorizontal: 6,
+    borderRadius: 10,
+  },
+  vibeOptionActive: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
+  },
+  vibeOptionText: {
+    color: colors.muted,
+    fontSize: 10,
+    fontWeight: "700",
+  },
+  vibeOptionTextActive: {
+    color: "#0F172A",
+  },
   toggleRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -492,32 +554,4 @@ const styles = StyleSheet.create({
     marginVertical: 4,
   },
   toggleTextWrap: { flex: 1, paddingRight: 8 },
-  toggleTitleWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
-  toggleTitle: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
-  toggleSubtitle: { color: colors.muted, fontSize: 11, marginTop: 2 },
-  rideItemWrapper: { marginBottom: 14 },
-  driverActionsRow: { flexDirection: "row", gap: 10, marginHorizontal: 18, marginTop: -4 },
-  trackingActionBtn: {
-    flex: 2,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: "#059669",
-  },
-  trackingActiveBtn: { backgroundColor: "#DC2626" },
-  trackingActionText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
-  driverSosBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: "#DC2626",
-  },
-  driverSosText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
-});
+  toggleTitleWrap: { flexDirection: "row", alignItems: "center", gap: 6 }
