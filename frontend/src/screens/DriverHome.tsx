@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, errorMessage, Ride } from "@/src/api";
 import { LocationPickerModal } from "@/src/components/LocationPickerModal";
+import { SafetySosModal } from "@/src/components/SafetySosModal";
 import { ScreenHeader } from "@/src/components/navigation";
 import { RideCard } from "@/src/components/RideCard";
 import { Button, ErrorBanner, Field, Icon, Segmented } from "@/src/components/ui";
@@ -22,7 +23,6 @@ const EMPTY_FORM = {
   seat_price: "",
 };
 
-// Current GPS helper
 const fetchDriverGPS = (): Promise<{ latitude: number; longitude: number }> => {
   return new Promise((resolve, reject) => {
     if (typeof window === "undefined" || !navigator.geolocation) {
@@ -49,11 +49,15 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
   // Map Picker State
   const [pickerTarget, setPickerTarget] = useState<"start" | "end" | null>(null);
 
+  // Safety & SOS Modal State for Drivers
+  const [sosModalVisible, setSosModalVisible] = useState(false);
+  const [selectedSosRide, setSelectedSosRide] = useState<Ride | null>(null);
+
   const watchIdRef = useRef<number | null>(null);
 
   const update = (key: keyof typeof form) => (value: string) => setForm((current) => ({ ...current, [key]: value }));
 
-  // డ్రైవర్ డీఎల్, ఆర్సీ నంబర్లను లోకల్ స్టోరేజ్ నుండి ఆటో-లోడ్ చేయడం (మళ్లీ మళ్లీ టైప్ చేయకుండా)
+  // Auto-fill saved DL & RC details
   useEffect(() => {
     if (typeof window !== "undefined") {
       const savedDl = localStorage.getItem("safarway_driver_dl");
@@ -157,6 +161,11 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
     Alert.alert("Trip Started", "Live GPS tracking is broadcasting to your passengers!");
   };
 
+  const openDriverSos = (ride: Ride) => {
+    setSelectedSosRide(ride);
+    setSosModalVisible(true);
+  };
+
   const postRide = async () => {
     setLoading(true);
     setError("");
@@ -175,21 +184,17 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         token,
       );
 
-      // భవిష్యత్ రైడ్ల కోసం DL & RC లను శాశ్వతంగా సేవ్ చేయడం
       if (typeof window !== "undefined") {
         if (form.driver_dl) localStorage.setItem("safarway_driver_dl", form.driver_dl);
         if (form.driver_rc) localStorage.setItem("safarway_driver_rc", form.driver_rc);
       }
 
       setPosted((current) => [ride, ...current]);
-      
-      // సేవ్ అయిన DL & RC లను అలాగే ఉంచి కేవలం లొకేషన్ వివరాలను మాత్రమే రీసెట్ చేయడం
       setForm((prev) => ({
         ...EMPTY_FORM,
         driver_dl: prev.driver_dl,
         driver_rc: prev.driver_rc,
       }));
-
       Alert.alert("Ride published", "Passengers can now discover your scheduled route.");
     } catch (postError) {
       setError(errorMessage(postError, "Could not publish ride"));
@@ -242,7 +247,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             </View>
           </View>
 
-          {/* Departure Date & Time */}
           <Field
             label="Departure date & time"
             value={form.departure_time}
@@ -251,7 +255,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             testID="departure-time-input"
           />
 
-          {/* Starting Point Selection */}
           <Field
             label="Starting point"
             value={form.start_point}
@@ -281,7 +284,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             </TouchableOpacity>
           </View>
 
-          {/* Destination Selection */}
           <Field
             label="Destination"
             value={form.end_point}
@@ -323,22 +325,35 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           posted.map((ride) => (
             <View key={ride.id} style={styles.rideItemWrapper}>
               <RideCard ride={ride} />
-              <TouchableOpacity
-                onPress={() => startLiveTracking(ride.id)}
-                style={[
-                  styles.trackingActionBtn,
-                  activeTrackingRideId === ride.id ? styles.trackingActiveBtn : null,
-                ]}
-              >
-                <Icon
-                  name={activeTrackingRideId === ride.id ? "stop-circle-outline" : "navigation-variant"}
-                  size={18}
-                  color="#FFFFFF"
-                />
-                <Text style={styles.trackingActionText}>
-                  {activeTrackingRideId === ride.id ? "End Trip (Stop GPS)" : "Start Trip (Broadcast GPS)"}
-                </Text>
-              </TouchableOpacity>
+              
+              <View style={styles.driverActionsRow}>
+                {/* Start/Stop Live Trip Button */}
+                <TouchableOpacity
+                  onPress={() => startLiveTracking(ride.id)}
+                  style={[
+                    styles.trackingActionBtn,
+                    activeTrackingRideId === ride.id ? styles.trackingActiveBtn : null,
+                  ]}
+                >
+                  <Icon
+                    name={activeTrackingRideId === ride.id ? "stop-circle-outline" : "navigation-variant"}
+                    size={17}
+                    color="#FFFFFF"
+                  />
+                  <Text style={styles.trackingActionText}>
+                    {activeTrackingRideId === ride.id ? "End Trip" : "Start Trip"}
+                  </Text>
+                </TouchableOpacity>
+
+                {/* Driver Safety & SOS Button */}
+                <TouchableOpacity
+                  onPress={() => openDriverSos(ride)}
+                  style={styles.driverSosBtn}
+                >
+                  <Icon name="shield-alert" size={17} color="#FFFFFF" />
+                  <Text style={styles.driverSosText}>Safety SOS</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))
         ) : (
@@ -357,6 +372,26 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         onSelect={handleLocationPicked}
         title={pickerTarget === "start" ? "Select Starting Point" : "Select Destination"}
       />
+
+      {/* Driver SOS Emergency Modal */}
+      {selectedSosRide ? (
+        <SafetySosModal
+          visible={sosModalVisible}
+          onClose={() => {
+            setSosModalVisible(false);
+            setSelectedSosRide(null);
+          }}
+          booking={{
+            id: selectedSosRide.id,
+            total: selectedSosRide.price,
+            discount: 0,
+            boarding_otp: "DRIVER",
+            seat: "DRIVER_SEAT",
+            ride: selectedSosRide,
+          }}
+          token={token}
+        />
+      ) : null}
     </KeyboardAvoidingView>
   );
 }
@@ -408,16 +443,21 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   rideItemWrapper: {
-    marginBottom: 12,
+    marginBottom: 14,
+  },
+  driverActionsRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginHorizontal: 18,
+    marginTop: -4,
   },
   trackingActionBtn: {
+    flex: 2,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    marginHorizontal: 18,
-    marginTop: -4,
-    paddingVertical: 10,
+    gap: 6,
+    paddingVertical: 11,
     borderRadius: 12,
     backgroundColor: "#059669",
   },
@@ -426,7 +466,22 @@ const styles = StyleSheet.create({
   },
   trackingActionText: {
     color: "#FFFFFF",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "700",
+  },
+  driverSosBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: "#DC2626",
+  },
+  driverSosText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
   },
 });
