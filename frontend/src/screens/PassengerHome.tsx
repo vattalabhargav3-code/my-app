@@ -49,6 +49,9 @@ export function PassengerHome({
   const [error, setError] = useState("");
   const [detectingLocation, setDetectingLocation] = useState(false);
 
+  // Women Only Filter State
+  const [womenOnlyFilter, setWomenOnlyFilter] = useState(false);
+
   // Map Picker State (Pickup or Destination)
   const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
 
@@ -86,7 +89,7 @@ export function PassengerHome({
         setSearch((prev) => ({ ...prev, fromLocation: placeName }));
       }
     } catch {
-      alert("Location permission allow cheyandi leda GPS on cheyandi.");
+      alert("Location permission allow చేయండి లేదా GPS ఆన్ చేయండి.");
     } finally {
       setDetectingLocation(false);
     }
@@ -121,12 +124,16 @@ export function PassengerHome({
 
   useEffect(() => {
     loadRides();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [search.mode, search.vehicleType]);
+  }, [search.mode, search.vehicleType, loadRides]);
 
   useEffect(() => {
     api<Booking | null>("/bookings/active", {}, token).then((active) => active && setBooking(active)).catch(() => undefined);
   }, [token]);
+
+  // Women only filter apply చేయడం
+  const displayedRides = womenOnlyFilter
+    ? rides.filter((r) => (r as any).women_only === true)
+    : rides;
 
   return (
     <View style={shared.screen}>
@@ -188,6 +195,34 @@ export function PassengerHome({
           </TouchableOpacity>
         </View>
 
+        {/* Women Only Pool Filter Toggle */}
+        <View style={styles.womenFilterWrap}>
+          <TouchableOpacity
+            style={[
+              styles.womenFilterBtn,
+              womenOnlyFilter && styles.womenFilterBtnActive,
+            ]}
+            onPress={() => setWomenOnlyFilter((prev) => !prev)}
+          >
+            <Icon
+              name="face-woman"
+              size={18}
+              color={womenOnlyFilter ? "#FFFFFF" : "#EC4899"}
+            />
+            <Text
+              style={[
+                styles.womenFilterText,
+                womenOnlyFilter && styles.womenFilterTextActive,
+              ]}
+            >
+              {womenOnlyFilter ? "Showing Women-Only Rides" : "Filter: Women-Only Rides"}
+            </Text>
+            {womenOnlyFilter && (
+              <Icon name="check-circle" size={16} color="#FFFFFF" />
+            )}
+          </TouchableOpacity>
+        </View>
+
         {/* Okasari verify aithe e card malli kanapadadhu */}
         {!isAlreadyVerified ? (
           <IdVerifyCard
@@ -206,20 +241,24 @@ export function PassengerHome({
 
         <View style={[shared.sectionHeading, styles.ridesHeading]}>
           <Text style={shared.sectionTitle}>Rides for your route</Text>
-          <Text style={styles.resultCount} testID="ride-count">{rides.length} found</Text>
+          <Text style={styles.resultCount} testID="ride-count">{displayedRides.length} found</Text>
         </View>
         <View style={styles.errorWrap}>
           <ErrorBanner message={error} />
         </View>
         {loading ? (
           <ActivityIndicator color={colors.brand} style={styles.loader} />
-        ) : rides.length ? (
-          rides.map((ride) => <RideCard key={ride.id} ride={ride} onPress={() => setSelectedRide(ride)} />)
+        ) : displayedRides.length ? (
+          displayedRides.map((ride) => <RideCard key={ride.id} ride={ride} onPress={() => setSelectedRide(ride)} />)
         ) : (
           <View style={shared.emptyCard}>
             <Icon name="map-search-outline" color={colors.muted} size={32} />
-            <Text style={shared.cardTitle}>No rides match yet</Text>
-            <Text style={shared.mutedText}>Try a different vehicle or route.</Text>
+            <Text style={shared.cardTitle}>
+              {womenOnlyFilter ? "No women-only rides right now" : "No rides match yet"}
+            </Text>
+            <Text style={shared.mutedText}>
+              {womenOnlyFilter ? "Try turning off the women-only filter to see all rides." : "Try a different vehicle or route."}
+            </Text>
           </View>
         )}
       </ScrollView>
@@ -271,7 +310,7 @@ const styles = StyleSheet.create({
   gpsActionWrap: {
     paddingHorizontal: 18,
     marginTop: -4,
-    marginBottom: 16,
+    marginBottom: 12,
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
@@ -289,5 +328,32 @@ const styles = StyleSheet.create({
     color: colors.brand,
     fontSize: 12,
     fontWeight: "600",
+  },
+  womenFilterWrap: {
+    paddingHorizontal: 18,
+    marginBottom: 14,
+  },
+  womenFilterBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "rgba(236, 72, 153, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(236, 72, 153, 0.4)",
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  womenFilterBtnActive: {
+    backgroundColor: "#DB2777",
+    borderColor: "#DB2777",
+  },
+  womenFilterText: {
+    color: "#EC4899",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  womenFilterTextActive: {
+    color: "#FFFFFF",
   },
 });
