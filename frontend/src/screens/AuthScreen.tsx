@@ -90,6 +90,7 @@ export function AuthScreen({ onLogin }: { onLogin: (token: string, user: User) =
       const userCredential = await confirmationResult.confirm(otp.trim());
       const firebaseIdToken = await userCredential.user.getIdToken();
       await storage.secureSet(SESSION_KEY, firebaseIdToken);
+      localStorage.setItem(SESSION_KEY, firebaseIdToken);
       onLogin(firebaseIdToken, {
         id: userCredential.user.uid,
         phone: userCredential.user.phoneNumber || phone,
