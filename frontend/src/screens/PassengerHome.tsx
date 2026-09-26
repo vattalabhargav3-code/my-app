@@ -12,7 +12,21 @@ import { RideSearchPanel, SearchState } from "@/src/components/RideSearchPanel";
 import { ErrorBanner, Icon } from "@/src/components/ui";
 import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
-import { getCurrentLocation } from "@/src/utils/location";
+
+// GPS Coordinates helper function
+const fetchCurrentGPS = (): Promise<{ latitude: number; longitude: number }> => {
+  return new Promise((resolve, reject) => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      reject(new Error("Geolocation not supported"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
+      (err) => reject(err),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
+  });
+};
 
 export function PassengerHome({
   token,
@@ -37,7 +51,7 @@ export function PassengerHome({
   const handleUseCurrentLocation = async () => {
     try {
       setDetectingLocation(true);
-      const coords = await getCurrentLocation();
+      const coords = await fetchCurrentGPS();
       const res = await fetch(
         `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`
       );
@@ -199,7 +213,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 8,
-    backgroundColor: colors.surfaceElevated || "#1E293B",
+    backgroundColor: "#1E293B",
   },
   gpsButtonText: {
     color: colors.brand,
