@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, errorMessage, Ride } from "@/src/api";
@@ -21,6 +21,7 @@ const EMPTY_FORM = {
   vehicle_type: "car",
   available_seats: "3",
   seat_price: "",
+  women_only: false,
 };
 
 const fetchDriverGPS = (): Promise<{ latitude: number; longitude: number }> => {
@@ -55,7 +56,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
 
   const watchIdRef = useRef<number | null>(null);
 
-  const update = (key: keyof typeof form) => (value: string) => setForm((current) => ({ ...current, [key]: value }));
+  const update = (key: keyof typeof form) => (value: any) => setForm((current) => ({ ...current, [key]: value }));
 
   // Auto-fill saved DL & RC details
   useEffect(() => {
@@ -315,6 +316,23 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
               <Field label="Price per seat" value={form.seat_price} onChangeText={update("seat_price")} placeholder="₹ amount" keyboardType="number-pad" testID="ride-price-input" />
             </View>
           </View>
+
+          {/* Women Only Pool Toggle */}
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleTextWrap}>
+              <View style={styles.toggleTitleWrap}>
+                <Icon name="face-woman" size={18} color="#EC4899" />
+                <Text style={styles.toggleTitle}>Women Only Ride</Text>
+              </View>
+              <Text style={styles.toggleSubtitle}>Only female passengers will be allowed to book</Text>
+            </View>
+            <Switch
+              value={form.women_only}
+              onValueChange={update("women_only")}
+              trackColor={{ false: "#334155", true: "#EC4899" }}
+              thumbColor={form.women_only ? "#FFFFFF" : "#94A3B8"}
+            />
+          </View>
           
           <ErrorBanner message={error} />
           <Button label="Publish & accept bookings" onPress={postRide} loading={loading} testID="publish-ride-button" />
@@ -327,7 +345,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
               <RideCard ride={ride} />
               
               <View style={styles.driverActionsRow}>
-                {/* Start/Stop Live Trip Button */}
                 <TouchableOpacity
                   onPress={() => startLiveTracking(ride.id)}
                   style={[
@@ -345,7 +362,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
                   </Text>
                 </TouchableOpacity>
 
-                {/* Driver Safety & SOS Button */}
                 <TouchableOpacity
                   onPress={() => openDriverSos(ride)}
                   style={styles.driverSosBtn}
@@ -442,6 +458,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(236, 72, 153, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(236, 72, 153, 0.3)",
+    padding: 12,
+    borderRadius: 12,
+    marginVertical: 4,
+  },
+  toggleTextWrap: { flex: 1, paddingRight: 8 },
+  toggleTitleWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
+  toggleTitle: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
+  toggleSubtitle: { color: colors.muted, fontSize: 11, marginTop: 2 },
   rideItemWrapper: {
     marginBottom: 14,
   },
