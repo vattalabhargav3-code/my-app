@@ -11,22 +11,7 @@ import { Button, ErrorBanner, Field, Icon, Segmented } from "@/src/components/ui
 import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 
-interface DriverFormState {
-  driver_dl: string;
-  driver_rc: string;
-  start_point: string;
-  end_point: string;
-  stops: string;
-  departure_time: string;
-  vehicle_type: string;
-  available_seats: string;
-  seat_price: string;
-  women_only: boolean;
-  ride_vibe: string;
-  affiliation_badge: string;
-}
-
-const EMPTY_FORM: DriverFormState = {
+const EMPTY_FORM: Record<string, any> = {
   driver_dl: "",
   driver_rc: "",
   start_point: "",
@@ -38,7 +23,7 @@ const EMPTY_FORM: DriverFormState = {
   seat_price: "",
   women_only: false,
   ride_vibe: "music",
-  affiliation_badge: "Campus Verified • Student",
+  affiliation_badge: "Campus • Student",
 };
 
 const fetchDriverGPS = (): Promise<{ latitude: number; longitude: number }> => {
@@ -57,7 +42,7 @@ const fetchDriverGPS = (): Promise<{ latitude: number; longitude: number }> => {
 
 export function DriverHome({ token, onLogout }: { token: string; onLogout: () => void }) {
   const insets = useSafeAreaInsets();
-  const [form, setForm] = useState<DriverFormState>(EMPTY_FORM);
+  const [form, setForm] = useState<any>(EMPTY_FORM);
   const [loading, setLoading] = useState(false);
   const [posted, setPosted] = useState<Ride[]>([]);
   const [error, setError] = useState("");
@@ -68,10 +53,10 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
   const [sosModalVisible, setSosModalVisible] = useState(false);
   const [selectedSosRide, setSelectedSosRide] = useState<Ride | null>(null);
 
-  const watchIdRef = useRef<number | null>(null);
+  const watchIdRef = useRef<any>(null);
 
-  const update = (key: keyof DriverFormState) => (value: any) => {
-    setForm((current) => ({ ...current, [key]: value }));
+  const update = (key: string) => (value: any) => {
+    setForm((current: any) => ({ ...current, [key]: value }));
   };
 
   useEffect(() => {
@@ -79,7 +64,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
       const savedDl = localStorage.getItem("safarway_driver_dl");
       const savedRc = localStorage.getItem("safarway_driver_rc");
       if (savedDl || savedRc) {
-        setForm((prev) => ({
+        setForm((prev: any) => ({
           ...prev,
           driver_dl: savedDl || prev.driver_dl,
           driver_rc: savedRc || prev.driver_rc,
@@ -117,7 +102,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         data.display_name;
 
       if (placeName) {
-        setForm((prev) => ({ ...prev, start_point: placeName }));
+        setForm((prev: any) => ({ ...prev, start_point: placeName }));
       }
     } catch {
       Alert.alert("GPS Error", "Location permission allow చేయండి లేదా GPS ఆన్ చేయండి.");
@@ -128,9 +113,9 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
 
   const handleLocationPicked = (placeName: string) => {
     if (pickerTarget === "start") {
-      setForm((prev) => ({ ...prev, start_point: placeName }));
+      setForm((prev: any) => ({ ...prev, start_point: placeName }));
     } else if (pickerTarget === "end") {
-      setForm((prev) => ({ ...prev, end_point: placeName }));
+      setForm((prev: any) => ({ ...prev, end_point: placeName }));
     }
     setPickerTarget(null);
   };
@@ -191,9 +176,16 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         {
           method: "POST",
           body: JSON.stringify({
-            ...form,
+            driver_dl: form.driver_dl,
+            driver_rc: form.driver_rc,
+            start_point: form.start_point,
+            end_point: form.end_point,
+            stops: form.stops,
+            departure_time: form.departure_time,
+            vehicle_type: form.vehicle_type,
             available_seats: Number(form.available_seats),
             seat_price: Number(form.seat_price),
+            women_only: Boolean(form.women_only),
             mode: form.vehicle_type === "cab" ? "commercial" : "petrol_save",
           }),
         },
@@ -206,7 +198,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
       }
 
       setPosted((current) => [ride, ...current]);
-      setForm((prev) => ({
+      setForm((prev: any) => ({
         ...EMPTY_FORM,
         driver_dl: prev.driver_dl,
         driver_rc: prev.driver_rc,
@@ -388,7 +380,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
               <Text style={styles.toggleSubtitle}>Only female passengers will be allowed to book</Text>
             </View>
             <Switch
-              value={form.women_only}
+              value={Boolean(form.women_only)}
               onValueChange={update("women_only")}
               trackColor={{ false: "#334155", true: "#EC4899" }}
               thumbColor={form.women_only ? "#FFFFFF" : "#94A3B8"}
@@ -568,4 +560,4 @@ const styles = StyleSheet.create({
   toggleTitle: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
   toggleSubtitle: { color: colors.muted, fontSize: 11, marginTop: 2 },
   rideItemWrapper: { marginBottom: 14 },
-  driverActionsRow: { flexDire
+  driverActionsRow: { fle
