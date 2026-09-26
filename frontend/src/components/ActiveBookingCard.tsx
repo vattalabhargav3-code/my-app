@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { api, Booking } from "@/src/api";
+import { RideChatModal } from "@/src/components/RideChatModal";
 import { SafetySosModal } from "@/src/components/SafetySosModal";
 import { Icon } from "@/src/components/ui";
 import { shared } from "@/src/styles";
@@ -13,6 +14,7 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
   const [isWithinOneHour, setIsWithinOneHour] = useState(false);
   const [tripStatus, setTripStatus] = useState<string>("SCHEDULED");
   const [sosModalVisible, setSosModalVisible] = useState(false);
+  const [chatModalVisible, setChatModalVisible] = useState(false);
 
   // 1 hour departure reminder check
   useEffect(() => {
@@ -111,14 +113,24 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
         </View>
       </View>
 
-      {/* 24/7 Women Safety & SOS trigger button */}
-      <TouchableOpacity
-        style={styles.sosButton}
-        onPress={() => setSosModalVisible(true)}
-      >
-        <Icon name="shield-alert" color="#FFFFFF" size={20} />
-        <Text style={styles.sosButtonText}>24x7 Safety Shield & Emergency SOS</Text>
-      </TouchableOpacity>
+      {/* Action Buttons Row: Chat / Masked Call + Emergency SOS */}
+      <View style={styles.actionsRow}>
+        <TouchableOpacity
+          style={styles.chatButton}
+          onPress={() => setChatModalVisible(true)}
+        >
+          <Icon name="message-text-lock" color="#0F172A" size={18} />
+          <Text style={styles.chatButtonText}>Chat & Masked Call</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.sosButton}
+          onPress={() => setSosModalVisible(true)}
+        >
+          <Icon name="shield-alert" color="#FFFFFF" size={18} />
+          <Text style={styles.sosButtonText}>SOS Shield</Text>
+        </TouchableOpacity>
+      </View>
 
       <Pressable onPress={() => setTracking((value) => !value)} style={styles.trackingButton} testID="toggle-tracking">
         <Icon name="map-marker-path" color={colors.brand} size={19} />
@@ -153,6 +165,15 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
         onClose={() => setSosModalVisible(false)}
         booking={booking}
         token={token}
+      />
+
+      {/* Masked In-App Chat & Call Modal */}
+      <RideChatModal
+        visible={chatModalVisible}
+        onClose={() => setChatModalVisible(false)}
+        recipientName={booking.ride.driver_name || "Driver"}
+        rideId={booking.ride.id}
+        role="passenger"
       />
     </View>
   );
@@ -193,20 +214,39 @@ const styles = StyleSheet.create({
   },
   boardingOtp: { color: colors.warning, fontSize: 26, fontWeight: "900", letterSpacing: 4, marginTop: 3 },
   totalBox: { alignItems: "flex-end" },
-  sosButton: {
+  actionsRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  chatButton: {
+    flex: 1.3,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: colors.brand,
+  },
+  chatButtonText: {
+    color: "#0F172A",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  sosButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
     paddingVertical: 12,
     borderRadius: 12,
     backgroundColor: "#DC2626",
   },
   sosButtonText: {
     color: "#FFFFFF",
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: "800",
-    letterSpacing: 0.3,
   },
   trackingButton: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8 },
   trackingText: { color: colors.onSurface, flex: 1, fontSize: 13, fontWeight: "700" },
