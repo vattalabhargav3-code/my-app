@@ -53,6 +53,21 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
 
   const update = (key: keyof typeof form) => (value: string) => setForm((current) => ({ ...current, [key]: value }));
 
+  // డ్రైవర్ డీఎల్, ఆర్సీ నంబర్లను లోకల్ స్టోరేజ్ నుండి ఆటో-లోడ్ చేయడం (మళ్లీ మళ్లీ టైప్ చేయకుండా)
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const savedDl = localStorage.getItem("safarway_driver_dl");
+      const savedRc = localStorage.getItem("safarway_driver_rc");
+      if (savedDl || savedRc) {
+        setForm((prev) => ({
+          ...prev,
+          driver_dl: savedDl || prev.driver_dl,
+          driver_rc: savedRc || prev.driver_rc,
+        }));
+      }
+    }
+  }, []);
+
   useEffect(() => {
     api<Ride[]>("/rides/mine", {}, token).then(setPosted).catch(() => undefined);
   }, [token]);
@@ -85,7 +100,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         setForm((prev) => ({ ...prev, start_point: placeName }));
       }
     } catch {
-      Alert.alert("GPS Error", "Location permission allow cheyandi leda GPS on cheyandi.");
+      Alert.alert("GPS Error", "Location permission allow చేయండి లేదా GPS ఆన్ చేయండి.");
     } finally {
       setDetectingLocation(false);
     }
@@ -159,8 +174,22 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         },
         token,
       );
+
+      // భవిష్యత్ రైడ్ల కోసం DL & RC లను శాశ్వతంగా సేవ్ చేయడం
+      if (typeof window !== "undefined") {
+        if (form.driver_dl) localStorage.setItem("safarway_driver_dl", form.driver_dl);
+        if (form.driver_rc) localStorage.setItem("safarway_driver_rc", form.driver_rc);
+      }
+
       setPosted((current) => [ride, ...current]);
-      setForm(EMPTY_FORM);
+      
+      // సేవ్ అయిన DL & RC లను అలాగే ఉంచి కేవలం లొకేషన్ వివరాలను మాత్రమే రీసెట్ చేయడం
+      setForm((prev) => ({
+        ...EMPTY_FORM,
+        driver_dl: prev.driver_dl,
+        driver_rc: prev.driver_rc,
+      }));
+
       Alert.alert("Ride published", "Passengers can now discover your scheduled route.");
     } catch (postError) {
       setError(errorMessage(postError, "Could not publish ride"));
