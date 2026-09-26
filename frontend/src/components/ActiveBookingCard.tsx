@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Linking, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 import { api, Booking } from "@/src/api";
+import { RatingModal } from "@/src/components/RatingModal";
 import { RideChatModal } from "@/src/components/RideChatModal";
 import { SafetySosModal } from "@/src/components/SafetySosModal";
 import { Icon } from "@/src/components/ui";
@@ -15,6 +16,7 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
   const [tripStatus, setTripStatus] = useState<string>("SCHEDULED");
   const [sosModalVisible, setSosModalVisible] = useState(false);
   const [chatModalVisible, setChatModalVisible] = useState(false);
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
 
   // 1 hour departure reminder check
   useEffect(() => {
@@ -113,7 +115,7 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
         </View>
       </View>
 
-      {/* Action Buttons Row: Chat / Masked Call + Emergency SOS */}
+      {/* Primary Actions Row: Chat / Masked Call + Emergency SOS */}
       <View style={styles.actionsRow}>
         <TouchableOpacity
           style={styles.chatButton}
@@ -131,6 +133,15 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
           <Text style={styles.sosButtonText}>SOS Shield</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Rate & Complete Ride Button */}
+      <TouchableOpacity
+        style={styles.rateButton}
+        onPress={() => setRatingModalVisible(true)}
+      >
+        <Icon name="star" color="#FBBF24" size={18} />
+        <Text style={styles.rateButtonText}>Rate Driver & Feedback</Text>
+      </TouchableOpacity>
 
       <Pressable onPress={() => setTracking((value) => !value)} style={styles.trackingButton} testID="toggle-tracking">
         <Icon name="map-marker-path" color={colors.brand} size={19} />
@@ -174,6 +185,16 @@ export function ActiveBookingCard({ booking, token }: { booking: Booking; token:
         recipientName={booking.ride.driver_name || "Driver"}
         rideId={booking.ride.id}
         role="passenger"
+      />
+
+      {/* Trip Feedback & Rating Modal */}
+      <RatingModal
+        visible={ratingModalVisible}
+        onClose={() => setRatingModalVisible(false)}
+        rideId={booking.ride.id}
+        targetName={booking.ride.driver_name || "Driver"}
+        role="driver"
+        token={token}
       />
     </View>
   );
@@ -247,6 +268,22 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "800",
+  },
+  rateButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: "#1E293B",
+    borderWidth: 1,
+    borderColor: "#334155",
+  },
+  rateButtonText: {
+    color: "#F8FAFC",
+    fontSize: 13,
+    fontWeight: "700",
   },
   trackingButton: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8 },
   trackingText: { color: colors.onSurface, flex: 1, fontSize: 13, fontWeight: "700" },
