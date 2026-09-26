@@ -47,15 +47,11 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
   const [detectingLocation, setDetectingLocation] = useState(false);
   const [activeTrackingRideId, setActiveTrackingRideId] = useState<string | null>(null);
 
-  // Map Picker State
   const [pickerTarget, setPickerTarget] = useState<"start" | "end" | null>(null);
-
-  // Safety & SOS Modal State for Drivers
   const [sosModalVisible, setSosModalVisible] = useState(false);
   const [selectedSosRide, setSelectedSosRide] = useState<Ride | null>(null);
 
   const watchIdRef = useRef<number | null>(null);
-
   const update = (key: keyof typeof form) => (value: any) => setForm((current) => ({ ...current, [key]: value }));
 
   // Auto-fill saved DL & RC details
@@ -204,6 +200,11 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
     }
   };
 
+  // Weekly Fuel Target Calculations (10 Rides Target)
+  const weeklyTarget = 10;
+  const completedCount = Math.min(posted.length, weeklyTarget);
+  const progressPercent = (completedCount / weeklyTarget) * 100;
+
   return (
     <KeyboardAvoidingView style={shared.screen} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <ScrollView
@@ -212,8 +213,8 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         showsVerticalScrollIndicator={false}
       >
         <ScreenHeader
-          eyebrow="DRIVER MODE"
-          title="Host your next ride."
+          eyebrow="DRIVER DASHBOARD"
+          title="Host & Earn Fuel Rewards"
           onLogout={onLogout}
           right={
             <View style={shared.iconTile}>
@@ -222,14 +223,30 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           }
         />
 
-        <View style={styles.summary}>
-          <View>
-            <Text style={shared.mutedText}>Your host profile</Text>
-            <Text style={shared.cardTitle}>Verified route sharing</Text>
+        {/* Weekly Free Petrol Reward Banner */}
+        <View style={styles.petrolCard}>
+          <View style={styles.petrolHeader}>
+            <View style={styles.petrolBadge}>
+              <Icon name="gas-station" size={18} color="#FBBF24" />
+              <Text style={styles.petrolBadgeText}>WEEKLY FUEL BONUS</Text>
+            </View>
+            <Text style={styles.rewardText}>Win ₹500 Free Petrol</Text>
           </View>
-          <View style={shared.rowCenter}>
-            <Icon name="shield-check" color={colors.brand} size={16} />
-            <Text style={shared.smallStrong}>Trust first</Text>
+          <Text style={styles.petrolDesc}>
+            ఈ వారం 10 రైడ్స్ పూర్తి చేయండి, ₹500 ఉచిత పెట్రోల్ కూపన్ పొందండి!
+          </Text>
+
+          {/* Target Progress Bar */}
+          <View style={styles.progressContainer}>
+            <View style={[styles.progressBar, { width: `${progressPercent}%` }]} />
+          </View>
+          <View style={styles.progressStats}>
+            <Text style={styles.statText}>{completedCount} of 10 Completed</Text>
+            <Text style={styles.statTextRemaining}>
+              {weeklyTarget - completedCount > 0
+                ? `${weeklyTarget - completedCount} more rides to unlock`
+                : "🎉 Unlocked ₹500 Coupon!"}
+            </Text>
           </View>
         </View>
 
@@ -381,7 +398,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         )}
       </ScrollView>
 
-      {/* Map Picker Modal */}
       <LocationPickerModal
         visible={pickerTarget !== null}
         onClose={() => setPickerTarget(null)}
@@ -389,7 +405,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         title={pickerTarget === "start" ? "Select Starting Point" : "Select Destination"}
       />
 
-      {/* Driver SOS Emergency Modal */}
       {selectedSosRide ? (
         <SafetySosModal
           visible={sosModalVisible}
@@ -413,23 +428,38 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
 }
 
 const styles = StyleSheet.create({
-  summary: {
+  petrolCard: {
     margin: 18,
     padding: 16,
-    borderRadius: 17,
-    backgroundColor: colors.brandTertiary,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  grid: { flexDirection: "row", gap: 10 },
-  postedHeading: { marginTop: 28, marginHorizontal: 18, marginBottom: 12 },
-  locationHelpers: {
-    flexDirection: "row",
+    borderRadius: 16,
+    backgroundColor: "#1E293B",
+    borderWidth: 1,
+    borderColor: "#FBBF24",
     gap: 8,
-    marginTop: -8,
-    marginBottom: 14,
   },
+  petrolHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  petrolBadge: { flexDirection: "row", alignItems: "center", gap: 6 },
+  petrolBadgeText: { color: "#FBBF24", fontSize: 12, fontWeight: "900", letterSpacing: 0.5 },
+  rewardText: { color: "#22C55E", fontSize: 13, fontWeight: "800" },
+  petrolDesc: { color: "#E2E8F0", fontSize: 12, lineHeight: 17 },
+  progressContainer: {
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#334155",
+    overflow: "hidden",
+    marginTop: 4,
+  },
+  progressBar: {
+    height: "100%",
+    backgroundColor: "#FBBF24",
+    borderRadius: 4,
+  },
+  progressStats: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2 },
+  statText: { color: "#94A3B8", fontSize: 11, fontWeight: "600" },
+  statTextRemaining: { color: "#38BDF8", fontSize: 11, fontWeight: "700" },
+  grid: { flexDirection: "row", gap: 10 },
+  postedHeading: { marginTop: 24, marginHorizontal: 18, marginBottom: 12 },
+  locationHelpers: { flexDirection: "row", gap: 8, marginTop: -8, marginBottom: 14 },
   gpsButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -439,11 +469,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "#1E293B",
   },
-  gpsButtonText: {
-    color: colors.brand,
-    fontSize: 12,
-    fontWeight: "600",
-  },
+  gpsButtonText: { color: colors.brand, fontSize: 12, fontWeight: "600" },
   mapPickButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -453,11 +479,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     backgroundColor: "#1E293B",
   },
-  mapPickButtonText: {
-    color: "#38BDF8",
-    fontSize: 12,
-    fontWeight: "600",
-  },
+  mapPickButtonText: { color: "#38BDF8", fontSize: 12, fontWeight: "600" },
   toggleRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -473,15 +495,8 @@ const styles = StyleSheet.create({
   toggleTitleWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
   toggleTitle: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
   toggleSubtitle: { color: colors.muted, fontSize: 11, marginTop: 2 },
-  rideItemWrapper: {
-    marginBottom: 14,
-  },
-  driverActionsRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginHorizontal: 18,
-    marginTop: -4,
-  },
+  rideItemWrapper: { marginBottom: 14 },
+  driverActionsRow: { flexDirection: "row", gap: 10, marginHorizontal: 18, marginTop: -4 },
   trackingActionBtn: {
     flex: 2,
     flexDirection: "row",
@@ -492,14 +507,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#059669",
   },
-  trackingActiveBtn: {
-    backgroundColor: "#DC2626",
-  },
-  trackingActionText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "700",
-  },
+  trackingActiveBtn: { backgroundColor: "#DC2626" },
+  trackingActionText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
   driverSosBtn: {
     flex: 1,
     flexDirection: "row",
@@ -510,9 +519,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: "#DC2626",
   },
-  driverSosText: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "800",
-  },
+  driverSosText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
 });
