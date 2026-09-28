@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import { api, errorMessage } from "@/src/api";
 import { Icon } from "@/src/components/ui";
-import { colors } from "@/src/theme";
 
 interface UserMenuModalProps {
   visible: boolean;
@@ -66,11 +65,10 @@ export function UserMenuModal({
     }
   }, [visible, token, initialPhone]);
 
-  // 1st OPTION: Live Trip Sharing via WhatsApp
   const handleShareLiveTrip = () => {
-    const shareMessage = `Hi! Nenu RiderX app lo ride lo unnanu. Na safety kosam na live commute update share chesthunnanu:\n\nPassenger: ${
+    const shareMessage = `Hi! Nenu RiderX app lo ride lo unnanu. Na safety kosam live route update share chesthunnanu:\n\nPassenger: ${
       profile.full_name || "User"
-    }\nEmergency SOS: Active (112 / 100)\nLive Tracking: https://riderx-silk.vercel.app\n\nSafe travel via RiderX Community.`;
+    }\nEmergency SOS: Active (112 / 100)\nTracking: https://riderx-silk.vercel.app\n\nSafe travel via RiderX Community.`;
 
     const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(shareMessage)}`;
 
@@ -79,12 +77,11 @@ export function UserMenuModal({
         if (supported) {
           Linking.openURL(whatsappUrl);
         } else {
-          // Fallback to Web WhatsApp or SMS
           Linking.openURL(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`);
         }
       })
       .catch(() => {
-        Alert.alert("Share Trip", "Unable to open WhatsApp. Please check if app is installed.");
+        Alert.alert("Share Trip", "Unable to open WhatsApp.");
       });
   };
 
@@ -130,7 +127,6 @@ export function UserMenuModal({
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={styles.modalOverlay}>
         <View style={styles.sheetContainer}>
-          {/* Header */}
           <View style={styles.sheetHeader}>
             <View>
               <Text style={styles.sheetTitle}>Account & Settings</Text>
@@ -142,7 +138,6 @@ export function UserMenuModal({
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
-            {/* User Profile Card */}
             <View style={styles.userCard}>
               <View style={styles.avatarCircle}>
                 <Text style={styles.avatarText}>
@@ -164,7 +159,6 @@ export function UserMenuModal({
               </TouchableOpacity>
             </View>
 
-            {/* Profile Edit Fields */}
             {isEditing && (
               <View style={styles.editBox}>
                 <Text style={styles.inputLabel}>Full Name</Text>
@@ -193,15 +187,14 @@ export function UserMenuModal({
               </View>
             )}
 
-            {/* 1ST OPTION: LIVE TRIP SHARING CARD */}
             <Text style={styles.sectionLabel}>SAFETY & SHARING</Text>
             <TouchableOpacity onPress={handleShareLiveTrip} style={styles.shareTripCard}>
               <View style={styles.shareTripIconWrap}>
-                <Icon name="whatsapp" size={22} color="#FFFFFF" />
+                <Icon name="share-variant" size={20} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-                  <Text style={styles.shareTripTitle}>Share Live Trip</Text>
+                  <Text style={styles.shareTripTitle}>Share Live Trip (WhatsApp)</Text>
                   <View style={styles.newBadge}>
                     <Text style={styles.newBadgeText}>LIVE</Text>
                   </View>
@@ -213,7 +206,6 @@ export function UserMenuModal({
               <Icon name="chevron-right" size={20} color="#059669" />
             </TouchableOpacity>
 
-            {/* Other Menu Options */}
             <Text style={styles.sectionLabel}>COMMUTE & HISTORY</Text>
 
             <TouchableOpacity
@@ -253,7 +245,6 @@ export function UserMenuModal({
               <Icon name="chevron-right" size={18} color="#94A3B8" />
             </TouchableOpacity>
 
-            {/* Logout Action Button */}
             <TouchableOpacity
               onPress={() => {
                 onClose();
@@ -427,7 +418,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: "#25D366",
+    backgroundColor: "#059669",
     alignItems: "center",
     justifyContent: "center",
   },
