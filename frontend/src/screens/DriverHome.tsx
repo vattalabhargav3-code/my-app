@@ -57,16 +57,28 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
 
   const triggerDirectSos = () => {
     Alert.alert(
-      "DRIVER EMERGENCY SOS",
-      "Do you want to call Police Emergency Helpline (112)?",
+      "EMERGENCY & SAFETY SOS",
+      "Emergency help kosam kindha unna number select cheyandi:",
       [
-        { text: "Cancel", style: "cancel" },
         {
-          text: "Call 112",
-          style: "destructive",
-          onPress: () => {
-            Linking.openURL("tel:112");
-          },
+          text: "🚓 Police (100)",
+          onPress: () => Linking.openURL("tel:100"),
+        },
+        {
+          text: "🚑 Ambulance (108)",
+          onPress: () => Linking.openURL("tel:108"),
+        },
+        {
+          text: "🚨 National Emergency (112)",
+          onPress: () => Linking.openURL("tel:112"),
+        },
+        {
+          text: "📞 Customer Support",
+          onPress: () => Linking.openURL("tel:8919326622"),
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
         },
       ]
     );
@@ -247,7 +259,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           onLogout={onLogout}
           right={
             <View style={styles.headerRightWrap}>
-              {/* Emergency SOS Button */}
               <TouchableOpacity
                 onPress={triggerDirectSos}
                 style={styles.sosQuickBtn}
@@ -257,7 +268,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
                 <Text style={styles.sosQuickText}>SOS</Text>
               </TouchableOpacity>
 
-              {/* Menu Button */}
               <TouchableOpacity
                 onPress={() => setMenuVisible(true)}
                 style={styles.menuIconBtn}
@@ -566,4 +576,97 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   progressStats: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2 },
-  statText: { color: "#94A3B8", fontSize: 11, fontWei
+  statText: { color: "#94A3B8", fontSize: 11, fontWeight: "600" },
+  statTextRemaining: { color: "#38BDF8", fontSize: 11, fontWeight: "700" },
+  grid: { flexDirection: "row", gap: 10 },
+  postedHeading: { marginTop: 24, marginHorizontal: 18, marginBottom: 12 },
+  locationHelpers: { flexDirection: "row", gap: 8, marginTop: -8, marginBottom: 14 },
+  gpsButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "#1E293B",
+  },
+  gpsButtonText: { color: colors.brand, fontSize: 12, fontWeight: "600" },
+  mapPickButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "#1E293B",
+  },
+  mapPickButtonText: { color: "#38BDF8", fontSize: 12, fontWeight: "600" },
+  vibeSelector: {
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: 12,
+  },
+  vibeOption: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#0F172A",
+    borderWidth: 1,
+    borderColor: "#334155",
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+  },
+  vibeOptionActive: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
+  },
+  vibeOptionText: {
+    color: colors.muted,
+    fontSize: 11,
+    fontWeight: "700",
+  },
+  vibeOptionTextActive: {
+    color: "#0F172A",
+  },
+  toggleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "rgba(236, 72, 153, 0.1)",
+    borderWidth: 1,
+    borderColor: "rgba(236, 72, 153, 0.3)",
+    padding: 12,
+    borderRadius: 12,
+    marginVertical: 4,
+  },
+  toggleTextWrap: { flex: 1, paddingRight: 8 },
+  toggleTitleWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
+  toggleTitle: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
+  toggleSubtitle: { color: colors.muted, fontSize: 11, marginTop: 2 },
+  rideItemWrapper: { marginBottom: 14 },
+  driverActionsRow: { flexDirection: "row", gap: 10, marginHorizontal: 18, marginTop: -4 },
+  trackingActionBtn: {
+    flex: 2,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: "#059669",
+  },
+  trackingActiveBtn: { backgroundColor: "#DC2626" },
+  trackingActionText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
+  driverSosBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: 12,
+    backgroundColor: "#DC2626",
+  },
+  driverSosText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
+});
