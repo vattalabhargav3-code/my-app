@@ -146,7 +146,7 @@ export function UserMenuModal({
                 onPress={() => setIsEditing(!isEditing)}
                 style={styles.editToggleBtn}
               >
-                <Icon name={isEditing ? "close" : "account-edit-outline"} size={18} color="#38BDF8" />
+                <Icon name={isEditing ? "close" : "pencil"} size={18} color="#38BDF8" />
               </TouchableOpacity>
             </View>
 
@@ -183,7 +183,7 @@ export function UserMenuModal({
             <Text style={styles.sectionLabel}>SAFETY & SHARING</Text>
             <TouchableOpacity onPress={handleShareLiveTrip} style={styles.shareTripCard}>
               <View style={styles.shareTripIconWrap}>
-                <Icon name="share-variant-outline" size={20} color="#FFFFFF" />
+                <Icon name="share" size={20} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -229,7 +229,7 @@ export function UserMenuModal({
               }}
             >
               <View style={[styles.menuItemIconWrap, { backgroundColor: "rgba(239, 68, 68, 0.15)" }]}>
-                <Icon name="shield-account-outline" size={18} color="#EF4444" />
+                <Icon name="shield-account" size={18} color="#EF4444" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.menuItemTitle}>Emergency Safety Network</Text>
@@ -245,7 +245,7 @@ export function UserMenuModal({
               }}
               style={styles.logoutBtn}
             >
-              <Icon name="logout-variant" size={18} color="#EF4444" />
+              <Icon name="logout" size={18} color="#EF4444" />
               <Text style={styles.logoutBtnText}>Log Out from RiderX</Text>
             </TouchableOpacity>
           </ScrollView>
