@@ -38,9 +38,9 @@ const fetchCurrentGPS = (): Promise<{ latitude: number; longitude: number }> => 
 
 const getGreeting = () => {
   const hour = new Date().getHours();
-  if (hour < 12) return { text: "Good Morning", icon: "weather-sunny", sub: "Ready for your daily commute?" };
-  if (hour < 17) return { text: "Good Afternoon", icon: "weather-partly-cloudy", sub: "Beat the rush with a shared ride" };
-  return { text: "Good Evening", icon: "weather-night", sub: "Heading back home safely?" };
+  if (hour < 12) return { text: "Good Morning", sub: "Ready for your daily commute?" };
+  if (hour < 17) return { text: "Good Afternoon", sub: "Beat the traffic rush together" };
+  return { text: "Good Evening", sub: "Heading back home safely?" };
 };
 
 export function PassengerHome({
@@ -83,7 +83,7 @@ export function PassengerHome({
         { text: "🚓 Police (100)", onPress: () => Linking.openURL("tel:100") },
         { text: "🚑 Ambulance (108)", onPress: () => Linking.openURL("tel:108") },
         { text: "🚨 National Emergency (112)", onPress: () => Linking.openURL("tel:112") },
-        { text: "📞 Customer Support", onPress: () => Linking.openURL("tel:8919326622") },
+        { text: "📞 Support Helpline", onPress: () => Linking.openURL("tel:8919326622") },
         { text: "Cancel", style: "cancel" },
       ]
     );
@@ -137,10 +137,6 @@ export function PassengerHome({
     setPickerTarget(null);
   };
 
-  const handleQuickRoute = (from: string, to: string) => {
-    setSearch((prev) => ({ ...prev, fromLocation: from, toLocation: to }));
-  };
-
   const loadRides = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -176,11 +172,11 @@ export function PassengerHome({
   return (
     <View style={styles.whiteScreen}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 90 }}
+        contentContainerStyle={{ paddingTop: insets.top + 10, paddingBottom: insets.bottom + 90 }}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* 1. TOP BRAND & LIVE PULSE HEADER */}
+        {/* TOP BRAND & SOS */}
         <View style={styles.topHeader}>
           <View>
             <Text style={styles.brandTitle}>
@@ -188,7 +184,7 @@ export function PassengerHome({
             </Text>
             <View style={styles.liveIndicatorRow}>
               <View style={styles.livePulseDot} />
-              <Text style={styles.liveIndicatorText}>28+ Verified Poolers Live</Text>
+              <Text style={styles.liveIndicatorText}>Live Commute Network</Text>
             </View>
           </View>
 
@@ -198,202 +194,97 @@ export function PassengerHome({
               <Text style={styles.sosButtonText}>SOS</Text>
             </TouchableOpacity>
 
-            <View style={styles.safePill}>
-              <Icon name="shield-check" size={14} color="#059669" />
-              <Text style={styles.safePillText}>Safe</Text>
-            </View>
-
             <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuCircleBtn}>
               <Icon name="menu" size={20} color="#1E293B" />
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* 2. DYNAMIC GREETING BANNER */}
+        {/* TIME GREETING */}
         <View style={styles.greetingContainer}>
-          <View style={{ flex: 1 }}>
-            <View style={styles.greetingHeaderRow}>
-              <Text style={styles.greetingTitle}>
-                {greeting.text}, {user?.full_name ? user.full_name.split(" ")[0] : "Rider"}!
-              </Text>
-              <Icon name={greeting.icon as any} size={18} color="#F59E0B" />
-            </View>
-            <Text style={styles.greetingSub}>{greeting.sub}</Text>
-          </View>
+          <Text style={styles.greetingTitle}>
+            {greeting.text}, {user?.full_name ? user.full_name.split(" ")[0] : "Friend"}!
+          </Text>
+          <Text style={styles.greetingSub}>{greeting.sub}</Text>
         </View>
 
-        {/* 3. FLOATING OLA/RAPIDO STYLE SEARCH PILL */}
+        {/* QUICK SEARCH PILL */}
         <TouchableOpacity
-          activeOpacity={0.88}
+          activeOpacity={0.9}
           onPress={() => setPickerTarget("to")}
           style={styles.floatingSearchPill}
         >
           <View style={styles.searchPillIconWrap}>
-            <Icon name="magnify" size={22} color="#0284C7" />
+            <Icon name="magnify" size={20} color="#0284C7" />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.searchPillPlaceholder}>
-              {search.toLocation ? search.toLocation : "Where are you going?"}
+              {search.toLocation ? search.toLocation : "Where are you going today?"}
             </Text>
-            <Text style={styles.searchPillSubtext}>Search destination or tap to pick on map</Text>
+            <Text style={styles.searchPillSubtext}>Tap to pick destination or transit hubs</Text>
           </View>
           <View style={styles.searchPillArrow}>
             <Icon name="arrow-right" size={16} color="#64748B" />
           </View>
         </TouchableOpacity>
 
-        {/* 4. FREQUENT ROUTE SHORTCUT PILLS */}
-        <View style={styles.shortcutRoutesRow}>
-          <TouchableOpacity
-            style={styles.routePill}
-            onPress={() => handleQuickRoute("LB Nagar", "Hitec City")}
-          >
-            <Icon name="office-building" size={14} color="#0284C7" />
-            <Text style={styles.routePillText}>To Hitec City</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.routePill}
-            onPress={() => handleQuickRoute("Current Location", "Campus / JNTU")}
-          >
-            <Icon name="school" size={14} color="#8B5CF6" />
-            <Text style={styles.routePillText}>To Campus</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.routePill}
-            onPress={() => handleQuickRoute("Office", "Home")}
-          >
-            <Icon name="home" size={14} color="#059669" />
-            <Text style={styles.routePillText}>Back Home</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* 5. ECO & FUEL SAVINGS CARD */}
-        <View style={styles.savingsCard}>
-          <View style={styles.savingsHeader}>
-            <View style={styles.savingsBadge}>
-              <Icon name="leaf" size={14} color="#059669" />
-              <Text style={styles.savingsBadgeText}>YOUR COMMUTE IMPACT</Text>
-            </View>
-            <Text style={styles.savingsBadgeHighlight}>₹1,250 Saved</Text>
-          </View>
-          <Text style={styles.savingsDetailText}>
-            You shared 8 rides this month, cutting 14kg of CO₂ emissions & saving on petrol costs!
-          </Text>
-        </View>
-
-        {/* 6. PROMO CAROUSEL BANNER */}
-        <View style={styles.offerCard}>
-          <View style={styles.offerBadge}>
-            <Text style={styles.offerBadgeText}>SPECIAL SAVING</Text>
-          </View>
-          <View style={styles.offerContentRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.offerMainTitle}>FLAT ₹50 OFF</Text>
-              <Text style={styles.offerSubTitle}>
-                On your upcoming shared ride! Use code: <Text style={styles.offerCode}>SAFAR50</Text>
-              </Text>
-            </View>
-            <View style={styles.offerDiscountCircle}>
-              <Text style={styles.offerDiscountText}>₹50</Text>
-              <Text style={styles.offerDiscountSub}>OFF</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* 7. VEHICLE / CATEGORY SELECTOR TILES */}
-        <Text style={styles.sectionHeaderTitle}>Select Ride Type</Text>
+        {/* RIDE TYPE SELECTOR TILES */}
         <View style={styles.categoryGrid}>
           <TouchableOpacity
             style={[styles.categoryCard, search.vehicleType === "car" && styles.categoryCardActive]}
             onPress={() => setSearch((s) => ({ ...s, vehicleType: "car" }))}
           >
-            <View style={styles.catIconWrap}>
-              <Icon name="car" size={24} color="#0284C7" />
-            </View>
+            <Icon name="car" size={20} color="#0284C7" />
             <Text style={styles.categoryLabel}>Car Pool</Text>
-            <Text style={styles.categorySub}>Petrol Share</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.categoryCard, search.vehicleType === "bike" && styles.categoryCardActive]}
             onPress={() => setSearch((s) => ({ ...s, vehicleType: "bike" }))}
           >
-            <View style={styles.catIconWrap}>
-              <Icon name="motorbike" size={24} color="#059669" />
-            </View>
+            <Icon name="motorbike" size={20} color="#059669" />
             <Text style={styles.categoryLabel}>Bike Share</Text>
-            <Text style={styles.categorySub}>Fast & Budget</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.categoryCard, womenOnlyFilter && styles.categoryCardWomenActive]}
             onPress={() => setWomenOnlyFilter((prev) => !prev)}
           >
-            <View style={[styles.catIconWrap, { backgroundColor: "#FCE7F3" }]}>
-              <Icon name="face-woman" size={24} color="#DB2777" />
-            </View>
-            <Text style={[styles.categoryLabel, { color: "#DB2777" }]}>Women Only</Text>
-            <Text style={styles.categorySub}>{womenOnlyFilter ? "Filtered ✓" : "Verified Safe"}</Text>
+            <Icon name="face-woman" size={20} color="#DB2777" />
+            <Text style={[styles.categoryLabel, { color: "#DB2777" }]}>
+              {womenOnlyFilter ? "Women ✓" : "Women Only"}
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.categoryCard, search.vehicleType === "all" && styles.categoryCardActive]}
             onPress={() => setSearch((s) => ({ ...s, vehicleType: "all" }))}
           >
-            <View style={styles.catIconWrap}>
-              <Icon name="apps" size={24} color="#6366F1" />
-            </View>
+            <Icon name="apps" size={20} color="#6366F1" />
             <Text style={styles.categoryLabel}>All Rides</Text>
-            <Text style={styles.categorySub}>Any Route</Text>
           </TouchableOpacity>
         </View>
 
-        {/* 8. VERIFIED SAFETY PILLARS BANNER */}
-        <View style={styles.safetyPillarsCard}>
-          <View style={styles.pillarItem}>
-            <Icon name="badge-account-horizontal-outline" size={18} color="#0284C7" />
-            <Text style={styles.pillarText}>Govt ID Verified</Text>
-          </View>
-          <View style={styles.pillarDivider} />
-          <View style={styles.pillarItem}>
-            <Icon name="lock-check-outline" size={18} color="#059669" />
-            <Text style={styles.pillarText}>OTP Boarding</Text>
-          </View>
-          <View style={styles.pillarDivider} />
-          <View style={styles.pillarItem}>
-            <Icon name="shield-lock-outline" size={18} color="#D97706" />
-            <Text style={styles.pillarText}>24/7 SOS Ready</Text>
-          </View>
-        </View>
-
-        {/* 9. LOCATION SHORTCUT PILLS */}
-        <View style={styles.locationPillsRow}>
-          <TouchableOpacity
-            onPress={handleUseCurrentLocation}
-            disabled={detectingLocation}
-            style={styles.locationPillBtn}
-          >
-            <Icon name="crosshairs-gps" size={14} color="#0284C7" />
-            <Text style={styles.locationPillText}>
-              {detectingLocation ? "Detecting GPS..." : "Current Location"}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => setPickerTarget("from")} style={styles.locationPillBtn}>
-            <Icon name="map-marker" size={14} color="#10B981" />
-            <Text style={styles.locationPillText}>Set Pickup</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity onPress={() => setPickerTarget("to")} style={styles.locationPillBtn}>
-            <Icon name="map-marker-check" size={14} color="#F59E0B" />
-            <Text style={styles.locationPillText}>Set Drop</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* SEARCH PANEL */}
+        {/* SEARCH DETAILS EXPANDED PANEL */}
         <View style={styles.searchPanelWhiteCard}>
+          <View style={styles.searchHelpersRow}>
+            <TouchableOpacity
+              onPress={handleUseCurrentLocation}
+              disabled={detectingLocation}
+              style={styles.locationPillBtn}
+            >
+              <Icon name="crosshairs-gps" size={13} color="#0284C7" />
+              <Text style={styles.locationPillText}>
+                {detectingLocation ? "Detecting GPS..." : "Current Location"}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setPickerTarget("from")} style={styles.locationPillBtn}>
+              <Icon name="map-marker" size={13} color="#10B981" />
+              <Text style={styles.locationPillText}>Set Pickup</Text>
+            </TouchableOpacity>
+          </View>
+
           <RideSearchPanel
             search={search}
             onChange={(patch) => setSearch((current) => ({ ...current, ...patch }))}
@@ -426,23 +317,62 @@ export function PassengerHome({
         <ErrorBanner message={error} />
 
         {loading ? (
-          <ActivityIndicator color="#0284C7" size="large" style={{ marginVertical: 32 }} />
+          <ActivityIndicator color="#0284C7" size="large" style={{ marginVertical: 24 }} />
         ) : displayedRides.length ? (
           displayedRides.map((ride) => (
             <RideCard key={ride.id} ride={ride} onPress={() => setSelectedRide(ride)} />
           ))
         ) : (
           <View style={styles.emptyWhiteCard}>
-            <Icon name="map-search-outline" color="#94A3B8" size={38} />
+            <Icon name="map-search-outline" color="#94A3B8" size={34} />
             <Text style={styles.emptyTitle}>No scheduled rides right now</Text>
             <Text style={styles.emptySubtitle}>
               Try adjusting your route, vehicle type, or clear filters.
             </Text>
           </View>
         )}
+
+        {/* 🇮🇳 PROUD FEEL-GOOD & CONNECTING "MADE IN INDIA" FOOTER 🇮🇳 */}
+        <View style={styles.indiaCardWrapper}>
+          <View style={styles.indiaFlagRow}>
+            <Text style={styles.flagEmoji}>🇮🇳</Text>
+            <Text style={styles.indiaHeaderTitle}>PROUDLY CRAFTED IN BHARAT</Text>
+          </View>
+
+          <Text style={styles.teluguQuote}>
+            "ఒకరికొకరు తోడుగా... ఖర్చులను పంచుకుంటూ, కొత్త స్నేహాలను కలుపుకుంటూ సాగే మన ఊరి ప్రయాణం!"
+          </Text>
+
+          <Text style={styles.indiaSubQuote}>
+            Every shared seat cuts traffic, saves our hard-earned money, and helps our environment breathe easier.
+          </Text>
+
+          <View style={styles.indiaPillarsRow}>
+            <View style={styles.indiaPillarItem}>
+              <Text style={styles.pillarIcon}>🌱</Text>
+              <Text style={styles.pillarText}>Cleaner Air</Text>
+            </View>
+            <View style={styles.indiaPillarDivider} />
+            <View style={styles.indiaPillarItem}>
+              <Text style={styles.pillarIcon}>🤝</Text>
+              <Text style={styles.pillarText}>Real Commuters</Text>
+            </View>
+            <View style={styles.indiaPillarDivider} />
+            <View style={styles.indiaPillarItem}>
+              <Text style={styles.pillarIcon}>🛡️</Text>
+              <Text style={styles.pillarText}>100% Verified</Text>
+            </View>
+          </View>
+
+          <View style={styles.heartFooterNote}>
+            <Text style={styles.heartNoteText}>
+              Made with ❤️ for Indian Commuters & Daily Travelers
+            </Text>
+          </View>
+        </View>
       </ScrollView>
 
-      {/* 10. MODERN WHITE BOTTOM NAVIGATION BAR */}
+      {/* BOTTOM NAVIGATION BAR */}
       <View style={[styles.bottomNavContainer, { paddingBottom: insets.bottom > 0 ? insets.bottom : 8 }]}>
         <TouchableOpacity onPress={() => setActiveTab("home")} style={styles.navTabItem}>
           <Icon name="home" size={22} color={activeTab === "home" ? "#0284C7" : "#94A3B8"} />
@@ -588,7 +518,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 20,
     shadowColor: "#DC2626",
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 2,
   },
@@ -596,22 +526,6 @@ const styles = StyleSheet.create({
     color: "#FFFFFF",
     fontSize: 11,
     fontWeight: "900",
-  },
-  safePill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#ECFDF5",
-    paddingHorizontal: 9,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: "#A7F3D0",
-  },
-  safePillText: {
-    color: "#059669",
-    fontSize: 11,
-    fontWeight: "800",
   },
   menuCircleBtn: {
     width: 36,
@@ -625,13 +539,8 @@ const styles = StyleSheet.create({
   },
   greetingContainer: {
     paddingHorizontal: 20,
-    paddingTop: 14,
-    paddingBottom: 4,
-  },
-  greetingHeaderRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
+    paddingTop: 12,
+    paddingBottom: 2,
   },
   greetingTitle: {
     fontSize: 18,
@@ -649,364 +558,45 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     marginHorizontal: 18,
     marginTop: 10,
-    marginBottom: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 16,
+    marginBottom: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
     shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    elevation: 3,
-    gap: 12,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+    gap: 10,
   },
   searchPillIconWrap: {
-    width: 38,
-    height: 38,
+    width: 36,
+    height: 36,
     borderRadius: 12,
     backgroundColor: "#E0F2FE",
     alignItems: "center",
     justifyContent: "center",
   },
   searchPillPlaceholder: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     color: "#0F172A",
   },
   searchPillSubtext: {
     fontSize: 11,
     color: "#64748B",
-    marginTop: 2,
+    marginTop: 1,
   },
   searchPillArrow: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
-  },
-  shortcutRoutesRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginHorizontal: 18,
-    marginBottom: 14,
-  },
-  routePill: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 5,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    paddingVertical: 7,
-    borderRadius: 12,
-  },
-  routePillText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#334155",
-  },
-  savingsCard: {
-    marginHorizontal: 18,
-    marginBottom: 14,
-    padding: 12,
-    backgroundColor: "#ECFDF5",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#A7F3D0",
-    gap: 4,
-  },
-  savingsHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  savingsBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  savingsBadgeText: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#047857",
-    letterSpacing: 0.5,
-  },
-  savingsBadgeHighlight: {
-    fontSize: 12,
-    fontWeight: "900",
-    color: "#065F46",
-  },
-  savingsDetailText: {
-    fontSize: 11,
-    color: "#047857",
-    lineHeight: 16,
-  },
-  offerCard: {
-    marginHorizontal: 18,
-    marginBottom: 16,
-    padding: 14,
-    backgroundColor: "#0F172A",
-    borderRadius: 16,
-    shadowColor: "#000",
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  offerBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "#F59E0B",
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 6,
-    marginBottom: 8,
-  },
-  offerBadgeText: {
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#000000",
-    letterSpacing: 0.5,
-  },
-  offerContentRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  offerMainTitle: {
-    fontSize: 18,
-    fontWeight: "900",
-    color: "#FFFFFF",
-    letterSpacing: 0.5,
-  },
-  offerSubTitle: {
-    fontSize: 12,
-    color: "#94A3B8",
-    marginTop: 2,
-  },
-  offerCode: {
-    color: "#38BDF8",
-    fontWeight: "800",
-  },
-  offerDiscountCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: "#1E293B",
-    borderWidth: 1.5,
-    borderColor: "#F59E0B",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  offerDiscountText: {
-    color: "#F59E0B",
-    fontWeight: "900",
-    fontSize: 14,
-  },
-  offerDiscountSub: {
-    color: "#94A3B8",
-    fontSize: 8,
-    fontWeight: "700",
-  },
-  sectionHeaderTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#1E293B",
-    marginHorizontal: 18,
-    marginBottom: 10,
   },
   categoryGrid: {
     flexDirection: "row",
     gap: 8,
-    marginHorizontal: 18,
-    marginBottom: 14,
-  },
-  categoryCard: {
-    flex: 1,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOpacity: 0.04,
-    shadowRadius: 5,
-    elevation: 1,
-  },
-  categoryCardActive: {
-    borderColor: "#0284C7",
-    backgroundColor: "#F0F9FF",
-    borderWidth: 1.5,
-  },
-  categoryCardWomenActive: {
-    borderColor: "#DB2777",
-    backgroundColor: "#FDF2F8",
-    borderWidth: 1.5,
-  },
-  catIconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#F1F5F9",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 6,
-  },
-  categoryLabel: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#1E293B",
-    textAlign: "center",
-  },
-  categorySub: {
-    fontSize: 9,
-    fontWeight: "600",
-    color: "#64748B",
-    marginTop: 2,
-    textAlign: "center",
-  },
-  safetyPillarsCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 18,
-    marginBottom: 14,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  pillarItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  pillarText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#334155",
-  },
-  pillarDivider: {
-    width: 1,
-    height: 16,
-    backgroundColor: "#E2E8F0",
-  },
-  locationPillsRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginHorizontal: 18,
-    marginBottom: 14,
-  },
-  locationPillBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 20,
-  },
-  locationPillText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#334155",
-  },
-  searchPanelWhiteCard: {
-    marginHorizontal: 18,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    padding: 12,
-    marginBottom: 16,
-  },
-  resultsHeadingWrap: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginRight: 18,
-    marginTop: 10,
-    marginBottom: 6,
-  },
-  ridesFoundBadge: {
-    backgroundColor: "#E0F2FE",
-    color: "#0369A1",
-    fontSize: 11,
-    fontWeight: "800",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  emptyWhiteCard: {
-    marginHorizontal: 18,
-    marginTop: 12,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    padding: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  emptyTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#1E293B",
-    marginTop: 4,
-  },
-  emptySubtitle: {
-    fontSize: 12,
-    color: "#64748B",
-    textAlign: "center",
-  },
-  bottomNavContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 64,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  navTabItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-  },
-  navTabLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#94A3B8",
-    marginTop: 2,
-  },
-  navTabLabelActive: {
-    color: "#0284C7",
-    fontWeight: "800",
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.6)",
-    justifyContent: "flex-end",
-  },
-});
