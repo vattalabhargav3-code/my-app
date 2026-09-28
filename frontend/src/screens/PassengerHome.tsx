@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, Booking, errorMessage, Ride, User } from "@/src/api";
@@ -52,6 +52,23 @@ export function PassengerHome({
   const [womenOnlyFilter, setWomenOnlyFilter] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+
+  const triggerDirectSos = () => {
+    Alert.alert(
+      "EMERGENCY SOS",
+      "Do you want to call the Police Emergency Helpline (112)?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Call 112",
+          style: "destructive",
+          onPress: () => {
+            Linking.openURL("tel:112");
+          },
+        },
+      ]
+    );
+  };
 
   const isAlreadyVerified =
     user.id_verified ||
@@ -144,15 +161,27 @@ export function PassengerHome({
           onLogout={onLogout}
           right={
             <View style={styles.headerRightWrap}>
+              {/* Emergency SOS Button */}
+              <TouchableOpacity
+                onPress={triggerDirectSos}
+                style={styles.sosQuickBtn}
+                accessibilityLabel="Emergency SOS"
+              >
+                <Icon name="shield-alert" size={14} color="#FFFFFF" />
+                <Text style={styles.sosQuickText}>SOS</Text>
+              </TouchableOpacity>
+
+              {/* Menu Button */}
               <TouchableOpacity
                 onPress={() => setMenuVisible(true)}
                 style={styles.menuIconBtn}
                 accessibilityLabel="Open Menu"
               >
-                <Icon name="menu" size={20} color="#FFFFFF" />
+                <Icon name="menu" size={18} color="#FFFFFF" />
               </TouchableOpacity>
+
               <View style={styles.secureBadge}>
-                <Icon name="shield-check" size={16} color={colors.brand} />
+                <Icon name="shield-check" size={15} color={colors.brand} />
                 <Text style={styles.secureBadgeText}>Safe</Text>
               </View>
             </View>
@@ -315,11 +344,28 @@ const styles = StyleSheet.create({
   headerRightWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
+  },
+  sosQuickBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#DC2626",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#EF4444",
+  },
+  sosQuickText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.5,
   },
   menuIconBtn: {
-    padding: 7,
-    borderRadius: 10,
+    padding: 6,
+    borderRadius: 8,
     backgroundColor: "#1E293B",
     borderWidth: 1,
     borderColor: "#334155",
@@ -328,9 +374,9 @@ const styles = StyleSheet.create({
   },
   secureBadge: {
     flexDirection: "row",
-    gap: 5,
+    gap: 4,
     alignItems: "center",
-    paddingHorizontal: 9,
+    paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: 99,
     backgroundColor: colors.brandTertiary,
