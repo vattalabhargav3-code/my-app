@@ -537,9 +537,6 @@ const styles = StyleSheet.create({
   sosQuickText: { color: "#FFFFFF", fontSize: 11, fontWeight: "900", letterSpacing: 0.5 },
   menuIconBtn: {
     padding: 6,
-    borderRadiu
-  menuIconBtn: {
-    padding: 6,
     borderRadius: 8,
     backgroundColor: "#1E293B",
     borderWidth: 1,
