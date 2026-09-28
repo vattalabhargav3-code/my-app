@@ -256,9 +256,9 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         <ScreenHeader
           eyebrow="DRIVER DASHBOARD"
           title="Host & Earn Fuel Rewards"
-          onLogout={onLogout}
           right={
             <View style={styles.headerRightWrap}>
+              {/* Emergency SOS Button */}
               <TouchableOpacity
                 onPress={triggerDirectSos}
                 style={styles.sosQuickBtn}
@@ -268,6 +268,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
                 <Text style={styles.sosQuickText}>SOS</Text>
               </TouchableOpacity>
 
+              {/* Menu Button */}
               <TouchableOpacity
                 onPress={() => setMenuVisible(true)}
                 style={styles.menuIconBtn}
