@@ -13,7 +13,6 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { User } from "@/src/api";
-import { ErrorBanner } from "@/src/components/ui";
 
 export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, user: User) => void }) {
   const insets = useSafeAreaInsets();
@@ -24,28 +23,28 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
   const [fullName, setFullName] = useState("");
   const [otp, setOtp] = useState("1234");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSendOtp = () => {
     if (!phone || phone.trim().length < 10) {
-      setError("Dayachesi valid 10-digit mobile number enter cheyandi.");
+      setErrorMessage("Dayachesi valid 10-digit mobile number enter cheyandi.");
       return;
     }
-    setError("");
+    setErrorMessage("");
     setLoading(true);
     setTimeout(() => {
       setLoading(false);
       setStep("otp");
-    }, 300);
+    }, 200);
   };
 
   const handleVerifyOtp = () => {
     if (!otp || otp.trim().length < 4) {
-      setError("Please 4-digit OTP enter cheyandi.");
+      setErrorMessage("Please 4-digit OTP enter cheyandi.");
       return;
     }
     setLoading(true);
-    setError("");
+    setErrorMessage("");
 
     setTimeout(() => {
       setLoading(false);
@@ -56,7 +55,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
         role: "passenger",
         id_verified: true,
       });
-    }, 400);
+    }, 300);
   };
 
   return (
@@ -175,6 +174,13 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
               </Text>
             </View>
 
+            {errorMessage ? (
+              <View style={styles.errorBox}>
+                <Text style={{ fontSize: 14 }}>⚠️</Text>
+                <Text style={styles.errorText}>{errorMessage}</Text>
+              </View>
+            ) : null}
+
             {step === "phone" ? (
               <View style={styles.formWrap}>
                 <Text style={styles.inputLabel}>Your Full Name (optional)</Text>
@@ -199,8 +205,6 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
                     placeholderTextColor="#94A3B8"
                   />
                 </View>
-
-                <ErrorBanner message={error} />
 
                 <TouchableOpacity
                   style={styles.submitBtn}
@@ -230,8 +234,6 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
                 <View style={styles.mockOtpAlert}>
                   <Text style={styles.mockOtpAlertText}>Demo OTP: 1234 (Auto-accepted)</Text>
                 </View>
-
-                <ErrorBanner message={error} />
 
                 <TouchableOpacity
                   style={styles.submitBtn}
@@ -563,9 +565,26 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     paddingVertical: 8,
   },
-  resendBtnTest: {
+  resendBtnText: {
     fontSize: 12,
     fontWeight: "800",
     color: "#0284C7",
+  },
+  errorBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#FEE2E2",
+    borderWidth: 1,
+    borderColor: "#FCA5A5",
+    padding: 10,
+    borderRadius: 10,
+    marginBottom: 12,
+  },
+  errorText: {
+    color: "#B91C1C",
+    fontSize: 12,
+    fontWeight: "700",
+    flex: 1,
   },
 });
