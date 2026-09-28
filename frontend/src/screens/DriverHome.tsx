@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
+import { Alert, KeyboardAvoidingView, Linking, Platform, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { api, errorMessage, Ride } from "@/src/api";
@@ -54,6 +54,23 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
   const [sosModalVisible, setSosModalVisible] = useState(false);
   const [selectedSosRide, setSelectedSosRide] = useState<Ride | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+
+  const triggerDirectSos = () => {
+    Alert.alert(
+      "DRIVER EMERGENCY SOS",
+      "Do you want to call Police Emergency Helpline (112)?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Call 112",
+          style: "destructive",
+          onPress: () => {
+            Linking.openURL("tel:112");
+          },
+        },
+      ]
+    );
+  };
 
   const watchIdRef = useRef<any>(null);
 
@@ -230,15 +247,27 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           onLogout={onLogout}
           right={
             <View style={styles.headerRightWrap}>
+              {/* Emergency SOS Button */}
+              <TouchableOpacity
+                onPress={triggerDirectSos}
+                style={styles.sosQuickBtn}
+                accessibilityLabel="Driver Emergency SOS"
+              >
+                <Icon name="shield-alert" size={14} color="#FFFFFF" />
+                <Text style={styles.sosQuickText}>SOS</Text>
+              </TouchableOpacity>
+
+              {/* Menu Button */}
               <TouchableOpacity
                 onPress={() => setMenuVisible(true)}
                 style={styles.menuIconBtn}
                 accessibilityLabel="Open Driver Menu"
               >
-                <Icon name="menu" size={20} color="#FFFFFF" />
+                <Icon name="menu" size={18} color="#FFFFFF" />
               </TouchableOpacity>
+
               <View style={shared.iconTile}>
-                <Icon name="steering" size={22} color={colors.brand} />
+                <Icon name="steering" size={20} color={colors.brand} />
               </View>
             </View>
           }
@@ -482,11 +511,28 @@ const styles = StyleSheet.create({
   headerRightWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 6,
+  },
+  sosQuickBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#DC2626",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#EF4444",
+  },
+  sosQuickText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "900",
+    letterSpacing: 0.5,
   },
   menuIconBtn: {
-    padding: 7,
-    borderRadius: 10,
+    padding: 6,
+    borderRadius: 8,
     backgroundColor: "#1E293B",
     borderWidth: 1,
     borderColor: "#334155",
@@ -520,45 +566,4 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   progressStats: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2 },
-  statText: { color: "#94A3B8", fontSize: 11, fontWeight: "600" },
-  statTextRemaining: { color: "#38BDF8", fontSize: 11, fontWeight: "700" },
-  grid: { flexDirection: "row", gap: 10 },
-  postedHeading: { marginTop: 24, marginHorizontal: 18, marginBottom: 12 },
-  locationHelpers: { flexDirection: "row", gap: 8, marginTop: -8, marginBottom: 14 },
-  gpsButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: "#1E293B",
-  },
-  gpsButtonText: { color: colors.brand, fontSize: 12, fontWeight: "600" },
-  mapPickButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: "#1E293B",
-  },
-  mapPickButtonText: { color: "#38BDF8", fontSize: 12, fontWeight: "600" },
-  vibeSelector: {
-    flexDirection: "row",
-    gap: 6,
-    marginBottom: 12,
-  },
-  vibeOption: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#0F172A",
-    borderWidth: 1,
-    borderColor: "#334155",
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    borderRadius: 10,
-  },
-  vibeOptionActive:
+  statText: { color: "#94A3B8", fontSize: 11, fontWei
