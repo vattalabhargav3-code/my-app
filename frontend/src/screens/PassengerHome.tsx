@@ -36,6 +36,13 @@ const fetchCurrentGPS = (): Promise<{ latitude: number; longitude: number }> => 
   });
 };
 
+const getGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return { text: "Good Morning", icon: "weather-sunny", sub: "Ready for your daily commute?" };
+  if (hour < 17) return { text: "Good Afternoon", icon: "weather-partly-cloudy", sub: "Beat the rush with a shared ride" };
+  return { text: "Good Evening", icon: "weather-night", sub: "Heading back home safely?" };
+};
+
 export function PassengerHome({
   token,
   user,
@@ -48,6 +55,8 @@ export function PassengerHome({
   onLogout: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const greeting = getGreeting();
+
   const [search, setSearch] = useState<SearchState>({
     mode: "commercial",
     vehicleType: "all",
@@ -128,6 +137,10 @@ export function PassengerHome({
     setPickerTarget(null);
   };
 
+  const handleQuickRoute = (from: string, to: string) => {
+    setSearch((prev) => ({ ...prev, fromLocation: from, toLocation: to }));
+  };
+
   const loadRides = useCallback(async () => {
     setLoading(true);
     setError("");
@@ -167,11 +180,16 @@ export function PassengerHome({
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* 1. TOP STATUS & BRAND HEADER */}
+        {/* 1. TOP BRAND & LIVE PULSE HEADER */}
         <View style={styles.topHeader}>
           <View>
-            <Text style={styles.brandTitle}>RIDER<Text style={styles.brandAccent}>X</Text></Text>
-            <Text style={styles.brandTagline}>Smart Shared Commute</Text>
+            <Text style={styles.brandTitle}>
+              RIDER<Text style={styles.brandAccent}>X</Text>
+            </Text>
+            <View style={styles.liveIndicatorRow}>
+              <View style={styles.livePulseDot} />
+              <Text style={styles.liveIndicatorText}>28+ Verified Poolers Live</Text>
+            </View>
           </View>
 
           <View style={styles.headerRightActions}>
@@ -191,7 +209,20 @@ export function PassengerHome({
           </View>
         </View>
 
-        {/* 2. FLOATING SEARCH PILL BAR (Ola / Rapido Style) */}
+        {/* 2. DYNAMIC GREETING BANNER */}
+        <View style={styles.greetingContainer}>
+          <View style={{ flex: 1 }}>
+            <View style={styles.greetingHeaderRow}>
+              <Text style={styles.greetingTitle}>
+                {greeting.text}, {user?.full_name ? user.full_name.split(" ")[0] : "Rider"}!
+              </Text>
+              <Icon name={greeting.icon as any} size={18} color="#F59E0B" />
+            </View>
+            <Text style={styles.greetingSub}>{greeting.sub}</Text>
+          </View>
+        </View>
+
+        {/* 3. FLOATING OLA/RAPIDO STYLE SEARCH PILL */}
         <TouchableOpacity
           activeOpacity={0.88}
           onPress={() => setPickerTarget("to")}
@@ -211,10 +242,51 @@ export function PassengerHome({
           </View>
         </TouchableOpacity>
 
-        {/* 3. PROMO OFFER CARD (Rapido Yellow-Blue Style on White) */}
+        {/* 4. FREQUENT ROUTE SHORTCUT PILLS */}
+        <View style={styles.shortcutRoutesRow}>
+          <TouchableOpacity
+            style={styles.routePill}
+            onPress={() => handleQuickRoute("LB Nagar", "Hitec City")}
+          >
+            <Icon name="office-building" size={14} color="#0284C7" />
+            <Text style={styles.routePillText}>To Hitec City</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.routePill}
+            onPress={() => handleQuickRoute("Current Location", "Campus / JNTU")}
+          >
+            <Icon name="school" size={14} color="#8B5CF6" />
+            <Text style={styles.routePillText}>To Campus</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.routePill}
+            onPress={() => handleQuickRoute("Office", "Home")}
+          >
+            <Icon name="home" size={14} color="#059669" />
+            <Text style={styles.routePillText}>Back Home</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* 5. ECO & FUEL SAVINGS CARD */}
+        <View style={styles.savingsCard}>
+          <View style={styles.savingsHeader}>
+            <View style={styles.savingsBadge}>
+              <Icon name="leaf" size={14} color="#059669" />
+              <Text style={styles.savingsBadgeText}>YOUR COMMUTE IMPACT</Text>
+            </View>
+            <Text style={styles.savingsBadgeHighlight}>₹1,250 Saved</Text>
+          </View>
+          <Text style={styles.savingsDetailText}>
+            You shared 8 rides this month, cutting 14kg of CO₂ emissions & saving on petrol costs!
+          </Text>
+        </View>
+
+        {/* 6. PROMO CAROUSEL BANNER */}
         <View style={styles.offerCard}>
           <View style={styles.offerBadge}>
-            <Text style={styles.offerBadgeText}>SPECIAL OFFER</Text>
+            <Text style={styles.offerBadgeText}>SPECIAL SAVING</Text>
           </View>
           <View style={styles.offerContentRow}>
             <View style={{ flex: 1 }}>
@@ -225,23 +297,23 @@ export function PassengerHome({
             </View>
             <View style={styles.offerDiscountCircle}>
               <Text style={styles.offerDiscountText}>₹50</Text>
-              <Text style={styles.offerDiscountSub}>SAVE</Text>
+              <Text style={styles.offerDiscountSub}>OFF</Text>
             </View>
           </View>
         </View>
 
-        {/* 4. QUICK CATEGORY SELECTOR CARDS */}
-        <Text style={styles.sectionHeaderTitle}>Choose Your Ride Category</Text>
+        {/* 7. VEHICLE / CATEGORY SELECTOR TILES */}
+        <Text style={styles.sectionHeaderTitle}>Select Ride Type</Text>
         <View style={styles.categoryGrid}>
           <TouchableOpacity
             style={[styles.categoryCard, search.vehicleType === "car" && styles.categoryCardActive]}
             onPress={() => setSearch((s) => ({ ...s, vehicleType: "car" }))}
           >
             <View style={styles.catIconWrap}>
-              <Icon name="car" size={26} color="#0284C7" />
+              <Icon name="car" size={24} color="#0284C7" />
             </View>
             <Text style={styles.categoryLabel}>Car Pool</Text>
-            <Text style={styles.categorySub}>Petrol Save</Text>
+            <Text style={styles.categorySub}>Petrol Share</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -249,10 +321,10 @@ export function PassengerHome({
             onPress={() => setSearch((s) => ({ ...s, vehicleType: "bike" }))}
           >
             <View style={styles.catIconWrap}>
-              <Icon name="motorbike" size={26} color="#059669" />
+              <Icon name="motorbike" size={24} color="#059669" />
             </View>
             <Text style={styles.categoryLabel}>Bike Share</Text>
-            <Text style={styles.categorySub}>Fast & Cheap</Text>
+            <Text style={styles.categorySub}>Fast & Budget</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -260,7 +332,7 @@ export function PassengerHome({
             onPress={() => setWomenOnlyFilter((prev) => !prev)}
           >
             <View style={[styles.catIconWrap, { backgroundColor: "#FCE7F3" }]}>
-              <Icon name="face-woman" size={26} color="#DB2777" />
+              <Icon name="face-woman" size={24} color="#DB2777" />
             </View>
             <Text style={[styles.categoryLabel, { color: "#DB2777" }]}>Women Only</Text>
             <Text style={styles.categorySub}>{womenOnlyFilter ? "Filtered ✓" : "Verified Safe"}</Text>
@@ -271,14 +343,32 @@ export function PassengerHome({
             onPress={() => setSearch((s) => ({ ...s, vehicleType: "all" }))}
           >
             <View style={styles.catIconWrap}>
-              <Icon name="apps" size={26} color="#6366F1" />
+              <Icon name="apps" size={24} color="#6366F1" />
             </View>
             <Text style={styles.categoryLabel}>All Rides</Text>
-            <Text style={styles.categorySub}>Any Vehicle</Text>
+            <Text style={styles.categorySub}>Any Route</Text>
           </TouchableOpacity>
         </View>
 
-        {/* 5. LOCATION SHORTCUT HELPERS */}
+        {/* 8. VERIFIED SAFETY PILLARS BANNER */}
+        <View style={styles.safetyPillarsCard}>
+          <View style={styles.pillarItem}>
+            <Icon name="badge-account-horizontal-outline" size={18} color="#0284C7" />
+            <Text style={styles.pillarText}>Govt ID Verified</Text>
+          </View>
+          <View style={styles.pillarDivider} />
+          <View style={styles.pillarItem}>
+            <Icon name="lock-check-outline" size={18} color="#059669" />
+            <Text style={styles.pillarText}>OTP Boarding</Text>
+          </View>
+          <View style={styles.pillarDivider} />
+          <View style={styles.pillarItem}>
+            <Icon name="shield-lock-outline" size={18} color="#D97706" />
+            <Text style={styles.pillarText}>24/7 SOS Ready</Text>
+          </View>
+        </View>
+
+        {/* 9. LOCATION SHORTCUT PILLS */}
         <View style={styles.locationPillsRow}>
           <TouchableOpacity
             onPress={handleUseCurrentLocation}
@@ -291,24 +381,18 @@ export function PassengerHome({
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => setPickerTarget("from")}
-            style={styles.locationPillBtn}
-          >
+          <TouchableOpacity onPress={() => setPickerTarget("from")} style={styles.locationPillBtn}>
             <Icon name="map-marker" size={14} color="#10B981" />
             <Text style={styles.locationPillText}>Set Pickup</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => setPickerTarget("to")}
-            style={styles.locationPillBtn}
-          >
+          <TouchableOpacity onPress={() => setPickerTarget("to")} style={styles.locationPillBtn}>
             <Icon name="map-marker-check" size={14} color="#F59E0B" />
             <Text style={styles.locationPillText}>Set Drop</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Full Ride Search Panel Container (Clean White Card) */}
+        {/* SEARCH PANEL */}
         <View style={styles.searchPanelWhiteCard}>
           <RideSearchPanel
             search={search}
@@ -358,12 +442,9 @@ export function PassengerHome({
         )}
       </ScrollView>
 
-      {/* 6. BOTTOM NAVIGATION BAR (Ola/Rapido Style) */}
+      {/* 10. MODERN WHITE BOTTOM NAVIGATION BAR */}
       <View style={[styles.bottomNavContainer, { paddingBottom: insets.bottom > 0 ? insets.bottom : 8 }]}>
-        <TouchableOpacity
-          onPress={() => setActiveTab("home")}
-          style={styles.navTabItem}
-        >
+        <TouchableOpacity onPress={() => setActiveTab("home")} style={styles.navTabItem}>
           <Icon name="home" size={22} color={activeTab === "home" ? "#0284C7" : "#94A3B8"} />
           <Text style={[styles.navTabLabel, activeTab === "home" && styles.navTabLabelActive]}>
             Home
@@ -388,7 +469,7 @@ export function PassengerHome({
         <TouchableOpacity
           onPress={() => {
             setActiveTab("offers");
-            Alert.alert("Coupon Code", "Use coupon 'SAFAR50' during checkout for ₹50 discount!");
+            Alert.alert("Active Offers", "Use coupon 'SAFAR50' during checkout for FLAT ₹50 discount!");
           }}
           style={styles.navTabItem}
         >
@@ -419,7 +500,12 @@ export function PassengerHome({
         title={pickerTarget === "from" ? "Select Pickup Location" : "Select Drop Location"}
       />
 
-      <Modal visible={Boolean(selectedRide)} animationType="slide" transparent onRequestClose={() => setSelectedRide(null)}>
+      <Modal
+        visible={Boolean(selectedRide)}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setSelectedRide(null)}
+      >
         <View style={styles.modalBackdrop}>
           {selectedRide ? (
             <CheckoutSheet
@@ -471,11 +557,22 @@ const styles = StyleSheet.create({
   brandAccent: {
     color: "#0284C7",
   },
-  brandTagline: {
-    fontSize: 11,
-    color: "#64748B",
-    fontWeight: "500",
-    marginTop: -2,
+  liveIndicatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
+  },
+  livePulseDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#10B981",
+  },
+  liveIndicatorText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#059669",
   },
   headerRightActions: {
     flexDirection: "row",
@@ -526,13 +623,33 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
+  greetingContainer: {
+    paddingHorizontal: 20,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  greetingHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  greetingTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  greetingSub: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2,
+  },
   floatingSearchPill: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
     marginHorizontal: 18,
-    marginTop: 14,
-    marginBottom: 12,
+    marginTop: 10,
+    marginBottom: 10,
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 16,
@@ -540,7 +657,7 @@ const styles = StyleSheet.create({
     borderColor: "#E2E8F0",
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 10,
     elevation: 3,
     gap: 12,
@@ -554,7 +671,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   searchPillPlaceholder: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: "#0F172A",
   },
@@ -570,6 +687,65 @@ const styles = StyleSheet.create({
     backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
+  },
+  shortcutRoutesRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginHorizontal: 18,
+    marginBottom: 14,
+  },
+  routePill: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingVertical: 7,
+    borderRadius: 12,
+  },
+  routePillText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#334155",
+  },
+  savingsCard: {
+    marginHorizontal: 18,
+    marginBottom: 14,
+    padding: 12,
+    backgroundColor: "#ECFDF5",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
+    gap: 4,
+  },
+  savingsHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  savingsBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
+  savingsBadgeText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#047857",
+    letterSpacing: 0.5,
+  },
+  savingsBadgeHighlight: {
+    fontSize: 12,
+    fontWeight: "900",
+    color: "#065F46",
+  },
+  savingsDetailText: {
+    fontSize: 11,
+    color: "#047857",
+    lineHeight: 16,
   },
   offerCard: {
     marginHorizontal: 18,
@@ -645,7 +821,7 @@ const styles = StyleSheet.create({
   },
   categoryGrid: {
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
     marginHorizontal: 18,
     marginBottom: 14,
   },
@@ -654,7 +830,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     borderRadius: 14,
     paddingVertical: 12,
-    paddingHorizontal: 6,
+    paddingHorizontal: 4,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
@@ -675,9 +851,9 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   catIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
@@ -695,6 +871,33 @@ const styles = StyleSheet.create({
     color: "#64748B",
     marginTop: 2,
     textAlign: "center",
+  },
+  safetyPillarsCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-around",
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 18,
+    marginBottom: 14,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  pillarItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  pillarText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#334155",
+  },
+  pillarDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: "#E2E8F0",
   },
   locationPillsRow: {
     flexDirection: "row",
