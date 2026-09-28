@@ -84,9 +84,11 @@ export async function api<T = any>(path: string, options: RequestInit = {}, toke
     headers["Authorization"] = `Bearer ${savedToken}`;
   }
 
-  // Handle direct paths vs /api prefixed paths automatically
+  // 404 రాకుండా /api ప్రిఫిక్స్ ఖచ్చితంగా ఉండేలా సెట్ చేయడం
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  const targetUrl = `${API_BASE}${cleanPath}`;
+  const targetUrl = cleanPath.startsWith("/api")
+    ? `${API_BASE}${cleanPath}`
+    : `${API_BASE}/api${cleanPath}`;
 
   const response = await fetch(targetUrl, {
     ...options,
