@@ -400,7 +400,6 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
     </KeyboardAvoidingView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -659,4 +658,94 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  roleBtnActive: {
+    backgroundColor: "#F0F9FF",
+    borderColor: "#0284C7",
+    borderWidth: 1.5,
+  },
+  roleBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+  roleBtnTextActive: {
+    color: "#0284C7",
+    fontWeight: "900",
+  },
+  textInput: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 12,
+    fontSize: 14,
+    color: "#0F172A",
+  },
+  phoneInputWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 12,
+    overflow: "hidden",
+  },
+  countryCode: {
+    paddingHorizontal: 12,
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0F172A",
+    borderRightWidth: 1,
+    borderRightColor: "#E2E8F0",
+  },
+  otpInput: {
+    fontSize: 24,
+    letterSpacing: 8,
+    textAlign: "center",
+    fontWeight: "900",
+  },
+  mockOtpAlert: {
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1,
+    borderColor: "#FCD34D",
+    padding: 8,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  mockOtpAlertText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#92400E",
+  },
+  submitBtn: {
+    backgroundColor: "#0284C7",
+    paddingVertical: 13,
+    borderRadius: 14,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  submitBtnText: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
+  },
+  resendBtn: {
+    alignSelf: "center",
+    paddingVertical: 8,
+  },
+  resendBtnText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#0284C7",
+  },
+});
