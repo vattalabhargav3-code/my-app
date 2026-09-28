@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -19,31 +18,13 @@ import { ErrorBanner, Icon } from "@/src/components/ui";
 export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, user: User) => void }) {
   const insets = useSafeAreaInsets();
 
-  const [animStage, setAnimStage] = useState<"splash" | "ready">("splash");
   const [showLogin, setShowLogin] = useState(false);
-
-  const logoScale = useRef(new Animated.Value(0.7)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const buttonFade = useRef(new Animated.Value(0)).current;
-
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
   const [fullName, setFullName] = useState("");
   const [otp, setOtp] = useState("1234");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(logoScale, { toValue: 1, duration: 600, useNativeDriver: false }),
-      Animated.timing(logoOpacity, { toValue: 1, duration: 600, useNativeDriver: false }),
-    ]).start(() => {
-      setTimeout(() => {
-        setAnimStage("ready");
-        Animated.timing(buttonFade, { toValue: 1, duration: 400, useNativeDriver: false }).start();
-      }, 1200);
-    });
-  }, []);
 
   const handleSendOtp = () => {
     if (!phone || phone.trim().length < 10) {
@@ -106,15 +87,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
               <Text style={styles.badgeTopText}>MADE FOR INDIA • HYDERABAD COMMUTE</Text>
             </View>
 
-            <Animated.View
-              style={[
-                styles.logoHeroContainer,
-                {
-                  opacity: logoOpacity,
-                  transform: [{ scale: logoScale }],
-                },
-              ]}
-            >
+            <View style={styles.logoHeroContainer}>
               <View style={styles.mapEmblemCard}>
                 <View style={styles.mapPinGlow}>
                   <Icon name="map-marker-radius" size={28} color="#0284C7" />
@@ -135,52 +108,50 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
               <Text style={styles.heroSubTagline}>
                 Safe, Shared & Affordable Rides across Hyderabad
               </Text>
-            </Animated.View>
+            </View>
 
-            {animStage === "ready" && (
-              <Animated.View style={{ width: "100%", opacity: buttonFade, marginTop: 6 }}>
-                <View style={styles.pillarsContainer}>
-                  <View style={styles.pillarItem}>
-                    <View style={[styles.pillarIconWrap, { backgroundColor: "#E0F2FE" }]}>
-                      <Icon name="shield-check" size={20} color="#0284C7" />
-                    </View>
-                    <Text style={styles.pillarMainText}>100% Verified</Text>
-                    <Text style={styles.pillarSubText}>ID & DL Checked</Text>
+            <View style={{ width: "100%", marginTop: 10 }}>
+              <View style={styles.pillarsContainer}>
+                <View style={styles.pillarItem}>
+                  <View style={[styles.pillarIconWrap, { backgroundColor: "#E0F2FE" }]}>
+                    <Icon name="shield-check" size={20} color="#0284C7" />
                   </View>
-
-                  <View style={styles.pillarItem}>
-                    <View style={[styles.pillarIconWrap, { backgroundColor: "#DCFCE7" }]}>
-                      <Icon name="cash-multiple" size={20} color="#059669" />
-                    </View>
-                    <Text style={styles.pillarMainText}>Fair Savings</Text>
-                    <Text style={styles.pillarSubText}>Split Fuel Easily</Text>
-                  </View>
-
-                  <View style={styles.pillarItem}>
-                    <View style={[styles.pillarIconWrap, { backgroundColor: "#FDF2F8" }]}>
-                      <Icon name="shield-alert" size={20} color="#DB2777" />
-                    </View>
-                    <Text style={styles.pillarMainText}>Safety First</Text>
-                    <Text style={styles.pillarSubText}>24/7 SOS & OTP</Text>
-                  </View>
+                  <Text style={styles.pillarMainText}>100% Verified</Text>
+                  <Text style={styles.pillarSubText}>ID & DL Checked</Text>
                 </View>
 
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  style={styles.getStartedBtn}
-                  onPress={() => setShowLogin(true)}
-                >
-                  <Text style={styles.getStartedBtnText}>ప్రయాణం మొదలుపెట్టండి ➔</Text>
-                  <Text style={styles.getStartedSubText}>Get Started with Mobile OTP</Text>
-                </TouchableOpacity>
-
-                <View style={styles.heroFooterLove}>
-                  <Text style={styles.heroFooterLoveText}>
-                    Made with ❤️ in Bharat for Daily Commuters
-                  </Text>
+                <View style={styles.pillarItem}>
+                  <View style={[styles.pillarIconWrap, { backgroundColor: "#DCFCE7" }]}>
+                    <Icon name="cash-multiple" size={20} color="#059669" />
+                  </View>
+                  <Text style={styles.pillarMainText}>Fair Savings</Text>
+                  <Text style={styles.pillarSubText}>Split Fuel Easily</Text>
                 </View>
-              </Animated.View>
-            )}
+
+                <View style={styles.pillarItem}>
+                  <View style={[styles.pillarIconWrap, { backgroundColor: "#FDF2F8" }]}>
+                    <Icon name="shield-alert" size={20} color="#DB2777" />
+                  </View>
+                  <Text style={styles.pillarMainText}>Safety First</Text>
+                  <Text style={styles.pillarSubText}>24/7 SOS & OTP</Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                activeOpacity={0.9}
+                style={styles.getStartedBtn}
+                onPress={() => setShowLogin(true)}
+              >
+                <Text style={styles.getStartedBtnText}>ప్రయాణం మొదలుపెట్టండి ➔</Text>
+                <Text style={styles.getStartedSubText}>Get Started with Mobile OTP</Text>
+              </TouchableOpacity>
+
+              <View style={styles.heroFooterLove}>
+                <Text style={styles.heroFooterLoveText}>
+                  Made with ❤️ in Bharat for Daily Commuters
+                </Text>
+              </View>
+            </View>
           </View>
         ) : (
           <View style={styles.authCard}>
