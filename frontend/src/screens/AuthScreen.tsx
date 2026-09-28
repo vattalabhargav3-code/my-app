@@ -35,13 +35,13 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
 
   useEffect(() => {
     Animated.parallel([
-      Animated.spring(logoScale, { toValue: 1, friction: 5, tension: 70, useNativeDriver: true }),
-      Animated.timing(logoOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+      Animated.timing(logoScale, { toValue: 1, duration: 600, useNativeDriver: false }),
+      Animated.timing(logoOpacity, { toValue: 1, duration: 600, useNativeDriver: false }),
     ]).start(() => {
       setTimeout(() => {
         setAnimStage("ready");
-        Animated.timing(buttonFade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
-      }, 1500);
+        Animated.timing(buttonFade, { toValue: 1, duration: 400, useNativeDriver: false }).start();
+      }, 1200);
     });
   }, []);
 
@@ -55,7 +55,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
     setTimeout(() => {
       setLoading(false);
       setStep("otp");
-    }, 400);
+    }, 300);
   };
 
   const handleVerifyOtp = () => {
@@ -75,7 +75,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
         role: "passenger",
         id_verified: true,
       });
-    }, 500);
+    }, 400);
   };
 
   return (
