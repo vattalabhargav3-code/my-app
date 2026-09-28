@@ -4,7 +4,7 @@ class WebStorage extends StorageBase {
   async getItem<Fallback extends StorageItemValue>(
     key: StorageItemKey,
     fallback: Fallback,
-  ): Promise<Fallback | string | null> {
+  ): Promise<any> {
     if (typeof window === "undefined" || !window.localStorage) {
       return fallback;
     }
@@ -14,7 +14,6 @@ class WebStorage extends StorageBase {
     try {
       return JSON.parse(raw);
     } catch {
-      // JWT token లేదా plain string వస్తే క్రాష్ అవ్వకుండా నేరుగా దాన్ని రిటర్న్ చేస్తుంది
       return raw;
     }
   }
@@ -52,7 +51,7 @@ class WebStorage extends StorageBase {
   async secureGet<Fallback extends StorageItemValue>(
     key: StorageItemKey,
     fallback: Fallback,
-  ): Promise<Fallback | string | null> {
+  ): Promise<any> {
     return this.getItem(key, fallback);
   }
 
