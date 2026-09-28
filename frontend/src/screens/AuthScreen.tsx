@@ -13,7 +13,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { User } from "@/src/api";
-import { ErrorBanner, Icon } from "@/src/components/ui";
+import { ErrorBanner } from "@/src/components/ui";
 
 export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, user: User) => void }) {
   const insets = useSafeAreaInsets();
@@ -89,14 +89,12 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
 
             <View style={styles.logoHeroContainer}>
               <View style={styles.mapEmblemCard}>
-                <View style={styles.mapPinGlow}>
-                  <Icon name="map-marker-radius" size={28} color="#0284C7" />
-                </View>
+                <Text style={{ fontSize: 16 }}>📍</Text>
                 <Text style={styles.mapLocationTag}>HYDERABAD • TELANGANA</Text>
               </View>
 
               <View style={styles.logoInnerPulse}>
-                <Icon name="steering" size={44} color="#0284C7" />
+                <Text style={{ fontSize: 28 }}>🚗</Text>
                 <View style={styles.activePulseOrb} />
               </View>
 
@@ -114,7 +112,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
               <View style={styles.pillarsContainer}>
                 <View style={styles.pillarItem}>
                   <View style={[styles.pillarIconWrap, { backgroundColor: "#E0F2FE" }]}>
-                    <Icon name="shield-check" size={20} color="#0284C7" />
+                    <Text style={{ fontSize: 16 }}>🛡️</Text>
                   </View>
                   <Text style={styles.pillarMainText}>100% Verified</Text>
                   <Text style={styles.pillarSubText}>ID & DL Checked</Text>
@@ -122,7 +120,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
 
                 <View style={styles.pillarItem}>
                   <View style={[styles.pillarIconWrap, { backgroundColor: "#DCFCE7" }]}>
-                    <Icon name="cash-multiple" size={20} color="#059669" />
+                    <Text style={{ fontSize: 16 }}>💸</Text>
                   </View>
                   <Text style={styles.pillarMainText}>Fair Savings</Text>
                   <Text style={styles.pillarSubText}>Split Fuel Easily</Text>
@@ -130,7 +128,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
 
                 <View style={styles.pillarItem}>
                   <View style={[styles.pillarIconWrap, { backgroundColor: "#FDF2F8" }]}>
-                    <Icon name="shield-alert" size={20} color="#DB2777" />
+                    <Text style={{ fontSize: 16 }}>🚨</Text>
                   </View>
                   <Text style={styles.pillarMainText}>Safety First</Text>
                   <Text style={styles.pillarSubText}>24/7 SOS & OTP</Text>
@@ -162,7 +160,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
               }}
               style={styles.backButton}
             >
-              <Icon name="arrow-left" size={18} color="#475569" />
+              <Text style={{ fontSize: 14 }}>←</Text>
               <Text style={styles.backButtonText}>Back</Text>
             </TouchableOpacity>
 
@@ -565,7 +563,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     paddingVertical: 8,
   },
-  resendBtnText: {
+  resendBtnTest: {
     fontSize: 12,
     fontWeight: "800",
     color: "#0284C7",
