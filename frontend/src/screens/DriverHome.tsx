@@ -258,7 +258,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* 1. TOP HEADER */}
         <View style={styles.topHeader}>
           <View>
             <Text style={styles.brandTitle}>
@@ -283,7 +282,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           </View>
         </View>
 
-        {/* 2. REWARD PROGRESS CARD */}
         <View style={styles.rewardCardWhite}>
           <View style={styles.rewardHeader}>
             <View style={styles.rewardBadge}>
@@ -310,7 +308,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           </View>
         </View>
 
-        {/* 3. PUBLISH RIDE FORM */}
         <View style={styles.formWhiteCard}>
           <Text style={styles.formCardTitle}>Publish a Shared Route</Text>
           <Text style={styles.formCardSubtitle}>Choose your schedule and invite verified co-riders.</Text>
@@ -322,7 +319,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             placeholder="e.g. Campus • JNTU or Corporate • Hitec City"
           />
 
-          {/* DRIVER DOCUMENTS SUMMARY / EDIT TOGGLE */}
           {hasSavedDocs && !showDocFields ? (
             <View style={styles.docsSummaryCard}>
               <View style={styles.docsSummaryLeft}>
@@ -502,7 +498,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           />
         </View>
 
-        {/* 4. PUBLISHED RIDES */}
         <View style={styles.publishedHeaderWrap}>
           <Text style={styles.publishedHeading}>Your Active Hosted Rides</Text>
           <Text style={styles.hostedCountBadge}>{posted.length} active</Text>
@@ -543,3 +538,10 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             <Icon name="road-variant" color="#94A3B8" size={36} />
             <Text style={styles.emptyTitle}>No scheduled rides yet</Text>
             <Text style={styles.emptySubtitle}>
+              Publish a route above to start saving on daily travel and fuel costs!
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+
+      <View style={[styles.bottomNavContainer, { paddin
