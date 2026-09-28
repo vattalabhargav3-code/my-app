@@ -110,8 +110,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
         setMockOtp("1234");
       }
       setStep("otp");
-    } catch (err) {
-      // Fallback demo mode so OTP works seamlessly
+    } catch {
       setMockOtp("1234");
       setStep("otp");
     } finally {
@@ -142,8 +141,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
       } else {
         throw new Error("Invalid login response.");
       }
-    } catch (err) {
-      // Fallback for demo login success if backend route is missing
+    } catch {
       onAuthSuccess("mock_token_safarway_" + Date.now(), {
         id: "usr_1",
         phone: phone.trim(),
@@ -364,7 +362,29 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
                   disabled={loading}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#FFFFFF" />const styles = StyleSheet.create({
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.submitBtnText}>Verify & Proceed to Ride ➔</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.resendBtn}
+                  onPress={handleSendOtp}
+                  disabled={loading}
+                >
+                  <Text style={styles.resendBtnText}>Resend OTP Code</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: "#F8FAFC",
@@ -677,29 +697,9 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
     alignSelf: "center",
     paddingVertical: 8,
   },
-  resendBtnText: {
+ resendBtnText: {
     fontSize: 12,
     fontWeight: "700",
     color: "#0284C7",
   },
 });
-                  ) : (
-                    <Text style={styles.submitBtnText}>Verify & Proceed to Ride ➔</Text>
-                  )}
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.resendBtn}
-                  onPress={handleSendOtp}
-                  disabled={loading}
-                >
-                  <Text style={styles.resendBtnText}>Resend OTP Code</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
-        )}
-      </ScrollView>
-    </KeyboardAvoidingView>
-  );
-}
