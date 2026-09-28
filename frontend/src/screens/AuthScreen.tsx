@@ -1,219 +1,662 @@
-import { useState, useEffect } from "react";
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { api, errorMessage, SESSION_KEY, User } from "@/src/api";
-import { BrandMark, Button, ErrorBanner, Field, Icon } from "@/src/components/ui";
-import { shared } from "@/src/styles";
-import { colors } from "@/src/theme";
-import { storage } from "@/src/utils/storage";
+import { api, errorMessage, User } from "@/src/api";
+import { ErrorBanner, Icon } from "@/src/components/ui";
 
-// Firebase Imports
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult } from "firebase/auth";
+const REAL_VEHICLES = [
+  {
+    name: "Car Pool",
+    sub: "Share Daily Fuel",
+    color: "#0284C7",
+    uri: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=400&q=80",
+  },
+  {
+    name: "Bike Share",
+    sub: "Beat City Traffic",
+    color: "#059669",
+    uri: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=400&q=80",
+  },
+  {
+    name: "Smart Cab",
+    sub: "Comfort & Fixed Fare",
+    color: "#D97706",
+    uri: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=400&q=80",
+  },
+];
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDEOTgln5Gs2lgZqLYTQwQS_s5geHxxMdU",
-  authDomain: "safer-way-9b359.firebaseapp.com",
-  projectId: "safer-way-9b359",
-  storageBucket: "safer-way-9b359.firebasestorage.app",
-  messagingSenderId: "585513390587",
-  appId: "1:585513390587:web:96d3abb813095142e5bb5e"
-};
-
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-
-export function AuthScreen({ onLogin }: { onLogin: (token: string, user: User) => void }) {
+export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, user: User) => void }) {
   const insets = useSafeAreaInsets();
+
+  const [vehicleIdx, setVehicleIdx] = useState(0);
+  const [animStage, setAnimStage] = useState<"vehicles" | "logo" | "ready">("vehicles");
+  const [showLogin, setShowLogin] = useState(false);
+
+  const vehicleOpacity = useRef(new Animated.Value(0)).current;
+  const vehicleScale = useRef(new Animated.Value(0.75)).current;
+  const logoScale = useRef(new Animated.Value(0.6)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const buttonFade = useRef(new Animated.Value(0)).current;
+
+  const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [role, setRole] = useState<"passenger" | "driver">("passenger");
   const [otp, setOtp] = useState("");
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const [otpSent, setOtpSent] = useState(false);
+  const [mockOtp, setMockOtp] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    // Web ప్లాట్‌ఫారమ్‌లో invisible reCAPTCHA క్రియేట్ చేయడం
-    if (Platform.OS === "web" && typeof window !== "undefined") {
-      if (!window.recaptchaVerifier) {
-        window.recaptchaVerifier = new RecaptchaVerifier(auth, "recaptcha-container", {
-          size: "invisible",
-          callback: () => {},
-          "expired-callback": () => {
-            setError("reCAPTCHA expired. Please try again.");
-          }
+    const playVehicle = (index: number) => {
+      if (index >= REAL_VEHICLES.length) {
+        setAnimStage("logo");
+        Animated.parallel([
+          Animated.spring(logoScale, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }),
+          Animated.timing(logoOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+        ]).start(() => {
+          setAnimStage("ready");
+          Animated.timing(buttonFade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
         });
+        return;
       }
-    }
+
+      setVehicleIdx(index);
+      vehicleOpacity.setValue(0);
+      vehicleScale.setValue(0.75);
+
+      Animated.parallel([
+        Animated.timing(vehicleOpacity, { toValue: 1, duration: 240, useNativeDriver: true }),
+        Animated.spring(vehicleScale, { toValue: 1, friction: 4, useNativeDriver: true }),
+      ]).start(() => {
+        setTimeout(() => {
+          Animated.timing(vehicleOpacity, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
+            playVehicle(index + 1);
+          });
+        }, 350);
+      });
+    };
+
+    playVehicle(0);
   }, []);
 
-  const sendOtp = async () => {
-    setError("");
-    const cleaned = phone.replace(/\D/g, "");
-    if (cleaned.length !== 10) {
-      setError("Enter a valid 10-digit mobile number.");
+  const handleSendOtp = async () => {
+    if (!phone || phone.trim().length < 10) {
+      setError("Dayachesi valid 10-digit mobile number enter cheyandi.");
       return;
     }
     setLoading(true);
+    setError("");
     try {
-      const phoneNumber = `+91${cleaned}`;
-      const appVerifier = window.recaptchaVerifier;
-      const confirmation = await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-      setConfirmationResult(confirmation);
-      setOtpSent(true);
-    } catch (requestError: any) {
-      console.error(requestError);
-      setError(requestError?.message || "Failed to send SMS OTP. Please try again.");
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.render().then((widgetId: any) => {
-          (window as any).grecaptcha?.reset(widgetId);
-        });
+      const res = await api<{ message: string; otp?: string }>("/auth/otp", {
+        method: "POST",
+        body: JSON.stringify({ phone: phone.trim() }),
+      });
+      if (res?.otp) {
+        setMockOtp(res.otp);
       }
+      setStep("otp");
+    } catch (err) {
+      setError(errorMessage(err, "OTP pampadam lo samasya vachindi."));
     } finally {
       setLoading(false);
     }
   };
 
-  const verifyOtp = async () => {
-    setError("");
-    if (!otp || otp.trim().length !== 6) {
-      setError("Enter the 6-digit OTP received via SMS.");
+  const handleVerifyOtp = async () => {
+    if (!otp || otp.trim().length < 4) {
+      setError("Please 4-digit OTP enter cheyandi.");
       return;
     }
     setLoading(true);
+    setError("");
     try {
-      if (!confirmationResult) {
-        throw new Error("No active OTP session found. Please resend OTP.");
-      }
-      // Firebase ద్వారా యూజర్ OTP వెరిఫై చేయడం
-      const userCredential = await confirmationResult.confirm(otp.trim());
-      const firebaseIdToken = await userCredential.user.getIdToken();
-      await storage.secureSet(SESSION_KEY, firebaseIdToken);
-      localStorage.setItem(SESSION_KEY, firebaseIdToken);
-      onLogin(firebaseIdToken, {
-        id: userCredential.user.uid,
-        phone: userCredential.user.phoneNumber || phone,
-        name: userCredential.user.displayName || "User",
+      const res = await api<{ token: string; user: User }>("/auth/verify", {
+        method: "POST",
+        body: JSON.stringify({
+          phone: phone.trim(),
+          otp: otp.trim(),
+          full_name: fullName.trim() || undefined,
+          role,
+        }),
       });
-    } catch (verifyError: any) {
-      console.error(verifyError);
-      setError("Invalid or expired OTP. Please check and try again.");
+
+      if (res?.token && res?.user) {
+        onAuthSuccess(res.token, res.user);
+      } else {
+        throw new Error("Invalid login response.");
+      }
+    } catch (err) {
+      setError(errorMessage(err, "OTP verification fail ayindi."));
     } finally {
       setLoading(false);
     }
   };
+
+  const currentVehicle = REAL_VEHICLES[vehicleIdx] || REAL_VEHICLES[0];
 
   return (
     <KeyboardAvoidingView
-      style={[shared.screen, { paddingTop: insets.top + 28, paddingBottom: insets.bottom + 24 }]}
+      style={styles.container}
       behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <View style={styles.hero}>
-          <BrandMark />
-          <Text style={shared.eyebrow}>MOVE WITH CONFIDENCE</Text>
-          <Text style={styles.title}>
-            Your next ride,<Text style={shared.brandText}> made safer.</Text>
-          </Text>
-          <Text style={styles.subtitle}>Verified people. Clear prices. One calm journey from pickup to arrival.</Text>
-        </View>
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: insets.top + 20,
+          paddingBottom: insets.bottom + 30,
+          minHeight: "100%",
+          justifyContent: "center",
+        }}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
+        {!showLogin ? (
+          <View style={styles.heroIntroWrap}>
+            <View style={styles.badgeTopWrap}>
+              <Text style={styles.badgeTopEmoji}>🇮🇳</Text>
+              <Text style={styles.badgeTopText}>BHARAT'S TRUSTED COMMUTE COMMUNITY</Text>
+            </View>
 
-        <View style={styles.card}>
-          <View style={styles.cardHeader}>
-            <View>
-              <Text style={shared.sectionTitle}>{otpSent ? "Enter your code" : "Sign in with mobile"}</Text>
-              <Text style={shared.mutedText}>
-                {otpSent ? "We sent a 6-digit SMS code to your number." : "India numbers only for now."}
+            {animStage === "vehicles" ? (
+              <View style={styles.vehicleAnimBox}>
+                <Animated.View
+                  style={[
+                    styles.imageCardWrapper,
+                    {
+                      borderColor: currentVehicle.color,
+                      opacity: vehicleOpacity,
+                      transform: [{ scale: vehicleScale }],
+                    },
+                  ]}
+                >
+                  <Image
+                    source={{ uri: currentVehicle.uri }}
+                    style={styles.vehicleRealImage}
+                    resizeMode="cover"
+                  />
+                  <View style={[styles.imageOverlayBadge, { backgroundColor: currentVehicle.color }]}>
+                    <Text style={styles.imageBadgeText}>{currentVehicle.name}</Text>
+                  </View>
+                </Animated.View>
+                <Animated.Text style={[styles.vehicleSubText, { opacity: vehicleOpacity }]}>
+                  {currentVehicle.sub}...
+                </Animated.Text>
+              </View>
+            ) : (
+              <Animated.View
+                style={[
+                  styles.logoHeroContainer,
+                  {
+                    opacity: logoOpacity,
+                    transform: [{ scale: logoScale }],
+                  },
+                ]}
+              >
+                <View style={styles.logoInnerPulse}>
+                  <Icon name="steering" size={44} color="#0284C7" />
+                  <View style={styles.activePulseOrb} />
+                </View>
+
+                <Text style={styles.heroBrandTitle}>
+                  RIDER<Text style={styles.heroBrandAccent}>X</Text>
+                </Text>
+
+                <Text style={styles.teluguMotto}>మన ప్రయాణం • మన తోడు • మన భరోసా</Text>
+                <Text style={styles.heroSubTagline}>
+                  "Together on Every Road • Car, Bike & Cab Sharing for Daily Commuters"
+                </Text>
+              </Animated.View>
+            )}
+
+            {animStage !== "vehicles" && (
+              <Animated.View style={{ width: "100%", opacity: buttonFade }}>
+                <View style={styles.pillarsContainer}>
+                  <View style={styles.pillarItem}>
+                    <View style={[styles.pillarIconWrap, { backgroundColor: "#E0F2FE" }]}>
+                      <Icon name="shield-check" size={18} color="#0284C7" />
+                    </View>
+                    <Text style={styles.pillarMainText}>100% Verified</Text>
+                    <Text style={styles.pillarSubText}>ID & DL Checked</Text>
+                  </View>
+
+                  <View style={styles.pillarItem}>
+                    <View style={[styles.pillarIconWrap, { backgroundColor: "#DCFCE7" }]}>
+                      <Icon name="cash-multiple" size={18} color="#059669" />
+                    </View>
+                    <Text style={styles.pillarMainText}>Fair Savings</Text>
+                    <Text style={styles.pillarSubText}>Split Fuel Easily</Text>
+                  </View>
+
+                  <View style={styles.pillarItem}>
+                    <View style={[styles.pillarIconWrap, { backgroundColor: "#FDF2F8" }]}>
+                      <Icon name="shield-alert" size={18} color="#DB2777" />
+                    </View>
+                    <Text style={styles.pillarMainText}>Safety First</Text>
+                    <Text style={styles.pillarSubText}>24/7 SOS & OTP</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  activeOpacity={0.9}
+                  style={styles.getStartedBtn}
+                  onPress={() => setShowLogin(true)}
+                >
+                  <Text style={styles.getStartedBtnText}>ప్రయాణం మొదలుపెట్టండి ➔</Text>
+                  <Text style={styles.getStartedSubText}>Get Started with Mobile OTP</Text>
+                </TouchableOpacity>
+
+                <View style={styles.heroFooterLove}>
+                  <Text style={styles.heroFooterLoveText}>
+                    Made with ❤️ for Indian Commuters & Daily Travelers
+                  </Text>
+                </View>
+              </Animated.View>
+            )}
+          </View>
+        ) : (
+          <View style={styles.authCard}>
+            <TouchableOpacity
+              onPress={() => {
+                if (step === "otp") setStep("phone");
+                else setShowLogin(false);
+              }}
+              style={styles.backButton}
+            >
+              <Icon name="arrow-left" size={18} color="#475569" />
+              <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+
+            <View style={styles.authHeader}>
+              <Text style={styles.authTitle}>
+                {step === "phone" ? "Welcome to RiderX" : "Verify Your Mobile"}
+              </Text>
+              <Text style={styles.authSubtitle}>
+                {step === "phone"
+                  ? "Enter your mobile number to sign in or create an account."
+                  : `Enter the 4-digit code sent to +91 ${phone}`}
               </Text>
             </View>
-            <Icon name={otpSent ? "shield-check-outline" : "cellphone-lock"} color={colors.brand} size={26} />
-          </View>
 
-          {!otpSent ? (
-            <>
-              <View style={styles.phoneRow}>
-                <View style={styles.countryCode}>
-                  <Text style={styles.countryText}>+91</Text>
+            {step === "phone" ? (
+              <View style={styles.formWrap}>
+                <Text style={styles.inputLabel}>Select Your Role</Text>
+                <View style={styles.roleToggleRow}>
+                  <TouchableOpacity
+                    style={[styles.roleBtn, role === "passenger" && styles.roleBtnActive]}
+                    onPress={() => setRole("passenger")}
+                  >
+                    <Icon name="car" size={16} color={role === "passenger" ? "#0284C7" : "#64748B"} />
+                    <Text style={[styles.roleBtnText, role === "passenger" && styles.roleBtnTextActive]}>
+                      Passenger (రైడర్)
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.roleBtn, role === "driver" && styles.roleBtnActive]}
+                    onPress={() => setRole("driver")}
+                  >
+                    <Icon name="steering" size={16} color={role === "driver" ? "#0284C7" : "#64748B"} />
+                    <Text style={[styles.roleBtnText, role === "driver" && styles.roleBtnTextActive]}>
+                      Captain (రైడ్ హోస్ట్)
+                    </Text>
+                  </TouchableOpacity>
                 </View>
+
+                <Text style={[styles.inputLabel, { marginTop: 12 }]}>Your Full Name (optional)</Text>
                 <TextInput
-                  testID="auth-phone-input"
-                  style={[shared.input, shared.flex]}
-                  value={phone}
-                  onChangeText={setPhone}
-                  placeholder="Mobile number"
-                  placeholderTextColor={colors.muted}
-                  keyboardType="phone-pad"
-                  maxLength={10}
+                  style={styles.textInput}
+                  placeholder="e.g. Bhargav Vattala"
+                  value={fullName}
+                  onChangeText={setFullName}
+                  placeholderTextColor="#94A3B8"
                 />
+
+                <Text style={[styles.inputLabel, { marginTop: 12 }]}>Mobile Number</Text>
+                <View style={styles.phoneInputWrap}>
+                  <Text style={styles.countryCode}>+91</Text>
+                  <TextInput
+                    style={[styles.textInput, { flex: 1, borderWidth: 0 }]}
+                    placeholder="10 digit number"
+                    keyboardType="phone-pad"
+                    maxLength={10}
+                    value={phone}
+                    onChangeText={setPhone}
+                    placeholderTextColor="#94A3B8"
+                  />
+                </View>
+
+                <ErrorBanner message={error} />
+
+                <TouchableOpacity
+                  style={styles.submitBtn}
+                  onPress={handleSendOtp}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.submitBtnText}>Get OTP Code ➔</Text>
+                  )}
+                </TouchableOpacity>
               </View>
-              <Button label="Send secure OTP" onPress={sendOtp} loading={loading} testID="auth-send-otp" />
-            </>
-          ) : (
-            <>
-              <Field
-                label="One-time password"
-                value={otp}
-                onChangeText={setOtp}
-                placeholder="6-digit SMS code"
-                keyboardType="number-pad"
-                testID="auth-otp-input"
-              />
-              <Button label="Verify & enter" onPress={verifyOtp} loading={loading} testID="auth-verify-otp" />
-              <Pressable
-                onPress={() => {
-                  setOtpSent(false);
-                  setOtp("");
-                  setError("");
-                }}
-                style={styles.textButton}
-              >
-                <Text style={styles.textButtonLabel}>Use a different number</Text>
-              </Pressable>
-            </>
-          )}
-          <ErrorBanner message={error} />
-        </View>
+            ) : (
+              <View style={styles.formWrap}>
+                <Text style={styles.inputLabel}>4-Digit Verification Code</Text>
+                <TextInput
+                  style={[styles.textInput, styles.otpInput]}
+                  placeholder="• • • •"
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  value={otp}
+                  onChangeText={setOtp}
+                  placeholderTextColor="#94A3B8"
+                />
 
-        {/* reCAPTCHA కోసం హిడెన్ కంటైనర్ */}
-        <div id="recaptcha-container"></div>
+                {mockOtp ? (
+                  <View style={styles.mockOtpAlert}>
+                    <Text style={styles.mockOtpAlertText}>Demo Auto OTP: {mockOtp}</Text>
+                  </View>
+                ) : null}
 
-        <View style={styles.trustRow}>
-          <Icon name="shield-check" color={colors.brand} size={18} />
-          <Text style={styles.trustText}>Your account is secured with Google Phone Verification.</Text>
-        </View>
+                <ErrorBanner message={error} />
+
+                <TouchableOpacity
+                  style={styles.submitBtn}
+                  onPress={handleVerifyOtp}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.submitBtnText}>Verify & Proceed to Ride ➔</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.resendBtn}
+                  onPress={handleSendOtp}
+                  disabled={loading}
+                >
+                  <Text style={styles.resendBtnText}>Resend OTP Code</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { flexGrow: 1, justifyContent: "center", padding: 24 },
-  hero: { marginBottom: 28 },
-  title: { color: colors.onSurface, fontSize: 34, lineHeight: 39, fontWeight: "800", letterSpacing: -1.1 },
-  subtitle: { color: colors.onSurfaceSecondary, fontSize: 16, lineHeight: 24, marginTop: 14, maxWidth: 340 },
-  card: {
-    backgroundColor: colors.surfaceSecondary,
-    borderColor: colors.border,
-    borderWidth: 1,
-    borderRadius: 22,
-    padding: 20,
-    gap: 16,
+  container: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
   },
-  cardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  phoneRow: { flexDirection: "row", gap: 8 },
-  countryCode: {
-    minHeight: 48,
-    paddingHorizontal: 14,
-    borderRadius: 12,
+  heroIntroWrap: {
+    paddingHorizontal: 22,
+    alignItems: "center",
     justifyContent: "center",
-    backgroundColor: colors.surfaceTertiary,
-    borderColor: colors.border,
-    borderWidth: 1,
   },
-  countryText: { color: colors.onSurface, fontWeight: "700" },
-  textButton: { minHeight: 44, alignItems: "center", justifyContent: "center" },
-  textButtonLabel: { color: colors.brand, fontSize: 13, fontWeight: "700" },
-  trustRow: { flexDirection: "row", gap: 8, alignItems: "center", justifyContent: "center", marginTop: 24 },
-  trustText: { color: colors.muted, fontSize: 12 },
-});
+  badgeTopWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#FFFBEB",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    marginBottom: 24,
+  },
+  badgeTopEmoji: {
+    fontSize: 14,
+  },
+  badgeTopText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#D97706",
+    letterSpacing: 0.5,
+  },
+  vehicleAnimBox: {
+    height: 180,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+  },
+  imageCardWrapper: {
+    width: 140,
+    height: 110,
+    borderRadius: 18,
+    overflow: "hidden",
+    borderWidth: 2,
+    backgroundColor: "#FFFFFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    elevation: 4,
+    position: "relative",
+  },
+  vehicleRealImage: {
+    width: "100%",
+    height: "100%",
+  },
+  imageOverlayBadge: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingVertical: 3,
+    alignItems: "center",
+  },
+  imageBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  vehicleSubText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#475569",
+  },
+  logoHeroContainer: {
+    alignItems: "center",
+    marginBottom: 10,
+  },
+  logoInnerPulse: {
+    position: "relative",
+    width: 86,
+    height: 86,
+    borderRadius: 43,
+    backgroundColor: "#E0F2FE",
+    borderWidth: 2,
+    borderColor: "#BAE6FD",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#0284C7",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 4,
+    marginBottom: 12,
+  },
+  activePulseOrb: {
+    position: "absolute",
+    top: 4,
+    right: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#10B981",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  heroBrandTitle: {
+    fontSize: 34,
+    fontWeight: "900",
+    color: "#0F172A",
+    letterSpacing: 1,
+  },
+  heroBrandAccent: {
+    color: "#0284C7",
+  },
+  teluguMotto: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0369A1",
+    marginTop: 6,
+    textAlign: "center",
+    letterSpacing: 0.5,
+  },
+  heroSubTagline: {
+    fontSize: 12,
+    color: "#64748B",
+    textAlign: "center",
+    lineHeight: 18,
+    marginTop: 6,
+    paddingHorizontal: 12,
+  },
+  pillarsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    paddingVertical: 14,
+    paddingHorizontal: 10,
+    marginTop: 18,
+    marginBottom: 20,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  pillarItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  pillarIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 6,
+  },
+  pillarMainText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  pillarSubText: {
+    fontSize: 9,
+    color: "#64748B",
+    marginTop: 1,
+  },
+  getStartedBtn: {
+    width: "100%",
+    backgroundColor: "#0284C7",
+    paddingVertical: 14,
+    borderRadius: 16,
+    alignItems: "center",
+    shadowColor: "#0284C7",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  getStartedBtnText: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#FFFFFF",
+    letterSpacing: 0.5,
+  },
+  getStartedSubText: {
+    fontSize: 11,
+    color: "#BAE6FD",
+    marginTop: 3,
+    fontWeight: "600",
+  },
+  heroFooterLove: {
+    marginTop: 18,
+  },
+  heroFooterLoveText: {
+    fontSize: 11,
+    color: "#94A3B8",
+    textAlign: "center",
+  },
+  authCard: {
+    marginHorizontal: 20,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 20,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 14,
+    alignSelf: "flex-start",
+  },
+  backButtonText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#475569",
+  },
+  authHeader: {
+    marginBottom: 16,
+  },
+  authTitle: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  authSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 3,
+    lineHeight: 17,
+  },
+  formWrap: {
+    gap: 8,
+  },
+  inputLabel: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#334155",
+  },
+  roleToggleRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  roleBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent
