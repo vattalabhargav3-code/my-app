@@ -62,6 +62,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
   const [sosModalVisible, setSosModalVisible] = useState(false);
   const [selectedSosRide, setSelectedSosRide] = useState<Ride | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
+  const [showDocFields, setShowDocFields] = useState(false);
   const [activeTab, setActiveTab] = useState<"dashboard" | "routes" | "earnings" | "profile">("dashboard");
 
   const watchIdRef = useRef<any>(null);
@@ -94,6 +95,8 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           driver_dl: savedDl || prev.driver_dl,
           driver_rc: savedRc || prev.driver_rc,
         }));
+      } else {
+        setShowDocFields(true);
       }
     }
   }, []);
@@ -193,6 +196,12 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
   };
 
   const postRide = async () => {
+    if (!form.driver_dl || !form.driver_rc) {
+      setShowDocFields(true);
+      setError("Please provide your Driving Licence & RC details.");
+      return;
+    }
+
     setLoading(true);
     setError("");
     try {
@@ -222,6 +231,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         if (form.driver_rc) localStorage.setItem("safarway_driver_rc", form.driver_rc);
       }
 
+      setShowDocFields(false);
       setPosted((current) => [ride, ...current]);
       setForm((prev: any) => ({
         ...EMPTY_FORM,
@@ -239,6 +249,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
   const weeklyTarget = 10;
   const completedCount = Math.min(posted.length, weeklyTarget);
   const progressPercent = (completedCount / weeklyTarget) * 100;
+  const hasSavedDocs = Boolean(form.driver_dl && form.driver_rc);
 
   return (
     <KeyboardAvoidingView style={styles.whiteScreen} behavior={Platform.OS === "ios" ? "padding" : "height"}>
@@ -247,7 +258,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* 1. CLEAN WHITE HEADER */}
+        {/* 1. TOP HEADER */}
         <View style={styles.topHeader}>
           <View>
             <Text style={styles.brandTitle}>
@@ -272,7 +283,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           </View>
         </View>
 
-        {/* 2. REWARD CARD (Light Theme with Amber Accent) */}
+        {/* 2. REWARD PROGRESS CARD */}
         <View style={styles.rewardCardWhite}>
           <View style={styles.rewardHeader}>
             <View style={styles.rewardBadge}>
@@ -299,7 +310,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           </View>
         </View>
 
-        {/* 3. PUBLISH RIDE FORM (Clean White Card) */}
+        {/* 3. PUBLISH RIDE FORM */}
         <View style={styles.formWhiteCard}>
           <Text style={styles.formCardTitle}>Publish a Shared Route</Text>
           <Text style={styles.formCardSubtitle}>Choose your schedule and invite verified co-riders.</Text>
@@ -311,24 +322,59 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             placeholder="e.g. Campus • JNTU or Corporate • Hitec City"
           />
 
-          <View style={styles.gridRow}>
-            <View style={{ flex: 1 }}>
-              <Field
-                label="Driving Licence"
-                value={form.driver_dl}
-                onChangeText={update("driver_dl")}
-                placeholder="DL number"
-              />
+          {/* DRIVER DOCUMENTS SUMMARY / EDIT TOGGLE */}
+          {hasSavedDocs && !showDocFields ? (
+            <View style={styles.docsSummaryCard}>
+              <View style={styles.docsSummaryLeft}>
+                <View style={styles.docCheckIconWrap}>
+                  <Icon name="shield-check" size={16} color="#059669" />
+                </View>
+                <View>
+                  <Text style={styles.docsSummaryTitle}>Documents Verified & Saved</Text>
+                  <Text style={styles.docsSummarySubtitle}>
+                    DL: {form.driver_dl ? `${form.driver_dl.slice(0, 4)}••••` : ""} | RC:{" "}
+                    {form.driver_rc ? `${form.driver_rc.slice(0, 4)}••••` : ""}
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => setShowDocFields(true)}
+                style={styles.editDocBtn}
+              >
+                <Icon name="pencil-outline" size={13} color="#0284C7" />
+                <Text style={styles.editDocBtnText}>Edit</Text>
+              </TouchableOpacity>
             </View>
-            <View style={{ flex: 1 }}>
-              <Field
-                label="Vehicle RC"
-                value={form.driver_rc}
-                onChangeText={update("driver_rc")}
-                placeholder="RC number"
-              />
+          ) : (
+            <View style={styles.docInputWrap}>
+              <View style={styles.gridRow}>
+                <View style={{ flex: 1 }}>
+                  <Field
+                    label="Driving Licence"
+                    value={form.driver_dl}
+                    onChangeText={update("driver_dl")}
+                    placeholder="DL number"
+                  />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Field
+                    label="Vehicle RC"
+                    value={form.driver_rc}
+                    onChangeText={update("driver_rc")}
+                    placeholder="RC number"
+                  />
+                </View>
+              </View>
+              {hasSavedDocs && (
+                <TouchableOpacity
+                  onPress={() => setShowDocFields(false)}
+                  style={styles.hideDocBtn}
+                >
+                  <Text style={styles.hideDocBtnText}>✓ Keep Saved Documents</Text>
+                </TouchableOpacity>
+              )}
             </View>
-          </View>
+          )}
 
           <Field
             label="Departure Date & Time"
@@ -344,7 +390,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             placeholder="e.g. Hyderabad LB Nagar"
           />
 
-          {/* Quick Location Pills */}
           <View style={styles.locationPillsWrap}>
             <TouchableOpacity
               onPress={handleUseCurrentLocation}
@@ -392,7 +437,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             testIDPrefix="driver-vehicle"
           />
 
-          {/* Ride Vibe Selectors */}
           <Text style={[styles.fieldHeaderLabel, { marginTop: 14 }]}>Ride Atmosphere (Vibe)</Text>
           <View style={styles.vibeGrid}>
             {[
@@ -433,7 +477,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             </View>
           </View>
 
-          {/* Women Only Safety Option */}
           <View style={styles.womenSafetyBox}>
             <View style={{ flex: 1, paddingRight: 8 }}>
               <View style={styles.womenBoxHeader}>
@@ -459,7 +502,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           />
         </View>
 
-        {/* 4. DRIVER PUBLISHED RIDES */}
+        {/* 4. PUBLISHED RIDES */}
         <View style={styles.publishedHeaderWrap}>
           <Text style={styles.publishedHeading}>Your Active Hosted Rides</Text>
           <Text style={styles.hostedCountBadge}>{posted.length} active</Text>
@@ -500,468 +543,3 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             <Icon name="road-variant" color="#94A3B8" size={36} />
             <Text style={styles.emptyTitle}>No scheduled rides yet</Text>
             <Text style={styles.emptySubtitle}>
-              Publish a route above to start saving on daily travel and fuel costs!
-            </Text>
-          </View>
-        )}
-      </ScrollView>
-
-      {/* 5. BOTTOM NAVIGATION BAR (White Super-App Style) */}
-      <View style={[styles.bottomNavContainer, { paddingBottom: insets.bottom > 0 ? insets.bottom : 8 }]}>
-        <TouchableOpacity onPress={() => setActiveTab("dashboard")} style={styles.navTabItem}>
-          <Icon name="view-dashboard" size={22} color={activeTab === "dashboard" ? "#0284C7" : "#94A3B8"} />
-          <Text style={[styles.navTabLabel, activeTab === "dashboard" && styles.navTabLabelActive]}>
-            Dashboard
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => {
-            setActiveTab("routes");
-            Alert.alert("Hosted Routes", `You have ${posted.length} published routes.`);
-          }}
-          style={styles.navTabItem}
-        >
-          <Icon name="map-marker-path" size={22} color={activeTab === "routes" ? "#0284C7" : "#94A3B8"} />
-          <Text style={[styles.navTabLabel, activeTab === "routes" && styles.navTabLabelActive]}>
-            Routes
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => {
-            setActiveTab("earnings");
-            Alert.alert("Fuel Rewards & Earnings", `Target: 10 rides per week. Completed: ${completedCount}/10.`);
-          }}
-          style={styles.navTabItem}
-        >
-          <Icon name="cash-multiple" size={22} color={activeTab === "earnings" ? "#0284C7" : "#94A3B8"} />
-          <Text style={[styles.navTabLabel, activeTab === "earnings" && styles.navTabLabelActive]}>
-            Rewards
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          onPress={() => {
-            setActiveTab("profile");
-            setMenuVisible(true);
-          }}
-          style={styles.navTabItem}
-        >
-          <Icon name="account-circle-outline" size={22} color={activeTab === "profile" ? "#0284C7" : "#94A3B8"} />
-          <Text style={[styles.navTabLabel, activeTab === "profile" && styles.navTabLabelActive]}>
-            Profile
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      <LocationPickerModal
-        visible={pickerTarget !== null}
-        onClose={() => setPickerTarget(null)}
-        onSelect={handleLocationPicked}
-        title={pickerTarget === "start" ? "Select Starting Point" : "Select Destination"}
-      />
-
-      {selectedSosRide ? (
-        <SafetySosModal
-          visible={sosModalVisible}
-          onClose={() => {
-            setSosModalVisible(false);
-            setSelectedSosRide(null);
-          }}
-          booking={{
-            id: selectedSosRide.id,
-            total: selectedSosRide.price,
-            discount: 0,
-            boarding_otp: "DRIVER",
-            seat: "DRIVER_SEAT",
-            ride: selectedSosRide,
-          }}
-          token={token}
-        />
-      ) : null}
-
-      <UserMenuModal visible={menuVisible} onClose={() => setMenuVisible(false)} token={token} onLogout={onLogout} />
-    </KeyboardAvoidingView>
-  );
-}
-
-const styles = StyleSheet.create({
-  whiteScreen: {
-    flex: 1,
-    backgroundColor: "#F8FAFC",
-  },
-  topHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    backgroundColor: "#FFFFFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E2E8F0",
-  },
-  brandTitle: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: "#0F172A",
-    letterSpacing: 0.5,
-  },
-  brandAccent: {
-    color: "#0284C7",
-  },
-  brandTagline: {
-    fontSize: 11,
-    color: "#64748B",
-    fontWeight: "500",
-    marginTop: -2,
-  },
-  headerRightActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  sosButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#DC2626",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
-    shadowColor: "#DC2626",
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  sosButtonText: {
-    color: "#FFFFFF",
-    fontSize: 11,
-    fontWeight: "900",
-  },
-  steeringBadge: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#E0F2FE",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#BAE6FD",
-  },
-  menuCircleBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#F1F5F9",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  rewardCardWhite: {
-    marginHorizontal: 18,
-    marginTop: 14,
-    marginBottom: 14,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-    shadowColor: "#D97706",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-    gap: 8,
-  },
-  rewardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  rewardBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  rewardBadgeText: {
-    color: "#D97706",
-    fontSize: 11,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-  },
-  rewardAmount: {
-    color: "#059669",
-    fontSize: 13,
-    fontWeight: "900",
-  },
-  rewardDesc: {
-    color: "#475569",
-    fontSize: 12,
-    lineHeight: 17,
-  },
-  progressBarTrack: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#F1F5F9",
-    overflow: "hidden",
-    marginTop: 4,
-  },
-  progressBarFill: {
-    height: "100%",
-    backgroundColor: "#F59E0B",
-    borderRadius: 4,
-  },
-  rewardStatsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 2,
-  },
-  statCompleted: {
-    color: "#64748B",
-    fontSize: 11,
-    fontWeight: "600",
-  },
-  statRemaining: {
-    color: "#0284C7",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  formWhiteCard: {
-    marginHorizontal: 18,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    gap: 10,
-  },
-  formCardTitle: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#0F172A",
-  },
-  formCardSubtitle: {
-    fontSize: 12,
-    color: "#64748B",
-    marginBottom: 4,
-  },
-  gridRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  locationPillsWrap: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: -4,
-    marginBottom: 8,
-  },
-  pillActionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 20,
-  },
-  pillActionText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#0284C7",
-  },
-  fieldHeaderLabel: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#475569",
-    marginBottom: 4,
-  },
-  vibeGrid: {
-    flexDirection: "row",
-    gap: 6,
-    marginBottom: 4,
-  },
-  vibeCard: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    borderRadius: 10,
-  },
-  vibeCardActive: {
-    backgroundColor: "#E0F2FE",
-    borderColor: "#0284C7",
-  },
-  vibeCardText: {
-    color: "#64748B",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  vibeCardTextActive: {
-    color: "#0284C7",
-    fontWeight: "800",
-  },
-  womenSafetyBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "#FDF2F8",
-    borderWidth: 1,
-    borderColor: "#FBCFE8",
-    padding: 12,
-    borderRadius: 12,
-    marginVertical: 4,
-  },
-  womenBoxHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  womenBoxTitle: {
-    color: "#9D174D",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-  womenBoxSubtitle: {
-    color: "#BE185D",
-    fontSize: 11,
-    marginTop: 2,
-  },
-  publishedHeaderWrap: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginHorizontal: 18,
-    marginTop: 22,
-    marginBottom: 8,
-  },
-  publishedHeading: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#1E293B",
-  },
-  hostedCountBadge: {
-    backgroundColor: "#E0F2FE",
-    color: "#0369A1",
-    fontSize: 11,
-    fontWeight: "800",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 12,
-  },
-  driverRideWrap: {
-    marginBottom: 14,
-  },
-  driverButtonActionsRow: {
-    flexDirection: "row",
-    gap: 10,
-    marginHorizontal: 18,
-    marginTop: -4,
-  },
-  driverLiveTrackBtn: {
-    flex: 2,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: "#059669",
-    shadowColor: "#059669",
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  driverLiveTrackBtnStop: {
-    backgroundColor: "#DC2626",
-    shadowColor: "#DC2626",
-  },
-  driverSosBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: "#DC2626",
-    shadowColor: "#DC2626",
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  driverBtnText: {
-    color: "#FFFFFF",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  emptyWhiteCard: {
-    marginHorizontal: 18,
-    marginTop: 8,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    padding: 28,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-  },
-  emptyTitle: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#1E293B",
-    marginTop: 4,
-  },
-  emptySubtitle: {
-    fontSize: 12,
-    color: "#64748B",
-    textAlign: "center",
-  },
-  bottomNavContainer: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 64,
-    backgroundColor: "#FFFFFF",
-    borderTopWidth: 1,
-    borderTopColor: "#E2E8F0",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  navTabItem: {
-    alignItems: "center",
-    justifyContent: "center",
-    flex: 1,
-  },
-  navTabLabel: {
-    fontSize: 10,
-    fontWeight: "700",
-    color: "#94A3B8",
-    marginTop: 2,
-  },
-  navTabLabelActive: {
-    color: "#0284C7",
-    fontWeight: "800",
-  },
-});
