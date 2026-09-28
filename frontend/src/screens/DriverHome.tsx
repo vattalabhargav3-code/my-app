@@ -16,9 +16,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { api, errorMessage, Ride } from "@/src/api";
 import { LocationPickerModal } from "@/src/components/LocationPickerModal";
 import { SafetySosModal } from "@/src/components/SafetySosModal";
+import { ScreenHeader } from "@/src/components/navigation";
 import { RideCard } from "@/src/components/RideCard";
 import { Button, ErrorBanner, Field, Icon, Segmented } from "@/src/components/ui";
 import { UserMenuModal } from "@/src/components/UserMenuModal";
+import { shared } from "@/src/styles";
+import { colors } from "@/src/theme";
 
 const EMPTY_FORM: Record<string, any> = {
   driver_dl: "",
@@ -63,7 +66,6 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
   const [selectedSosRide, setSelectedSosRide] = useState<Ride | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [showDocFields, setShowDocFields] = useState(false);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "routes" | "earnings" | "profile">("dashboard");
 
   const watchIdRef = useRef<any>(null);
 
@@ -252,65 +254,63 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
   const hasSavedDocs = Boolean(form.driver_dl && form.driver_rc);
 
   return (
-    <KeyboardAvoidingView style={styles.whiteScreen} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+    <KeyboardAvoidingView style={shared.screen} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 90 }}
+        contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 110 }}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        <View style={styles.topHeader}>
-          <View>
-            <Text style={styles.brandTitle}>
-              CAPTAIN <Text style={styles.brandAccent}>HUB</Text>
-            </Text>
-            <Text style={styles.brandTagline}>Host & Share Fuel Costs</Text>
-          </View>
+        <ScreenHeader
+          eyebrow="CAPTAIN HUB"
+          title="Host & Earn Fuel Rewards"
+          right={
+            <View style={styles.headerRightWrap}>
+              <TouchableOpacity onPress={triggerDirectSos} style={styles.sosQuickBtn}>
+                <Icon name="shield-alert" size={14} color="#FFFFFF" />
+                <Text style={styles.sosQuickText}>SOS</Text>
+              </TouchableOpacity>
 
-          <View style={styles.headerRightActions}>
-            <TouchableOpacity onPress={triggerDirectSos} style={styles.sosButton}>
-              <Icon name="shield-alert" size={13} color="#FFFFFF" />
-              <Text style={styles.sosButtonText}>SOS</Text>
-            </TouchableOpacity>
+              <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuIconBtn}>
+                <Icon name="menu" size={18} color="#FFFFFF" />
+              </TouchableOpacity>
 
-            <View style={styles.steeringBadge}>
-              <Icon name="steering" size={16} color="#0284C7" />
+              <View style={shared.iconTile}>
+                <Icon name="steering" size={20} color={colors.brand} />
+              </View>
             </View>
+          }
+        />
 
-            <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuCircleBtn}>
-              <Icon name="menu" size={20} color="#1E293B" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.rewardCardWhite}>
-          <View style={styles.rewardHeader}>
-            <View style={styles.rewardBadge}>
-              <Icon name="gas-station" size={16} color="#D97706" />
-              <Text style={styles.rewardBadgeText}>WEEKLY FUEL REWARD</Text>
+        <View style={styles.petrolCard}>
+          <View style={styles.petrolHeader}>
+            <View style={styles.petrolBadge}>
+              <Icon name="gas-station" size={18} color="#FBBF24" />
+              <Text style={styles.petrolBadgeText}>WEEKLY FUEL BONUS</Text>
             </View>
-            <Text style={styles.rewardAmount}>Win ₹500 Petrol</Text>
+            <Text style={styles.rewardText}>Win ₹500 Free Petrol</Text>
           </View>
-          <Text style={styles.rewardDesc}>
-            Ee varam 10 shared rides poorthi cheyandi, direct ₹500 fuel coupon pondandi!
+          <Text style={styles.petrolDesc}>
+            Ee varam 10 rides poorthi cheyandi, ₹500 free petrol coupon pondandi!
           </Text>
 
-          <View style={styles.progressBarTrack}>
-            <View style={[styles.progressBarFill, { width: `${progressPercent}%` }]} />
+          <View style={styles.progressContainer}>
+            <View style={[styles.progressBar, { width: `${progressPercent}%` }]} />
           </View>
-
-          <View style={styles.rewardStatsRow}>
-            <Text style={styles.statCompleted}>{completedCount} of 10 Completed</Text>
-            <Text style={styles.statRemaining}>
+          <View style={styles.progressStats}>
+            <Text style={styles.statText}>{completedCount} of 10 Completed</Text>
+            <Text style={styles.statTextRemaining}>
               {weeklyTarget - completedCount > 0
                 ? `${weeklyTarget - completedCount} more to unlock`
-                : "🎉 ₹500 Coupon Unlocked!"}
+                : "🎉 Unlocked ₹500 Coupon!"}
             </Text>
           </View>
         </View>
 
-        <View style={styles.formWhiteCard}>
-          <Text style={styles.formCardTitle}>Publish a Shared Route</Text>
-          <Text style={styles.formCardSubtitle}>Choose your schedule and invite verified co-riders.</Text>
+        <View style={shared.card}>
+          <View>
+            <Text style={shared.sectionTitle}>Publish a ride</Text>
+            <Text style={shared.mutedText}>Schedule a route from anywhere at your chosen time.</Text>
+          </View>
 
           <Field
             label="College / Company Badge"
@@ -322,9 +322,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           {hasSavedDocs && !showDocFields ? (
             <View style={styles.docsSummaryCard}>
               <View style={styles.docsSummaryLeft}>
-                <View style={styles.docCheckIconWrap}>
-                  <Icon name="shield-check" size={16} color="#059669" />
-                </View>
+                <Icon name="shield-check" size={18} color="#10B981" />
                 <View>
                   <Text style={styles.docsSummaryTitle}>Documents Verified & Saved</Text>
                   <Text style={styles.docsSummarySubtitle}>
@@ -333,39 +331,22 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity
-                onPress={() => setShowDocFields(true)}
-                style={styles.editDocBtn}
-              >
-                <Icon name="pencil-outline" size={13} color="#0284C7" />
+              <TouchableOpacity onPress={() => setShowDocFields(true)} style={styles.editDocBtn}>
                 <Text style={styles.editDocBtnText}>Edit</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <View style={styles.docInputWrap}>
-              <View style={styles.gridRow}>
-                <View style={{ flex: 1 }}>
-                  <Field
-                    label="Driving Licence"
-                    value={form.driver_dl}
-                    onChangeText={update("driver_dl")}
-                    placeholder="DL number"
-                  />
+            <View style={{ gap: 6 }}>
+              <View style={styles.grid}>
+                <View style={shared.flex}>
+                  <Field label="Driving licence" value={form.driver_dl} onChangeText={update("driver_dl")} placeholder="DL number" />
                 </View>
-                <View style={{ flex: 1 }}>
-                  <Field
-                    label="Vehicle RC"
-                    value={form.driver_rc}
-                    onChangeText={update("driver_rc")}
-                    placeholder="RC number"
-                  />
+                <View style={shared.flex}>
+                  <Field label="Vehicle RC" value={form.driver_rc} onChangeText={update("driver_rc")} placeholder="RC number" />
                 </View>
               </View>
               {hasSavedDocs && (
-                <TouchableOpacity
-                  onPress={() => setShowDocFields(false)}
-                  style={styles.hideDocBtn}
-                >
+                <TouchableOpacity onPress={() => setShowDocFields(false)} style={styles.hideDocBtn}>
                   <Text style={styles.hideDocBtnText}>✓ Keep Saved Documents</Text>
                 </TouchableOpacity>
               )}
@@ -373,34 +354,30 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           )}
 
           <Field
-            label="Departure Date & Time"
+            label="Departure date & time"
             value={form.departure_time}
             onChangeText={update("departure_time")}
-            placeholder="e.g. Tomorrow 08:30 AM"
+            placeholder="e.g. Tomorrow 07:30 AM"
           />
 
           <Field
-            label="Starting Point"
+            label="Starting point"
             value={form.start_point}
             onChangeText={update("start_point")}
             placeholder="e.g. Hyderabad LB Nagar"
           />
 
-          <View style={styles.locationPillsWrap}>
-            <TouchableOpacity
-              onPress={handleUseCurrentLocation}
-              disabled={detectingLocation}
-              style={styles.pillActionBtn}
-            >
-              <Icon name="crosshairs-gps" size={13} color="#0284C7" />
-              <Text style={styles.pillActionText}>
-                {detectingLocation ? "Detecting GPS..." : "Current GPS"}
+          <View style={styles.locationHelpers}>
+            <TouchableOpacity onPress={handleUseCurrentLocation} disabled={detectingLocation} style={styles.gpsButton}>
+              <Icon name="crosshairs-gps" size={14} color={colors.brand} />
+              <Text style={styles.gpsButtonText}>
+                {detectingLocation ? "Fetching..." : "Current GPS"}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setPickerTarget("start")} style={styles.pillActionBtn}>
-              <Icon name="map-marker-radius" size={13} color="#059669" />
-              <Text style={[styles.pillActionText, { color: "#059669" }]}>Pick on Map</Text>
+            <TouchableOpacity onPress={() => setPickerTarget("start")} style={styles.mapPickButton}>
+              <Icon name="map-marker-radius" size={14} color="#38BDF8" />
+              <Text style={styles.mapPickButtonText}>Pick on Map</Text>
             </TouchableOpacity>
           </View>
 
@@ -411,137 +388,153 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
             placeholder="e.g. Vijayawada Benz Circle"
           />
 
-          <View style={styles.locationPillsWrap}>
-            <TouchableOpacity onPress={() => setPickerTarget("end")} style={styles.pillActionBtn}>
-              <Icon name="map-marker-check" size={13} color="#D97706" />
-              <Text style={[styles.pillActionText, { color: "#D97706" }]}>Pick Destination on Map</Text>
+          <View style={styles.locationHelpers}>
+            <TouchableOpacity onPress={() => setPickerTarget("end")} style={styles.mapPickButton}>
+              <Icon name="map-marker-radius" size={14} color="#38BDF8" />
+              <Text style={styles.mapPickButtonText}>Pick Destination on Map</Text>
             </TouchableOpacity>
           </View>
 
-          <Field
-            label="En-route Stops (optional)"
-            value={form.stops}
-            onChangeText={update("stops")}
-            placeholder="e.g. Suryapet, Nalgonda bypass"
-          />
+          <Field label="En-route stops (optional)" value={form.stops} onChangeText={update("stops")} placeholder="Suryapet, Nalgonda" />
 
-          <Text style={styles.fieldHeaderLabel}>Vehicle Type</Text>
-          <Segmented
-            options={["bike", "car", "cab"]}
-            value={form.vehicle_type}
-            onChange={update("vehicle_type")}
-            testIDPrefix="driver-vehicle"
-          />
+          <Text style={shared.fieldLabel}>Vehicle type</Text>
+          <Segmented options={["bike", "car", "cab"]} value={form.vehicle_type} onChange={update("vehicle_type")} testIDPrefix="vehicle" />
 
-          <Text style={[styles.fieldHeaderLabel, { marginTop: 14 }]}>Ride Atmosphere (Vibe)</Text>
-          <View style={styles.vibeGrid}>
+          <Text style={[shared.fieldLabel, { marginTop: 10 }]}>Ride Vibe</Text>
+          <View style={styles.vibeSelector}>
             {[
               { id: "music", label: "🎵 Music Lover" },
-              { id: "silent", label: "🎧 Quiet Commute" },
-              { id: "chitchat", label: "☕ Friendly Chat" },
+              { id: "silent", label: "🎧 Silent Work" },
+              { id: "chitchat", label: "☕ Chit-Chat" },
             ].map((v) => (
               <TouchableOpacity
                 key={v.id}
                 onPress={() => update("ride_vibe")(v.id)}
-                style={[styles.vibeCard, form.ride_vibe === v.id && styles.vibeCardActive]}
+                style={[styles.vibeOption, form.ride_vibe === v.id && styles.vibeOptionActive]}
               >
-                <Text style={[styles.vibeCardText, form.ride_vibe === v.id && styles.vibeCardTextActive]}>
+                <Text style={[styles.vibeOptionText, form.ride_vibe === v.id && styles.vibeOptionTextActive]}>
                   {v.label}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <View style={styles.gridRow}>
-            <View style={{ flex: 1 }}>
-              <Field
-                label="Seats Available"
-                value={form.available_seats}
-                onChangeText={update("available_seats")}
-                placeholder="3"
-                keyboardType="number-pad"
-              />
+          <View style={styles.grid}>
+            <View style={shared.flex}>
+              <Field label="Seats available" value={form.available_seats} onChangeText={update("available_seats")} placeholder="3" keyboardType="number-pad" />
             </View>
-            <View style={{ flex: 1 }}>
-              <Field
-                label="Price Per Seat"
-                value={form.seat_price}
-                onChangeText={update("seat_price")}
-                placeholder="₹ amount"
-                keyboardType="number-pad"
-              />
+            <View style={shared.flex}>
+              <Field label="Price per seat" value={form.seat_price} onChangeText={update("seat_price")} placeholder="₹ amount" keyboardType="number-pad" />
             </View>
           </View>
 
-          <View style={styles.womenSafetyBox}>
-            <View style={{ flex: 1, paddingRight: 8 }}>
-              <View style={styles.womenBoxHeader}>
-                <Icon name="face-woman" size={17} color="#DB2777" />
-                <Text style={styles.womenBoxTitle}>Women Only Ride</Text>
+          <View style={styles.toggleRow}>
+            <View style={styles.toggleTextWrap}>
+              <View style={styles.toggleTitleWrap}>
+                <Icon name="face-woman" size={18} color="#EC4899" />
+                <Text style={styles.toggleTitle}>Women Only Ride</Text>
               </View>
-              <Text style={styles.womenBoxSubtitle}>Only verified female passengers can book this ride</Text>
+              <Text style={styles.toggleSubtitle}>Only female passengers will be allowed to book</Text>
             </View>
             <Switch
               value={Boolean(form.women_only)}
               onValueChange={update("women_only")}
-              trackColor={{ false: "#E2E8F0", true: "#F472B6" }}
-              thumbColor={form.women_only ? "#DB2777" : "#FFFFFF"}
+              trackColor={{ false: "#334155", true: "#EC4899" }}
+              thumbColor={form.women_only ? "#FFFFFF" : "#94A3B8"}
             />
           </View>
 
           <ErrorBanner message={error} />
-          <Button
-            label="Publish & Accept Passengers"
-            onPress={postRide}
-            loading={loading}
-            testID="publish-ride-button"
-          />
+          <Button label="Publish & accept bookings" onPress={postRide} loading={loading} testID="publish-ride-button" />
         </View>
 
-        <View style={styles.publishedHeaderWrap}>
-          <Text style={styles.publishedHeading}>Your Active Hosted Rides</Text>
-          <Text style={styles.hostedCountBadge}>{posted.length} active</Text>
-        </View>
-
+        <Text style={[shared.sectionTitle, styles.postedHeading]}>Your published rides</Text>
         {posted.length ? (
           posted.map((ride) => (
-            <View key={ride.id} style={styles.driverRideWrap}>
+            <View key={ride.id} style={styles.rideItemWrapper}>
               <RideCard ride={ride} />
 
-              <View style={styles.driverButtonActionsRow}>
+              <View style={styles.driverActionsRow}>
                 <TouchableOpacity
                   onPress={() => startLiveTracking(ride.id)}
-                  style={[
-                    styles.driverLiveTrackBtn,
-                    activeTrackingRideId === ride.id && styles.driverLiveTrackBtnStop,
-                  ]}
+                  style={[styles.trackingActionBtn, activeTrackingRideId === ride.id ? styles.trackingActiveBtn : null]}
                 >
                   <Icon
                     name={activeTrackingRideId === ride.id ? "stop-circle-outline" : "navigation-variant"}
-                    size={16}
+                    size={17}
                     color="#FFFFFF"
                   />
-                  <Text style={styles.driverBtnText}>
-                    {activeTrackingRideId === ride.id ? "End Live Trip" : "Start Live Trip"}
+                  <Text style={styles.trackingActionText}>
+                    {activeTrackingRideId === ride.id ? "End Trip" : "Start Trip"}
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={() => openDriverSos(ride)} style={styles.driverSosBtn}>
-                  <Icon name="shield-alert" size={16} color="#FFFFFF" />
-                  <Text style={styles.driverBtnText}>Safety SOS</Text>
+                  <Icon name="shield-alert" size={17} color="#FFFFFF" />
+                  <Text style={styles.driverSosText}>Safety SOS</Text>
                 </TouchableOpacity>
               </View>
             </View>
           ))
         ) : (
-          <View style={styles.emptyWhiteCard}>
-            <Icon name="road-variant" color="#94A3B8" size={36} />
-            <Text style={styles.emptyTitle}>No scheduled rides yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Publish a route above to start saving on daily travel and fuel costs!
-            </Text>
+          <View style={shared.emptyCard}>
+            <Icon name="road-variant" color={colors.muted} size={28} />
+            <Text style={shared.cardTitle}>Your road starts here</Text>
+            <Text style={shared.mutedText}>Published rides will appear in this space.</Text>
           </View>
         )}
       </ScrollView>
 
-      <View style={[styles.bottomNavContainer, { paddin
+      <LocationPickerModal
+        visible={pickerTarget !== null}
+        onClose={() => setPickerTarget(null)}
+        onSelect={handleLocationPicked}
+        title={pickerTarget === "start" ? "Select Starting Point" : "Select Destination"}
+      />
+
+      {selectedSosRide ? (
+        <SafetySosModal
+          visible={sosModalVisible}
+          onClose={() => {
+            setSosModalVisible(false);
+            setSelectedSosRide(null);
+          }}
+          booking={{
+            id: selectedSosRide.id,
+            total: selectedSosRide.price,
+            discount: 0,
+            boarding_otp: "DRIVER",
+            seat: "DRIVER_SEAT",
+            ride: selectedSosRide,
+          }}
+          token={token}
+        />
+      ) : null}
+
+      <UserMenuModal
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        token={token}
+        onLogout={onLogout}
+      />
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  headerRightWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
+  sosQuickBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#DC2626",
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#EF4444",
+  },
+  sosQuickText: { color: "#FFFFFF", fontSize: 11, fontWeight: "900", letterSpacing: 0.5 },
+  menuIconBtn: {
+    padding: 6,
+    borderRadiu
