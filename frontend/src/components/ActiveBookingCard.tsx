@@ -17,10 +17,10 @@ interface ActiveBookingCardProps {
 }
 
 const QUICK_MESSAGES = [
-  "I am at the pickup location 👋",
-  "Reaching in 5 minutes 🚗",
-  "Please wait at the main gate 📍",
-  "Driver details confirmed ✓",
+  "I am at the pickup location",
+  "Reaching in 5 minutes",
+  "Please wait at the main gate",
+  "Confirmed ride details",
 ];
 
 export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
@@ -63,7 +63,7 @@ export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
 
       <View style={styles.routeWrap}>
         <View style={styles.routePoint}>
-          <Icon name="record-circle-outline" size={14} color="#0284C7" />
+          <Icon name="record-circle-outline" size={14} color="#38BDF8" />
           <Text style={styles.routeText} numberOfLines={1}>
             {booking.ride?.start_point || "Pickup Location"}
           </Text>
@@ -104,7 +104,7 @@ export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
           onPress={() => setChatModalVisible(true)}
           style={styles.safeChatBtn}
         >
-          <Icon name="chat" size={15} color="#0284C7" />
+          <Icon name="message-text-outline" size={15} color="#38BDF8" />
           <Text style={styles.safeChatText}>Safe Chat</Text>
         </TouchableOpacity>
       </View>
@@ -161,16 +161,11 @@ const styles = StyleSheet.create({
   cardContainer: {
     marginHorizontal: 18,
     marginVertical: 12,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#1E293B",
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: "#334155",
     padding: 14,
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 3,
   },
   headerRow: {
     flexDirection: "row",
@@ -182,7 +177,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "#ECFDF5",
+    backgroundColor: "rgba(16, 185, 129, 0.15)",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -196,27 +191,27 @@ const styles = StyleSheet.create({
   liveText: {
     fontSize: 10,
     fontWeight: "900",
-    color: "#059669",
+    color: "#10B981",
     letterSpacing: 0.5,
   },
   otpBadge: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F0F9FF",
+    backgroundColor: "rgba(56, 189, 248, 0.15)",
     borderWidth: 1,
-    borderColor: "#BAE6FD",
+    borderColor: "#38BDF8",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
   },
   otpLabel: {
     fontSize: 11,
-    color: "#0369A1",
+    color: "#38BDF8",
     fontWeight: "600",
   },
   otpNumber: {
     fontSize: 12,
-    color: "#0284C7",
+    color: "#FFFFFF",
     fontWeight: "900",
     letterSpacing: 1,
   },
@@ -232,20 +227,20 @@ const styles = StyleSheet.create({
   routeText: {
     fontSize: 13,
     fontWeight: "700",
-    color: "#1E293B",
+    color: "#FFFFFF",
     flex: 1,
   },
   routeLine: {
     width: 2,
     height: 12,
-    backgroundColor: "#CBD5E1",
+    backgroundColor: "#475569",
     marginLeft: 6,
     marginVertical: 2,
   },
   detailsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#0F172A",
     padding: 10,
     borderRadius: 10,
     marginVertical: 10,
@@ -256,12 +251,12 @@ const styles = StyleSheet.create({
   detailLabel: {
     fontSize: 10,
     fontWeight: "600",
-    color: "#64748B",
+    color: "#94A3B8",
   },
   detailValue: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#0F172A",
+    color: "#FFFFFF",
     marginTop: 2,
   },
   actionsRow: {
@@ -290,24 +285,24 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    backgroundColor: "#F0F9FF",
+    backgroundColor: "#0F172A",
     borderWidth: 1,
-    borderColor: "#BAE6FD",
+    borderColor: "#38BDF8",
     paddingVertical: 10,
     borderRadius: 12,
   },
   safeChatText: {
-    color: "#0284C7",
+    color: "#38BDF8",
     fontSize: 12,
     fontWeight: "800",
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.5)",
+    backgroundColor: "rgba(15, 23, 42, 0.7)",
     justifyContent: "flex-end",
   },
   modalContent: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#1E293B",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 18,
@@ -319,29 +314,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
+    borderBottomColor: "#334155",
     paddingBottom: 10,
   },
   modalTitle: {
     fontSize: 16,
     fontWeight: "900",
-    color: "#0F172A",
+    color: "#FFFFFF",
   },
   modalSubtitle: {
     fontSize: 11,
-    color: "#64748B",
+    color: "#94A3B8",
     marginTop: 1,
   },
   closeIconBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#334155",
     alignItems: "center",
     justifyContent: "center",
   },
   chatLogBox: {
-    backgroundColor: "#F8FAFC",
+    backgroundColor: "#0F172A",
     borderRadius: 12,
     padding: 12,
     minHeight: 100,
@@ -350,22 +345,22 @@ const styles = StyleSheet.create({
   },
   chatBubble: {
     alignSelf: "flex-start",
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#1E293B",
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: "#334155",
   },
   chatBubbleText: {
     fontSize: 12,
-    color: "#334155",
+    color: "#E2E8F0",
     fontWeight: "600",
   },
   quickSendLabel: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#64748B",
+    color: "#94A3B8",
     marginBottom: 8,
     letterSpacing: 0.5,
   },
@@ -374,16 +369,16 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   presetPill: {
-    backgroundColor: "#F1F5F9",
+    backgroundColor: "#0F172A",
     paddingVertical: 9,
     paddingHorizontal: 12,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
+    borderColor: "#334155",
   },
   presetPillText: {
     fontSize: 12,
-    color: "#0F172A",
+    color: "#FFFFFF",
     fontWeight: "700",
   },
 });
