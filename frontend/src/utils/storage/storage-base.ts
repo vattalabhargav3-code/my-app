@@ -14,25 +14,24 @@ export abstract class StorageBase {
   }
 
   // raw is whatever AsyncStorage / SecureStore returned: a JSON-encoded string
-  // (because setItem always JSON.stringifies) or null if the key was missing.
-  // We always JSON.parse so values round-trip correctly across types.
+  // or a plain string (like JWT token) or null if the key was missing.
   protected retrieve<Fallback extends StorageItemValue>(
     raw: string | null,
     fallback: Fallback,
-  ): Fallback | null {
+  ): Fallback | string | null {
     if (raw === null) return fallback;
     try {
       return JSON.parse(raw) as Fallback;
-    } catch (e) {
-      this.warn("retrieve", "parse error", e);
-      return fallback;
+    } catch {
+      // JSON parse కాకపోతే (ఉదాహరణకు JWT token 'eyJ...'), దాన్ని నేరుగా raw string గా రిటర్న్ చేస్తుంది
+      return raw;
     }
   }
 
   abstract getItem<Fallback extends StorageItemValue>(
     key: string,
     fallback: Fallback,
-  ): Promise<Fallback | null>;
+  ): Promise<Fallback | string | null>;
   abstract setItem<Value extends StorageItemValue>(
     key: string,
     value: Value,
@@ -41,7 +40,7 @@ export abstract class StorageBase {
   abstract secureGet<Fallback extends StorageItemValue>(
     key: string,
     fallback: Fallback,
-  ): Promise<Fallback | null>;
+  ): Promise<Fallback | string | null>;
   abstract secureSet<Value extends StorageItemValue>(
     key: string,
     value: Value,
