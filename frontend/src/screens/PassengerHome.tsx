@@ -55,16 +55,28 @@ export function PassengerHome({
 
   const triggerDirectSos = () => {
     Alert.alert(
-      "EMERGENCY SOS",
-      "Do you want to call the Police Emergency Helpline (112)?",
+      "EMERGENCY & SAFETY SOS",
+      "Emergency help kosam kindha unna number select cheyandi:",
       [
-        { text: "Cancel", style: "cancel" },
         {
-          text: "Call 112",
-          style: "destructive",
-          onPress: () => {
-            Linking.openURL("tel:112");
-          },
+          text: "🚓 Police (100)",
+          onPress: () => Linking.openURL("tel:100"),
+        },
+        {
+          text: "🚑 Ambulance (108)",
+          onPress: () => Linking.openURL("tel:108"),
+        },
+        {
+          text: "🚨 National Emergency (112)",
+          onPress: () => Linking.openURL("tel:112"),
+        },
+        {
+          text: "📞 Customer Support",
+          onPress: () => Linking.openURL("tel:8919326622"),
+        },
+        {
+          text: "Cancel",
+          style: "cancel",
         },
       ]
     );
