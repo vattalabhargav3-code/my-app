@@ -63,14 +63,14 @@ export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
 
       <View style={styles.routeWrap}>
         <View style={styles.routePoint}>
-          <Icon name="record-circle-outline" size={14} color="#38BDF8" />
+          <Icon name="map-marker" size={14} color="#38BDF8" />
           <Text style={styles.routeText} numberOfLines={1}>
             {booking.ride?.start_point || "Pickup Location"}
           </Text>
         </View>
         <View style={styles.routeLine} />
         <View style={styles.routePoint}>
-          <Icon name="map-marker" size={14} color="#10B981" />
+          <Icon name="map-marker-check" size={14} color="#10B981" />
           <Text style={styles.routeText} numberOfLines={1}>
             {booking.ride?.end_point || "Destination"}
           </Text>
@@ -104,7 +104,7 @@ export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
           onPress={() => setChatModalVisible(true)}
           style={styles.safeChatBtn}
         >
-          <Icon name="message-text-outline" size={15} color="#38BDF8" />
+          <Icon name="chat" size={15} color="#38BDF8" />
           <Text style={styles.safeChatText}>Safe Chat</Text>
         </TouchableOpacity>
       </View>
