@@ -10,18 +10,17 @@ import {
 } from "react-native";
 import { Booking } from "@/src/api";
 import { Icon } from "@/src/components/ui";
-import { colors } from "@/src/theme";
 
 interface ActiveBookingCardProps {
   booking: Booking;
-  token: string;
+  token?: string;
 }
 
 const QUICK_MESSAGES = [
   "I am at the pickup location 👋",
   "Reaching in 5 minutes 🚗",
   "Please wait at the main gate 📍",
-  "Driver details and car model confirmed ✓",
+  "Driver details confirmed ✓",
 ];
 
 export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
@@ -30,10 +29,9 @@ export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
     "Ride confirmed! Keep OTP ready for boarding.",
   ]);
 
-  // Masked Safe Call Action
   const handleMaskedCall = () => {
     Alert.alert(
-      "🛡️ Safe Masked Calling",
+      "Safe Masked Calling",
       "Your personal mobile number is protected and hidden for safety.",
       [
         { text: "Cancel", style: "cancel" },
@@ -47,12 +45,11 @@ export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
 
   const handleSendQuickMessage = (msg: string) => {
     setChatLog((prev) => [...prev, `You: ${msg}`]);
-    Alert.alert("Message Sent", `"${msg}" sent to driver securely.`);
+    Alert.alert("Message Sent", `"${msg}" sent securely.`);
   };
 
   return (
     <View style={styles.cardContainer}>
-      {/* Top Status Header */}
       <View style={styles.headerRow}>
         <View style={styles.liveIndicator}>
           <View style={styles.pulseDot} />
@@ -64,7 +61,6 @@ export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
         </View>
       </View>
 
-      {/* Route Info */}
       <View style={styles.routeWrap}>
         <View style={styles.routePoint}>
           <Icon name="record-circle-outline" size={14} color="#0284C7" />
@@ -81,7 +77,6 @@ export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
         </View>
       </View>
 
-      {/* Ride Details (Seat & Price) */}
       <View style={styles.detailsRow}>
         <View style={styles.detailItem}>
           <Text style={styles.detailLabel}>Assigned Seat</Text>
@@ -99,10 +94,9 @@ export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
         </View>
       </View>
 
-      {/* MASKED CALL & SAFE CHAT ACTIONS */}
       <View style={styles.actionsRow}>
         <TouchableOpacity onPress={handleMaskedCall} style={styles.maskedCallBtn}>
-          <Icon name="phone-lock" size={16} color="#FFFFFF" />
+          <Icon name="phone" size={15} color="#FFFFFF" />
           <Text style={styles.maskedCallText}>Masked Call</Text>
         </TouchableOpacity>
 
@@ -110,12 +104,11 @@ export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
           onPress={() => setChatModalVisible(true)}
           style={styles.safeChatBtn}
         >
-          <Icon name="message-text-lock-outline" size={16} color="#0284C7" />
+          <Icon name="chat" size={15} color="#0284C7" />
           <Text style={styles.safeChatText}>Safe Chat</Text>
         </TouchableOpacity>
       </View>
 
-      {/* SAFE IN-APP QUICK CHAT MODAL */}
       <Modal
         visible={chatModalVisible}
         animationType="slide"
@@ -137,7 +130,6 @@ export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
               </TouchableOpacity>
             </View>
 
-            {/* Chat History View */}
             <View style={styles.chatLogBox}>
               {chatLog.map((c, i) => (
                 <View key={i} style={styles.chatBubble}>
@@ -146,7 +138,6 @@ export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
               ))}
             </View>
 
-            {/* Quick One-Tap Preset Messages */}
             <Text style={styles.quickSendLabel}>Quick Messages (1-Tap Send):</Text>
             <View style={styles.presetWrap}>
               {QUICK_MESSAGES.map((msg, idx) => (
