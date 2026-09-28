@@ -1,34 +1,34 @@
-// Web storage (Metro picks index.ts on native).
-// Helpers never throw: reads return `fallback`, writes return `false`.
-// Values supported: string | number | boolean | null (JSON-serialized on disk).
-// Usage: import { storage } from "@/src/utils/storage"; await storage.getItem(key, fallback);
-// No Keychain on web — secure* helpers reuse AsyncStorage (no expo-secure-store).
+import { StorageBase, StorageItemKey, StorageItemValue } from "./base";
 
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
-import { AssertNoExtras, StorageBase, StorageItemValue } from "./storage-base";
-
-export class Storage extends StorageBase {
-  // General KV — backed by AsyncStorage (its built-in web shim uses IndexedDB).
+class WebStorage extends StorageBase {
   async getItem<Fallback extends StorageItemValue>(
-    key: string,
+    key: StorageItemKey,
     fallback: Fallback,
-  ): Promise<Fallback | null> {
-    try {
-      const raw = await AsyncStorage.getItem(key);
-      return this.retrieve(raw, fallback);
-    } catch (e) {
-      this.warn("getItem", key, e);
+  ): Promise<Fallback | string | null> {
+    if (typeof window === "undefined" || !window.localStorage) {
       return fallback;
+    }
+    const raw = window.localStorage.getItem(key);
+    if (raw === null) return fallback;
+
+    try {
+      return JSON.parse(raw);
+    } catch {
+      // JWT token లేదా plain string వస్తే క్రాష్ అవ్వకుండా నేరుగా దాన్ని రిటర్న్ చేస్తుంది
+      return raw;
     }
   }
 
   async setItem<Value extends StorageItemValue>(
-    key: string,
+    key: StorageItemKey,
     value: Value,
   ): Promise<boolean> {
+    if (typeof window === "undefined" || !window.localStorage) {
+      return false;
+    }
     try {
-      await AsyncStorage.setItem(key, JSON.stringify(value));
+      const payload = typeof value === "string" ? value : JSON.stringify(value);
+      window.localStorage.setItem(key, payload);
       return true;
     } catch (e) {
       this.warn("setItem", key, e);
@@ -36,9 +36,12 @@ export class Storage extends StorageBase {
     }
   }
 
-  async removeItem(key: string): Promise<boolean> {
+  async removeItem(key: StorageItemKey): Promise<boolean> {
+    if (typeof window === "undefined" || !window.localStorage) {
+      return false;
+    }
     try {
-      await AsyncStorage.removeItem(key);
+      window.localStorage.removeItem(key);
       return true;
     } catch (e) {
       this.warn("removeItem", key, e);
@@ -46,28 +49,23 @@ export class Storage extends StorageBase {
     }
   }
 
-  // Browsers have no Keychain — secure* helpers fall through to AsyncStorage.
   async secureGet<Fallback extends StorageItemValue>(
-    key: string,
+    key: StorageItemKey,
     fallback: Fallback,
-  ): Promise<Fallback | null> {
+  ): Promise<Fallback | string | null> {
     return this.getItem(key, fallback);
   }
 
   async secureSet<Value extends StorageItemValue>(
-    key: string,
+    key: StorageItemKey,
     value: Value,
   ): Promise<boolean> {
     return this.setItem(key, value);
   }
 
-  async secureRemove(key: string): Promise<boolean> {
+  async secureRemove(key: StorageItemKey): Promise<boolean> {
     return this.removeItem(key);
   }
 }
 
-export const storage = new Storage();
-
-// Compile-time guard: any new method must be declared in storage-base.ts first.
-// eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentional compile-time-only assertion
-type _NoExtras = AssertNoExtras<Exclude<keyof Storage, keyof StorageBase>>;
+export const storage = new WebStorage();
