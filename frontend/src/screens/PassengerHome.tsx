@@ -176,7 +176,6 @@ export function PassengerHome({
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* TOP BRAND & SOS */}
         <View style={styles.topHeader}>
           <View>
             <Text style={styles.brandTitle}>
@@ -200,7 +199,6 @@ export function PassengerHome({
           </View>
         </View>
 
-        {/* TIME GREETING */}
         <View style={styles.greetingContainer}>
           <Text style={styles.greetingTitle}>
             {greeting.text}, {user?.full_name ? user.full_name.split(" ")[0] : "Friend"}!
@@ -208,7 +206,6 @@ export function PassengerHome({
           <Text style={styles.greetingSub}>{greeting.sub}</Text>
         </View>
 
-        {/* QUICK SEARCH PILL */}
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={() => setPickerTarget("to")}
@@ -228,7 +225,6 @@ export function PassengerHome({
           </View>
         </TouchableOpacity>
 
-        {/* RIDE TYPE SELECTOR TILES */}
         <View style={styles.categoryGrid}>
           <TouchableOpacity
             style={[styles.categoryCard, search.vehicleType === "car" && styles.categoryCardActive]}
@@ -265,7 +261,6 @@ export function PassengerHome({
           </TouchableOpacity>
         </View>
 
-        {/* SEARCH DETAILS EXPANDED PANEL */}
         <View style={styles.searchPanelWhiteCard}>
           <View style={styles.searchHelpersRow}>
             <TouchableOpacity
@@ -308,7 +303,6 @@ export function PassengerHome({
 
         {booking ? <ActiveBookingCard booking={booking} token={token} /> : null}
 
-        {/* AVAILABLE RIDES SECTION */}
         <View style={styles.resultsHeadingWrap}>
           <Text style={styles.sectionHeaderTitle}>Available Shared Rides</Text>
           <Text style={styles.ridesFoundBadge}>{displayedRides.length} available</Text>
@@ -332,7 +326,6 @@ export function PassengerHome({
           </View>
         )}
 
-        {/* 🇮🇳 PROUD FEEL-GOOD & CONNECTING "MADE IN INDIA" FOOTER 🇮🇳 */}
         <View style={styles.indiaCardWrapper}>
           <View style={styles.indiaFlagRow}>
             <Text style={styles.flagEmoji}>🇮🇳</Text>
@@ -372,7 +365,6 @@ export function PassengerHome({
         </View>
       </ScrollView>
 
-      {/* BOTTOM NAVIGATION BAR */}
       <View style={[styles.bottomNavContainer, { paddingBottom: insets.bottom > 0 ? insets.bottom : 8 }]}>
         <TouchableOpacity onPress={() => setActiveTab("home")} style={styles.navTabItem}>
           <Icon name="home" size={22} color={activeTab === "home" ? "#0284C7" : "#94A3B8"} />
@@ -462,7 +454,6 @@ export function PassengerHome({
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   whiteScreen: {
     flex: 1,
@@ -597,7 +588,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
- categoryGrid: {
+  categoryGrid: {
     flexDirection: "row",
     gap: 8,
     marginHorizontal: 18,
