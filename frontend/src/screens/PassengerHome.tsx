@@ -11,6 +11,7 @@ import { ScreenHeader } from "@/src/components/navigation";
 import { RideCard } from "@/src/components/RideCard";
 import { RideSearchPanel, SearchState } from "@/src/components/RideSearchPanel";
 import { ErrorBanner, Icon } from "@/src/components/ui";
+import { UserMenuModal } from "@/src/components/UserMenuModal";
 import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 
@@ -50,6 +51,7 @@ export function PassengerHome({
 
   const [womenOnlyFilter, setWomenOnlyFilter] = useState(false);
   const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const isAlreadyVerified =
     user.id_verified ||
@@ -141,9 +143,18 @@ export function PassengerHome({
           title="Where are you headed?"
           onLogout={onLogout}
           right={
-            <View style={styles.secureBadge}>
-              <Icon name="shield-check" size={16} color={colors.brand} />
-              <Text style={styles.secureBadgeText}>Safe</Text>
+            <View style={styles.headerRightWrap}>
+              <TouchableOpacity
+                onPress={() => setMenuVisible(true)}
+                style={styles.menuIconBtn}
+                accessibilityLabel="Open Menu"
+              >
+                <Icon name="menu" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+              <View style={styles.secureBadge}>
+                <Icon name="shield-check" size={16} color={colors.brand} />
+                <Text style={styles.secureBadgeText}>Safe</Text>
+              </View>
             </View>
           }
         />
@@ -288,11 +299,33 @@ export function PassengerHome({
           ) : null}
         </View>
       </Modal>
+
+      <UserMenuModal
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        token={token}
+        onLogout={onLogout}
+        initialPhone={user?.phone || ""}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  headerRightWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  menuIconBtn: {
+    padding: 7,
+    borderRadius: 10,
+    backgroundColor: "#1E293B",
+    borderWidth: 1,
+    borderColor: "#334155",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   secureBadge: {
     flexDirection: "row",
     gap: 5,
@@ -310,7 +343,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     backgroundColor: "rgba(56, 189, 248, 0.15)",
     borderWidth: 1,
-    borderColor: "#38BDF8",
+    borderColor: "#334155",
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
