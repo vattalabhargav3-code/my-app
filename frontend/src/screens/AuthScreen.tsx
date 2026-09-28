@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
-  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
@@ -14,109 +13,52 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { api, errorMessage, User } from "@/src/api";
+import { User } from "@/src/api";
 import { ErrorBanner, Icon } from "@/src/components/ui";
-
-const REAL_VEHICLES = [
-  {
-    name: "Car Pool",
-    sub: "Share Daily Fuel",
-    color: "#0284C7",
-    uri: "https://images.unsplash.com/photo-1549399542-7e3f8b79c341?auto=format&fit=crop&w=400&q=80",
-  },
-  {
-    name: "Bike Share",
-    sub: "Beat City Traffic",
-    color: "#059669",
-    uri: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=400&q=80",
-  },
-  {
-    name: "Smart Cab",
-    sub: "Comfort & Fixed Fare",
-    color: "#D97706",
-    uri: "https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=400&q=80",
-  },
-];
 
 export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, user: User) => void }) {
   const insets = useSafeAreaInsets();
 
-  const [vehicleIdx, setVehicleIdx] = useState(0);
-  const [animStage, setAnimStage] = useState<"vehicles" | "logo" | "ready">("vehicles");
+  const [animStage, setAnimStage] = useState<"splash" | "ready">("splash");
   const [showLogin, setShowLogin] = useState(false);
 
-  const vehicleOpacity = useRef(new Animated.Value(0)).current;
-  const vehicleScale = useRef(new Animated.Value(0.75)).current;
-  const logoScale = useRef(new Animated.Value(0.6)).current;
+  const logoScale = useRef(new Animated.Value(0.7)).current;
   const logoOpacity = useRef(new Animated.Value(0)).current;
   const buttonFade = useRef(new Animated.Value(0)).current;
 
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
   const [fullName, setFullName] = useState("");
-  const [otp, setOtp] = useState("");
-  const [mockOtp, setMockOtp] = useState<string | null>("1234");
+  const [otp, setOtp] = useState("1234");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const playVehicle = (index: number) => {
-      if (index >= REAL_VEHICLES.length) {
-        setAnimStage("logo");
-        Animated.parallel([
-          Animated.spring(logoScale, { toValue: 1, friction: 5, tension: 80, useNativeDriver: true }),
-          Animated.timing(logoOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
-        ]).start(() => {
-          setAnimStage("ready");
-          Animated.timing(buttonFade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
-        });
-        return;
-      }
-
-      setVehicleIdx(index);
-      vehicleOpacity.setValue(0);
-      vehicleScale.setValue(0.75);
-
-      Animated.parallel([
-        Animated.timing(vehicleOpacity, { toValue: 1, duration: 240, useNativeDriver: true }),
-        Animated.spring(vehicleScale, { toValue: 1, friction: 4, useNativeDriver: true }),
-      ]).start(() => {
-        setTimeout(() => {
-          Animated.timing(vehicleOpacity, { toValue: 0, duration: 180, useNativeDriver: true }).start(() => {
-            playVehicle(index + 1);
-          });
-        }, 350);
-      });
-    };
-
-    playVehicle(0);
+    Animated.parallel([
+      Animated.spring(logoScale, { toValue: 1, friction: 5, tension: 70, useNativeDriver: true }),
+      Animated.timing(logoOpacity, { toValue: 1, duration: 600, useNativeDriver: true }),
+    ]).start(() => {
+      setTimeout(() => {
+        setAnimStage("ready");
+        Animated.timing(buttonFade, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+      }, 1500);
+    });
   }, []);
 
-  const handleSendOtp = async () => {
+  const handleSendOtp = () => {
     if (!phone || phone.trim().length < 10) {
       setError("Dayachesi valid 10-digit mobile number enter cheyandi.");
       return;
     }
-    setLoading(true);
     setError("");
-    try {
-      const res = await api<any>("/auth/otp", {
-        method: "POST",
-        body: JSON.stringify({ phone: phone.trim() }),
-      });
-      if (res?.otp) {
-        setMockOtp(res.otp);
-      }
-    } catch {
-      // Fallback demo
-      setMockOtp("1234");
-    } finally {
+    setLoading(true);
+    setTimeout(() => {
       setLoading(false);
       setStep("otp");
-    }
+    }, 400);
   };
 
-  const handleVerifyOtp = async () => {
+  const handleVerifyOtp = () => {
     if (!otp || otp.trim().length < 4) {
       setError("Please 4-digit OTP enter cheyandi.");
       return;
@@ -124,37 +66,17 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
     setLoading(true);
     setError("");
 
-    try {
-      const res = await api<{ token: string; user: User }>("/auth/verify", {
-        method: "POST",
-        body: JSON.stringify({
-          phone: phone.trim(),
-          otp: otp.trim(),
-          full_name: fullName.trim() || undefined,
-          role: "passenger",
-        }),
+    setTimeout(() => {
+      setLoading(false);
+      onAuthSuccess("mock_token_riderx_" + Date.now(), {
+        id: "usr_passenger_1",
+        phone: phone.trim(),
+        full_name: fullName.trim() || "Bhargav Vattala",
+        role: "passenger",
+        id_verified: true,
       });
-
-      if (res?.token && res?.user) {
-        onAuthSuccess(res.token, res.user);
-        return;
-      }
-    } catch {
-      // Ignore API error and force successful local login for smooth transition
-    }
-
-    // Direct Instant Success Callback
-    setLoading(false);
-    onAuthSuccess("mock_token_safarway_" + Date.now(), {
-      id: "usr_passenger_1",
-      phone: phone.trim(),
-      full_name: fullName.trim() || "Bhargav Vattala",
-      role: "passenger",
-      id_verified: true,
-    });
+    }, 500);
   };
-
-  const currentVehicle = REAL_VEHICLES[vehicleIdx] || REAL_VEHICLES[0];
 
   return (
     <KeyboardAvoidingView
@@ -173,68 +95,54 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
       >
         {!showLogin ? (
           <View style={styles.heroIntroWrap}>
-            <View style={styles.badgeTopWrap}>
-              <Text style={styles.badgeTopEmoji}>🇮🇳</Text>
-              <Text style={styles.badgeTopText}>BHARAT'S TRUSTED COMMUTE COMMUNITY</Text>
+            <View style={styles.tricolorHeaderBar}>
+              <View style={styles.stripeSaffron} />
+              <View style={styles.stripeWhite} />
+              <View style={styles.stripeGreen} />
             </View>
 
-            {animStage === "vehicles" ? (
-              <View style={styles.vehicleAnimBox}>
-                <Animated.View
-                  style={[
-                    styles.imageCardWrapper,
-                    {
-                      borderColor: currentVehicle.color,
-                      opacity: vehicleOpacity,
-                      transform: [{ scale: vehicleScale }],
-                    },
-                  ]}
-                >
-                  <Image
-                    source={{ uri: currentVehicle.uri }}
-                    style={styles.vehicleRealImage}
-                    resizeMode="cover"
-                  />
-                  <View style={[styles.imageOverlayBadge, { backgroundColor: currentVehicle.color }]}>
-                    <Text style={styles.imageBadgeText}>{currentVehicle.name}</Text>
-                  </View>
-                </Animated.View>
-                <Animated.Text style={[styles.vehicleSubText, { opacity: vehicleOpacity }]}>
-                  {currentVehicle.sub}...
-                </Animated.Text>
-              </View>
-            ) : (
-              <Animated.View
-                style={[
-                  styles.logoHeroContainer,
-                  {
-                    opacity: logoOpacity,
-                    transform: [{ scale: logoScale }],
-                  },
-                ]}
-              >
-                <View style={styles.logoInnerPulse}>
-                  <Icon name="steering" size={44} color="#0284C7" />
-                  <View style={styles.activePulseOrb} />
+            <View style={styles.badgeTopWrap}>
+              <Text style={styles.badgeTopEmoji}>🇮🇳</Text>
+              <Text style={styles.badgeTopText}>MADE FOR INDIA • HYDERABAD COMMUTE</Text>
+            </View>
+
+            <Animated.View
+              style={[
+                styles.logoHeroContainer,
+                {
+                  opacity: logoOpacity,
+                  transform: [{ scale: logoScale }],
+                },
+              ]}
+            >
+              <View style={styles.mapEmblemCard}>
+                <View style={styles.mapPinGlow}>
+                  <Icon name="map-marker-radius" size={28} color="#0284C7" />
                 </View>
+                <Text style={styles.mapLocationTag}>HYDERABAD • TELANGANA</Text>
+              </View>
 
-                <Text style={styles.heroBrandTitle}>
-                  RIDER<Text style={styles.heroBrandAccent}>X</Text>
-                </Text>
+              <View style={styles.logoInnerPulse}>
+                <Icon name="steering" size={44} color="#0284C7" />
+                <View style={styles.activePulseOrb} />
+              </View>
 
-                <Text style={styles.teluguMotto}>మన ప్రయాణం • మన తోడు • మన భరోసా</Text>
-                <Text style={styles.heroSubTagline}>
-                  "Together on Every Road • Car, Bike & Cab Sharing for Daily Commuters"
-                </Text>
-              </Animated.View>
-            )}
+              <Text style={styles.heroBrandTitle}>
+                RIDER<Text style={styles.heroBrandAccent}>X</Text>
+              </Text>
 
-            {animStage !== "vehicles" && (
-              <Animated.View style={{ width: "100%", opacity: buttonFade }}>
+              <Text style={styles.teluguMotto}>మన ప్రయాణం • మన తోడు • మన భరోసా</Text>
+              <Text style={styles.heroSubTagline}>
+                Safe, Shared & Affordable Rides across Hyderabad
+              </Text>
+            </Animated.View>
+
+            {animStage === "ready" && (
+              <Animated.View style={{ width: "100%", opacity: buttonFade, marginTop: 6 }}>
                 <View style={styles.pillarsContainer}>
                   <View style={styles.pillarItem}>
                     <View style={[styles.pillarIconWrap, { backgroundColor: "#E0F2FE" }]}>
-                      <Icon name="shield-check" size={18} color="#0284C7" />
+                      <Icon name="shield-check" size={20} color="#0284C7" />
                     </View>
                     <Text style={styles.pillarMainText}>100% Verified</Text>
                     <Text style={styles.pillarSubText}>ID & DL Checked</Text>
@@ -242,7 +150,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
 
                   <View style={styles.pillarItem}>
                     <View style={[styles.pillarIconWrap, { backgroundColor: "#DCFCE7" }]}>
-                      <Icon name="cash-multiple" size={18} color="#059669" />
+                      <Icon name="cash-multiple" size={20} color="#059669" />
                     </View>
                     <Text style={styles.pillarMainText}>Fair Savings</Text>
                     <Text style={styles.pillarSubText}>Split Fuel Easily</Text>
@@ -250,7 +158,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
 
                   <View style={styles.pillarItem}>
                     <View style={[styles.pillarIconWrap, { backgroundColor: "#FDF2F8" }]}>
-                      <Icon name="shield-alert" size={18} color="#DB2777" />
+                      <Icon name="shield-alert" size={20} color="#DB2777" />
                     </View>
                     <Text style={styles.pillarMainText}>Safety First</Text>
                     <Text style={styles.pillarSubText}>24/7 SOS & OTP</Text>
@@ -268,7 +176,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
 
                 <View style={styles.heroFooterLove}>
                   <Text style={styles.heroFooterLoveText}>
-                    Made with ❤️ for Indian Commuters & Daily Travelers
+                    Made with ❤️ in Bharat for Daily Commuters
                   </Text>
                 </View>
               </Animated.View>
@@ -351,7 +259,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
                 />
 
                 <View style={styles.mockOtpAlert}>
-                  <Text style={styles.mockOtpAlertText}>Demo OTP: {mockOtp || "1234"}</Text>
+                  <Text style={styles.mockOtpAlertText}>Demo OTP: 1234 (Auto-accepted)</Text>
                 </View>
 
                 <ErrorBanner message={error} />
@@ -394,6 +302,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
+  tricolorHeaderBar: {
+    flexDirection: "row",
+    width: 90,
+    height: 5,
+    borderRadius: 3,
+    overflow: "hidden",
+    marginBottom: 10,
+  },
+  stripeSaffron: { flex: 1, backgroundColor: "#FF9933" },
+  stripeWhite: { flex: 1, backgroundColor: "#FFFFFF" },
+  stripeGreen: { flex: 1, backgroundColor: "#138808" },
   badgeTopWrap: {
     flexDirection: "row",
     alignItems: "center",
@@ -402,96 +321,71 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#FDE68A",
     paddingHorizontal: 12,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 20,
-    marginBottom: 24,
+    marginBottom: 14,
   },
   badgeTopEmoji: {
     fontSize: 14,
   },
   badgeTopText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: "900",
     color: "#D97706",
     letterSpacing: 0.5,
   },
-  vehicleAnimBox: {
-    height: 180,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 10,
-  },
-  imageCardWrapper: {
-    width: 140,
-    height: 110,
-    borderRadius: 18,
-    overflow: "hidden",
-    borderWidth: 2,
-    backgroundColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 4,
-    position: "relative",
-  },
-  vehicleRealImage: {
-    width: "100%",
-    height: "100%",
-  },
-  imageOverlayBadge: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
-    paddingVertical: 3,
-    alignItems: "center",
-  },
-  imageBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "900",
-    letterSpacing: 0.5,
-  },
-  vehicleSubText: {
-    fontSize: 13,
-    fontWeight: "800",
-    color: "#475569",
-  },
   logoHeroContainer: {
     alignItems: "center",
-    marginBottom: 10,
+    marginBottom: 6,
+  },
+  mapEmblemCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#E0F2FE",
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
+    marginBottom: 12,
+  },
+  mapLocationTag: {
+    fontSize: 11,
+    fontWeight: "900",
+    color: "#0369A1",
+    letterSpacing: 0.8,
   },
   logoInnerPulse: {
     position: "relative",
-    width: 86,
-    height: 86,
-    borderRadius: 43,
+    width: 76,
+    height: 76,
+    borderRadius: 38,
     backgroundColor: "#E0F2FE",
     borderWidth: 2,
     borderColor: "#BAE6FD",
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#0284C7",
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 4,
-    marginBottom: 12,
+    shadowRadius: 10,
+    elevation: 3,
+    marginBottom: 10,
   },
   activePulseOrb: {
     position: "absolute",
     top: 4,
     right: 4,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 12,
+    height: 12,
+    borderRadius: 6,
     backgroundColor: "#10B981",
     borderWidth: 2,
     borderColor: "#FFFFFF",
   },
   heroBrandTitle: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: "900",
     color: "#0F172A",
     letterSpacing: 1,
@@ -500,20 +394,19 @@ const styles = StyleSheet.create({
     color: "#0284C7",
   },
   teluguMotto: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "800",
     color: "#0369A1",
-    marginTop: 6,
+    marginTop: 4,
     textAlign: "center",
-    letterSpacing: 0.5,
   },
   heroSubTagline: {
     fontSize: 12,
+    fontWeight: "600",
     color: "#64748B",
     textAlign: "center",
-    lineHeight: 18,
-    marginTop: 6,
-    paddingHorizontal: 12,
+    marginTop: 4,
+    paddingHorizontal: 16,
   },
   pillarsContainer: {
     flexDirection: "row",
@@ -523,10 +416,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    paddingVertical: 14,
-    paddingHorizontal: 10,
-    marginTop: 18,
-    marginBottom: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    marginTop: 10,
+    marginBottom: 14,
     shadowColor: "#0F172A",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.04,
@@ -538,20 +431,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   pillarIconWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: 6,
+    marginBottom: 4,
   },
   pillarMainText: {
-    fontSize: 11,
-    fontWeight: "800",
+    fontSize: 12,
+    fontWeight: "900",
     color: "#0F172A",
   },
   pillarSubText: {
-    fontSize: 9,
+    fontSize: 10,
+    fontWeight: "700",
     color: "#64748B",
     marginTop: 1,
   },
@@ -575,15 +469,16 @@ const styles = StyleSheet.create({
   },
   getStartedSubText: {
     fontSize: 11,
+    fontWeight: "700",
     color: "#BAE6FD",
-    marginTop: 3,
-    fontWeight: "600",
+    marginTop: 2,
   },
   heroFooterLove: {
-    marginTop: 18,
+    marginTop: 14,
   },
   heroFooterLoveText: {
     fontSize: 11,
+    fontWeight: "700",
     color: "#94A3B8",
     textAlign: "center",
   },
@@ -622,6 +517,7 @@ const styles = StyleSheet.create({
   },
   authSubtitle: {
     fontSize: 12,
+    fontWeight: "600",
     color: "#64748B",
     marginTop: 3,
     lineHeight: 17,
@@ -631,7 +527,7 @@ const styles = StyleSheet.create({
   },
   inputLabel: {
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#334155",
   },
   textInput: {
@@ -642,6 +538,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 12,
     fontSize: 14,
+    fontWeight: "600",
     color: "#0F172A",
   },
   phoneInputWrap: {
@@ -656,7 +553,7 @@ const styles = StyleSheet.create({
   countryCode: {
     paddingHorizontal: 12,
     fontSize: 14,
-    fontWeight: "800",
+    fontWeight: "900",
     color: "#0F172A",
     borderRightWidth: 1,
     borderRightColor: "#E2E8F0",
@@ -699,7 +596,7 @@ const styles = StyleSheet.create({
   },
   resendBtnText: {
     fontSize: 12,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#0284C7",
   },
 });
