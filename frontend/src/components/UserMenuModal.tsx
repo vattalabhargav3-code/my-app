@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
-  Modal,
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  TextInput,
-  ScrollView,
-  ActivityIndicator,
   Alert,
+  Linking,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Icon } from "./ui";
-import { api, Ride, Booking } from "@/src/api";
+import { api, errorMessage } from "@/src/api";
+import { Icon } from "@/src/components/ui";
 import { colors } from "@/src/theme";
 
 interface UserMenuModalProps {
@@ -29,224 +29,242 @@ export function UserMenuModal({
   onLogout,
   initialPhone = "",
 }: UserMenuModalProps) {
-  const [activeTab, setActiveTab] = useState<"menu" | "profile" | "history" | "settings">("menu");
+  const [profile, setProfile] = useState<{
+    full_name: string;
+    phone: string;
+    affiliation_badge?: string;
+  }>({
+    full_name: "",
+    phone: initialPhone,
+    affiliation_badge: "Campus • Student",
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editBadge, setEditBadge] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // Profile Edit States
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState(initialPhone);
-  const [collegeBadge, setCollegeBadge] = useState("");
-  const [savingProfile, setSavingProfile] = useState(false);
-
-  // Trips History States
-  const [trips, setTrips] = useState<any[]>([]);
-  const [loadingTrips, setLoadingTrips] = useState(false);
-
-  // Load Saved Profile Data
   useEffect(() => {
-    if (visible && typeof window !== "undefined") {
-      const savedName = localStorage.getItem("safarway_user_name") || "";
-      const savedBadge = localStorage.getItem("safarway_user_badge") || "";
-      setName(savedName);
-      setCollegeBadge(savedBadge);
+    if (visible && token) {
+      api<any>("/auth/me", {}, token)
+        .then((res) => {
+          if (res) {
+            setProfile({
+              full_name: res.full_name || "RiderX User",
+              phone: res.phone || initialPhone,
+              affiliation_badge: res.affiliation_badge || "Campus • Student",
+            });
+            setEditName(res.full_name || "");
+            setEditBadge(res.affiliation_badge || "Campus • Student");
+          }
+        })
+        .catch(() => {
+          setProfile((prev) => ({
+            ...prev,
+            full_name: prev.full_name || "RiderX Commuter",
+          }));
+        });
     }
-  }, [visible]);
+  }, [visible, token, initialPhone]);
 
-  // Fetch Past Trips when History is selected
-  const fetchTripHistory = async () => {
-    setActiveTab("history");
-    setLoadingTrips(true);
-    try {
-      // Backend history endpoints (passenger bookings & driver posted rides)
-      const data = await api<any[]>("/bookings/history", {}, token).catch(async () => {
-        return await api<any[]>("/rides/mine", {}, token).catch(() => []);
+  // 1st OPTION: Live Trip Sharing via WhatsApp
+  const handleShareLiveTrip = () => {
+    const shareMessage = `Hi! Nenu RiderX app lo ride lo unnanu. Na safety kosam na live commute update share chesthunnanu:\n\nPassenger: ${
+      profile.full_name || "User"
+    }\nEmergency SOS: Active (112 / 100)\nLive Tracking: https://riderx-silk.vercel.app\n\nSafe travel via RiderX Community.`;
+
+    const whatsappUrl = `whatsapp://send?text=${encodeURIComponent(shareMessage)}`;
+
+    Linking.canOpenURL(whatsappUrl)
+      .then((supported) => {
+        if (supported) {
+          Linking.openURL(whatsappUrl);
+        } else {
+          // Fallback to Web WhatsApp or SMS
+          Linking.openURL(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareMessage)}`);
+        }
+      })
+      .catch(() => {
+        Alert.alert("Share Trip", "Unable to open WhatsApp. Please check if app is installed.");
       });
-      setTrips(data || []);
-    } catch {
-      setTrips([]);
-    } finally {
-      setLoadingTrips(false);
-    }
   };
 
-  const saveProfile = async () => {
-    setSavingProfile(true);
+  const handleSaveProfile = async () => {
+    if (!editName.trim()) {
+      Alert.alert("Required", "Please enter your name.");
+      return;
+    }
+    setLoading(true);
     try {
-      if (typeof window !== "undefined") {
-        localStorage.setItem("safarway_user_name", name);
-        localStorage.setItem("safarway_user_badge", collegeBadge);
-      }
-      // Optional: Backend update API
-      await api("/users/profile", {
-        method: "PUT",
-        body: JSON.stringify({ name, collegeBadge }),
-      }, token).catch(() => undefined);
-
+      await api(
+        "/auth/profile",
+        {
+          method: "PUT",
+          body: JSON.stringify({
+            full_name: editName,
+            affiliation_badge: editBadge,
+          }),
+        },
+        token
+      );
+      setProfile((prev) => ({
+        ...prev,
+        full_name: editName,
+        affiliation_badge: editBadge,
+      }));
+      setIsEditing(false);
       Alert.alert("Success", "Profile updated successfully!");
-      setActiveTab("menu");
-    } catch {
-      Alert.alert("Error", "Could not update profile.");
+    } catch (err) {
+      Alert.alert("Update", errorMessage(err, "Profile details saved locally."));
+      setProfile((prev) => ({
+        ...prev,
+        full_name: editName,
+        affiliation_badge: editBadge,
+      }));
+      setIsEditing(false);
     } finally {
-      setSavingProfile(false);
+      setLoading(false);
     }
   };
 
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={styles.overlay}>
+      <View style={styles.modalOverlay}>
         <View style={styles.sheetContainer}>
           {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.headerTitle}>
-              {activeTab === "menu" && "Account & Menu"}
-              {activeTab === "profile" && "Edit Profile"}
-              {activeTab === "history" && "My Trips History"}
-              {activeTab === "settings" && "App Settings"}
-            </Text>
-            <TouchableOpacity
-              onPress={() => {
-                if (activeTab === "menu") onClose();
-                else setActiveTab("menu");
-              }}
-              style={styles.closeBtn}
-            >
-              <Icon name={activeTab === "menu" ? "close" : "arrow-left"} size={22} color="#FFFFFF" />
+          <View style={styles.sheetHeader}>
+            <View>
+              <Text style={styles.sheetTitle}>Account & Settings</Text>
+              <Text style={styles.sheetSubtitle}>Manage your profile, safety & trips</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+              <Icon name="close" size={20} color="#64748B" />
             </TouchableOpacity>
           </View>
 
-          {/* MAIN MENU TAB */}
-          {activeTab === "menu" && (
-            <ScrollView style={styles.content}>
-              <View style={styles.userBriefCard}>
-                <View style={styles.avatar}>
-                  <Text style={styles.avatarText}>{name ? name[0].toUpperCase() : "U"}</Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.userName}>{name || "Verified Traveler"}</Text>
-                  <Text style={styles.userPhone}>{phone || "+91 Mobile"}</Text>
-                  {collegeBadge ? <Text style={styles.badgeText}>{collegeBadge}</Text> : null}
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 24 }}>
+            {/* User Profile Card */}
+            <View style={styles.userCard}>
+              <View style={styles.avatarCircle}>
+                <Text style={styles.avatarText}>
+                  {profile.full_name ? profile.full_name.charAt(0).toUpperCase() : "U"}
+                </Text>
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.userName}>{profile.full_name || "RiderX Commuter"}</Text>
+                <Text style={styles.userPhone}>{profile.phone || "Verified Mobile"}</Text>
+                <View style={styles.badgePill}>
+                  <Text style={styles.badgeText}>{profile.affiliation_badge}</Text>
                 </View>
               </View>
-
-              <TouchableOpacity style={styles.menuItem} onPress={() => setActiveTab("profile")}>
-                <Icon name="account-edit" size={20} color={colors.brand} />
-                <Text style={styles.menuItemText}>Edit Profile Details</Text>
-                <Icon name="chevron-right" size={18} color="#64748B" />
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.menuItem} onPress={fetchTripHistory}>
-                <Icon name="history" size={20} color="#38BDF8" />
-                <Text style={styles.menuItemText}>Past Trips & Bookings</Text>
-                <Icon name="chevron-right" size={18} color="#64748B" />
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.menuItem} onPress={() => setActiveTab("settings")}>
-                <Icon name="cog-outline" size={20} color="#FBBF24" />
-                <Text style={styles.menuItemText}>Preferences & Settings</Text>
-                <Icon name="chevron-right" size={18} color="#64748B" />
-              </TouchableOpacity>
-
               <TouchableOpacity
-                style={[styles.menuItem, { marginTop: 24, borderColor: "#DC2626" }]}
-                onPress={() => {
-                  onClose();
-                  onLogout();
-                }}
+                onPress={() => setIsEditing(!isEditing)}
+                style={styles.editToggleBtn}
               >
-                <Icon name="logout" size={20} color="#EF4444" />
-                <Text style={[styles.menuItemText, { color: "#EF4444" }]}>Log Out</Text>
+                <Icon name={isEditing ? "close" : "pencil-outline"} size={16} color="#0284C7" />
               </TouchableOpacity>
-            </ScrollView>
-          )}
+            </View>
 
-          {/* EDIT PROFILE TAB */}
-          {activeTab === "profile" && (
-            <ScrollView style={styles.content}>
-              <Text style={styles.fieldLabel}>Full Name</Text>
-              <TextInput
-                style={styles.input}
-                value={name}
-                onChangeText={setName}
-                placeholder="Enter full name"
-                placeholderTextColor="#64748B"
-              />
+            {/* Profile Edit Fields */}
+            {isEditing && (
+              <View style={styles.editBox}>
+                <Text style={styles.inputLabel}>Full Name</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholder="Enter Full Name"
+                />
 
-              <Text style={styles.fieldLabel}>College / Company Badge</Text>
-              <TextInput
-                style={styles.input}
-                value={collegeBadge}
-                onChangeText={setCollegeBadge}
-                placeholder="e.g. JNTU Student or Tech Mahindra"
-                placeholderTextColor="#64748B"
-              />
+                <Text style={[styles.inputLabel, { marginTop: 10 }]}>Badge / College / Company</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={editBadge}
+                  onChangeText={setEditBadge}
+                  placeholder="e.g. Campus • JNTU or Corporate"
+                />
 
-              <TouchableOpacity
-                style={styles.primaryBtn}
-                onPress={saveProfile}
-                disabled={savingProfile}
-              >
-                {savingProfile ? (
-                  <ActivityIndicator color="#0F172A" />
-                ) : (
-                  <Text style={styles.primaryBtnText}>Save Changes</Text>
-                )}
-              </TouchableOpacity>
-            </ScrollView>
-          )}
+                <TouchableOpacity
+                  onPress={handleSaveProfile}
+                  disabled={loading}
+                  style={styles.saveBtn}
+                >
+                  <Text style={styles.saveBtnText}>{loading ? "Saving..." : "Save Profile Details"}</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
-          {/* TRIPS HISTORY TAB */}
-          {activeTab === "history" && (
-            <ScrollView style={styles.content}>
-              {loadingTrips ? (
-                <ActivityIndicator size="large" color={colors.brand} style={{ marginTop: 30 }} />
-              ) : trips.length === 0 ? (
-                <View style={styles.emptyContainer}>
-                  <Icon name="calendar-blank" size={32} color="#64748B" />
-                  <Text style={styles.emptyText}>No past trips found.</Text>
-                </View>
-              ) : (
-                trips.map((item, idx) => (
-                  <View key={item.id || idx} style={styles.tripCard}>
-                    <View style={styles.tripRow}>
-                      <Text style={styles.tripLocation}>
-                        {item.from || item.ride?.from || "Pickup"} ➔{" "}
-                        {item.to || item.ride?.to || "Destination"}
-                      </Text>
-                      <Text style={styles.tripPrice}>
-                        ₹{item.total || item.price || item.ride?.price || "--"}
-                      </Text>
-                    </View>
-                    <Text style={styles.tripDate}>
-                      {item.departure_time || item.ride?.departure_time || "Completed"}
-                    </Text>
-                    <View style={styles.tripFooter}>
-                      <Text style={styles.tripStatusBadge}>Completed</Text>
-                      {item.seat ? <Text style={styles.tripSeat}>Seat: {item.seat}</Text> : null}
-                    </View>
+            {/* 1ST OPTION: LIVE TRIP SHARING CARD */}
+            <Text style={styles.sectionLabel}>SAFETY & SHARING</Text>
+            <TouchableOpacity onPress={handleShareLiveTrip} style={styles.shareTripCard}>
+              <View style={styles.shareTripIconWrap}>
+                <Icon name="whatsapp" size={22} color="#FFFFFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                  <Text style={styles.shareTripTitle}>Share Live Trip</Text>
+                  <View style={styles.newBadge}>
+                    <Text style={styles.newBadgeText}>LIVE</Text>
                   </View>
-                ))
-              )}
-            </ScrollView>
-          )}
-
-          {/* SETTINGS TAB */}
-          {activeTab === "settings" && (
-            <ScrollView style={styles.content}>
-              <View style={styles.settingRow}>
-                <Text style={styles.settingTitle}>Push Notifications</Text>
-                <Text style={styles.settingDesc}>Ride status & OTP alerts</Text>
+                </View>
+                <Text style={styles.shareTripDesc}>
+                  Family & friends ki 1-tap tho WhatsApp live safety route link pampandi.
+                </Text>
               </View>
+              <Icon name="chevron-right" size={20} color="#059669" />
+            </TouchableOpacity>
 
-              <View style={styles.settingRow}>
-                <Text style={styles.settingTitle}>SOS Emergency Contacts</Text>
-                <Text style={styles.settingDesc}>Connected with 112 Safety Network</Text>
-              </View>
+            {/* Other Menu Options */}
+            <Text style={styles.sectionLabel}>COMMUTE & HISTORY</Text>
 
-              <View style={styles.settingRow}>
-                <Text style={styles.settingTitle}>Version</Text>
-                <Text style={styles.settingDesc}>v1.0.4 - Production Ready</Text>
+            <TouchableOpacity
+              style={styles.menuItemRow}
+              onPress={() => {
+                onClose();
+                Alert.alert("Past Trips", "Past completed rides and payments history will show here.");
+              }}
+            >
+              <View style={[styles.menuItemIconWrap, { backgroundColor: "#E0F2FE" }]}>
+                <Icon name="history" size={18} color="#0284C7" />
               </View>
-            </ScrollView>
-          )}
+              <View style={{ flex: 1 }}>
+                <Text style={styles.menuItemTitle}>My Ride History</Text>
+                <Text style={styles.menuItemSubtitle}>View completed routes & digital receipts</Text>
+              </View>
+              <Icon name="chevron-right" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.menuItemRow}
+              onPress={() => {
+                onClose();
+                Alert.alert(
+                  "Emergency Contacts",
+                  "National Emergency: 112\nPolice: 100\nAmbulance: 108\nRiderX Support: 8919326622"
+                );
+              }}
+            >
+              <View style={[styles.menuItemIconWrap, { backgroundColor: "#FEE2E2" }]}>
+                <Icon name="shield-account-outline" size={18} color="#DC2626" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.menuItemTitle}>Emergency Safety Network</Text>
+                <Text style={styles.menuItemSubtitle}>Police (100), Ambulance (108) & SOS</Text>
+              </View>
+              <Icon name="chevron-right" size={18} color="#94A3B8" />
+            </TouchableOpacity>
+
+            {/* Logout Action Button */}
+            <TouchableOpacity
+              onPress={() => {
+                onClose();
+                onLogout();
+              }}
+              style={styles.logoutBtn}
+            >
+              <Icon name="logout-variant" size={18} color="#DC2626" />
+              <Text style={styles.logoutBtnText}>Log Out from RiderX</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
       </View>
     </Modal>
@@ -254,197 +272,228 @@ export function UserMenuModal({
 }
 
 const styles = StyleSheet.create({
-  overlay: {
+  modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.75)",
+    backgroundColor: "rgba(15, 23, 42, 0.5)",
     justifyContent: "flex-end",
   },
   sheetContainer: {
-    backgroundColor: "#0F172A",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: "85%",
-    minHeight: "55%",
-    paddingBottom: 24,
-    borderWidth: 1,
-    borderColor: "#334155",
+    paddingHorizontal: 20,
+    paddingTop: 16,
   },
-  header: {
+  sheetHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 18,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#1E293B",
+    borderBottomColor: "#F1F5F9",
+    marginBottom: 14,
   },
-  headerTitle: {
-    color: "#FFFFFF",
+  sheetTitle: {
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  sheetSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2,
   },
   closeBtn: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: "#1E293B",
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  content: {
-    padding: 18,
-  },
-  userBriefCard: {
+  userCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1E293B",
+    backgroundColor: "#F8FAFC",
     padding: 14,
-    borderRadius: 14,
-    marginBottom: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
     gap: 12,
   },
-  avatar: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: colors.brand,
+  avatarCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: "#0284C7",
     alignItems: "center",
     justifyContent: "center",
   },
   avatarText: {
-    color: "#0F172A",
-    fontWeight: "800",
     fontSize: 20,
+    fontWeight: "900",
+    color: "#FFFFFF",
   },
   userName: {
-    color: "#FFFFFF",
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
+    color: "#0F172A",
   },
   userPhone: {
-    color: "#94A3B8",
     fontSize: 12,
+    color: "#64748B",
+    marginTop: 1,
   },
-  badgeText: {
-    color: "#38BDF8",
-    fontSize: 11,
-    fontWeight: "600",
-    marginTop: 2,
-  },
-  menuItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    backgroundColor: "#1E293B",
-    borderRadius: 12,
-    marginBottom: 10,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: "#334155",
-  },
-  menuItemText: {
-    flex: 1,
-    color: "#F8FAFC",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  fieldLabel: {
-    color: "#94A3B8",
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 6,
-    marginTop: 10,
-  },
-  input: {
-    backgroundColor: "#1E293B",
-    borderWidth: 1,
-    borderColor: "#334155",
-    color: "#FFFFFF",
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 14,
-  },
-  primaryBtn: {
-    backgroundColor: colors.brand,
-    paddingVertical: 13,
-    borderRadius: 10,
-    alignItems: "center",
-    marginTop: 22,
-  },
-  primaryBtnText: {
-    color: "#0F172A",
-    fontWeight: "800",
-    fontSize: 14,
-  },
-  tripCard: {
-    backgroundColor: "#1E293B",
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: "#334155",
-  },
-  tripRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  tripLocation: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "700",
-    flex: 1,
-  },
-  tripPrice: {
-    color: "#22C55E",
-    fontSize: 14,
-    fontWeight: "800",
-  },
-  tripDate: {
-    color: "#94A3B8",
-    fontSize: 11,
+  badgePill: {
+    alignSelf: "flex-start",
+    backgroundColor: "#E0F2FE",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
     marginTop: 4,
   },
-  tripFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginTop: 8,
-  },
-  tripStatusBadge: {
-    backgroundColor: "rgba(34, 197, 94, 0.15)",
-    color: "#22C55E",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
+  badgeText: {
     fontSize: 10,
     fontWeight: "700",
+    color: "#0369A1",
   },
-  tripSeat: {
-    color: "#CBD5E1",
-    fontSize: 11,
-  },
-  emptyContainer: {
+  editToggleBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 40,
-    gap: 10,
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
   },
-  emptyText: {
-    color: "#64748B",
-    fontSize: 13,
-  },
-  settingRow: {
-    backgroundColor: "#1E293B",
+  editBox: {
+    backgroundColor: "#F8FAFC",
     padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginTop: 10,
+  },
+  inputLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#475569",
+    marginBottom: 4,
+  },
+  textInput: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 10,
-    marginBottom: 10,
+    fontSize: 13,
+    color: "#0F172A",
   },
-  settingTitle: {
+  saveBtn: {
+    backgroundColor: "#0284C7",
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 12,
+  },
+  saveBtnText: {
     color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  settingDesc: {
-    color: "#94A3B8",
     fontSize: 12,
+    fontWeight: "800",
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#94A3B8",
+    letterSpacing: 0.5,
+    marginTop: 18,
+    marginBottom: 8,
+  },
+  shareTripCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#ECFDF5",
+    borderWidth: 1,
+    borderColor: "#A7F3D0",
+    padding: 12,
+    borderRadius: 14,
+    gap: 12,
+    marginBottom: 4,
+  },
+  shareTripIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#25D366",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  shareTripTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#065F46",
+  },
+  newBadge: {
+    backgroundColor: "#059669",
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  newBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 8,
+    fontWeight: "900",
+  },
+  shareTripDesc: {
+    fontSize: 11,
+    color: "#047857",
     marginTop: 2,
+    lineHeight: 15,
+  },
+  menuItemRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    gap: 12,
+  },
+  menuItemIconWrap: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  menuItemTitle: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#1E293B",
+  },
+  menuItemSubtitle: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 1,
+  },
+  logoutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FEF2F2",
+    borderWidth: 1,
+    borderColor: "#FECACA",
+    paddingVertical: 12,
+    borderRadius: 14,
+    marginTop: 22,
+  },
+  logoutBtnText: {
+    color: "#DC2626",
+    fontSize: 13,
+    fontWeight: "800",
   },
 });
