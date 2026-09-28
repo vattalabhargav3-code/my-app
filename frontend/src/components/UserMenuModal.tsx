@@ -21,6 +21,13 @@ interface UserMenuModalProps {
   initialPhone?: string;
 }
 
+const LANGUAGES = [
+  { id: "en", label: "English", sub: "Default" },
+  { id: "te", label: "తెలుగు", sub: "Telugu" },
+  { id: "hi", label: "हिंदी", sub: "Hindi" },
+  { id: "tenglish", label: "Tenglish", sub: "Telugu + English" },
+];
+
 export function UserMenuModal({
   visible,
   onClose,
@@ -41,6 +48,22 @@ export function UserMenuModal({
   const [editName, setEditName] = useState("");
   const [editBadge, setEditBadge] = useState("");
   const [loading, setLoading] = useState(false);
+  const [selectedLang, setSelectedLang] = useState("tenglish");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("riderx_language");
+      if (saved) setSelectedLang(saved);
+    }
+  }, []);
+
+  const handleSelectLang = (id: string, name: string) => {
+    setSelectedLang(id);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("riderx_language", id);
+    }
+    Alert.alert("Language Selected", `App language set to: ${name}`);
+  };
 
   useEffect(() => {
     if (visible && token) {
@@ -121,10 +144,10 @@ export function UserMenuModal({
           <View style={styles.sheetHeader}>
             <View>
               <Text style={styles.sheetTitle}>Account & Settings</Text>
-              <Text style={styles.sheetSubtitle}>Manage your profile, safety & trips</Text>
+              <Text style={styles.sheetSubtitle}>Manage your profile, language & safety</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Icon name="close" size={20} color="#94A3B8" />
+              <Icon name="close" size={20} color="#64748B" />
             </TouchableOpacity>
           </View>
 
@@ -146,7 +169,7 @@ export function UserMenuModal({
                 onPress={() => setIsEditing(!isEditing)}
                 style={styles.editToggleBtn}
               >
-                <Icon name={isEditing ? "close" : "pencil"} size={18} color="#38BDF8" />
+                <Icon name={isEditing ? "close" : "pencil"} size={16} color="#0284C7" />
               </TouchableOpacity>
             </View>
 
@@ -158,7 +181,6 @@ export function UserMenuModal({
                   value={editName}
                   onChangeText={setEditName}
                   placeholder="Enter Full Name"
-                  placeholderTextColor="#64748B"
                 />
 
                 <Text style={[styles.inputLabel, { marginTop: 10 }]}>Badge / College / Company</Text>
@@ -167,7 +189,6 @@ export function UserMenuModal({
                   value={editBadge}
                   onChangeText={setEditBadge}
                   placeholder="e.g. Campus • JNTU or Corporate"
-                  placeholderTextColor="#64748B"
                 />
 
                 <TouchableOpacity
@@ -180,10 +201,32 @@ export function UserMenuModal({
               </View>
             )}
 
+            {/* 🌐 4 LANGUAGES SELECTION */}
+            <Text style={styles.sectionLabel}>CHOOSE LANGUAGE / భాషను ఎంచుకోండి</Text>
+            <View style={styles.langGrid}>
+              {LANGUAGES.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[styles.langTile, selectedLang === item.id && styles.langTileActive]}
+                  onPress={() => handleSelectLang(item.id, item.label)}
+                >
+                  <Text style={[styles.langLabel, selectedLang === item.id && styles.langLabelActive]}>
+                    {item.label}
+                  </Text>
+                  <Text style={[styles.langSub, selectedLang === item.id && styles.langSubActive]}>
+                    {item.sub}
+                  </Text>
+                  {selectedLang === item.id && (
+                    <View style={styles.activeCheckDot} />
+                  )}
+                </TouchableOpacity>
+              ))}
+            </View>
+
             <Text style={styles.sectionLabel}>SAFETY & SHARING</Text>
             <TouchableOpacity onPress={handleShareLiveTrip} style={styles.shareTripCard}>
               <View style={styles.shareTripIconWrap}>
-                <Icon name="share" size={20} color="#FFFFFF" />
+                <Icon name="share" size={18} color="#FFFFFF" />
               </View>
               <View style={{ flex: 1 }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
@@ -196,7 +239,7 @@ export function UserMenuModal({
                   Family & friends ki 1-tap tho WhatsApp live safety route link pampandi.
                 </Text>
               </View>
-              <Icon name="chevron-right" size={20} color="#10B981" />
+              <Icon name="chevron-right" size={20} color="#059669" />
             </TouchableOpacity>
 
             <Text style={styles.sectionLabel}>COMMUTE & HISTORY</Text>
@@ -208,14 +251,14 @@ export function UserMenuModal({
                 Alert.alert("Past Trips", "Past completed rides and payments history will show here.");
               }}
             >
-              <View style={[styles.menuItemIconWrap, { backgroundColor: "rgba(56, 189, 248, 0.15)" }]}>
-                <Icon name="history" size={18} color="#38BDF8" />
+              <View style={[styles.menuItemIconWrap, { backgroundColor: "#E0F2FE" }]}>
+                <Icon name="history" size={18} color="#0284C7" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.menuItemTitle}>My Ride History</Text>
                 <Text style={styles.menuItemSubtitle}>View completed routes & digital receipts</Text>
               </View>
-              <Icon name="chevron-right" size={18} color="#64748B" />
+              <Icon name="chevron-right" size={18} color="#94A3B8" />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -228,14 +271,14 @@ export function UserMenuModal({
                 );
               }}
             >
-              <View style={[styles.menuItemIconWrap, { backgroundColor: "rgba(239, 68, 68, 0.15)" }]}>
-                <Icon name="shield-account" size={18} color="#EF4444" />
+              <View style={[styles.menuItemIconWrap, { backgroundColor: "#FEE2E2" }]}>
+                <Icon name="shield-check" size={18} color="#DC2626" />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.menuItemTitle}>Emergency Safety Network</Text>
                 <Text style={styles.menuItemSubtitle}>Police (100), Ambulance (108) & SOS</Text>
               </View>
-              <Icon name="chevron-right" size={18} color="#64748B" />
+              <Icon name="chevron-right" size={18} color="#94A3B8" />
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -245,7 +288,7 @@ export function UserMenuModal({
               }}
               style={styles.logoutBtn}
             >
-              <Icon name="logout" size={18} color="#EF4444" />
+              <Icon name="logout" size={18} color="#DC2626" />
               <Text style={styles.logoutBtnText}>Log Out from RiderX</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -258,18 +301,16 @@ export function UserMenuModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.7)",
+    backgroundColor: "rgba(15, 23, 42, 0.5)",
     justifyContent: "flex-end",
   },
   sheetContainer: {
-    backgroundColor: "#0F172A",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     maxHeight: "85%",
     paddingHorizontal: 20,
     paddingTop: 16,
-    borderWidth: 1,
-    borderColor: "#334155",
   },
   sheetHeader: {
     flexDirection: "row",
@@ -277,35 +318,35 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#1E293B",
+    borderBottomColor: "#F1F5F9",
     marginBottom: 14,
   },
   sheetTitle: {
     fontSize: 18,
     fontWeight: "900",
-    color: "#FFFFFF",
+    color: "#0F172A",
   },
   sheetSubtitle: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: "#64748B",
     marginTop: 2,
   },
   closeBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#1E293B",
+    backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
   },
   userCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#1E293B",
+    backgroundColor: "#F8FAFC",
     padding: 14,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E2E8F0",
     gap: 12,
   },
   avatarCircle: {
@@ -324,16 +365,16 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 16,
     fontWeight: "800",
-    color: "#FFFFFF",
+    color: "#0F172A",
   },
   userPhone: {
     fontSize: 12,
-    color: "#94A3B8",
+    color: "#64748B",
     marginTop: 1,
   },
   badgePill: {
     alignSelf: "flex-start",
-    backgroundColor: "rgba(56, 189, 248, 0.15)",
+    backgroundColor: "#E0F2FE",
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 6,
@@ -342,41 +383,41 @@ const styles = StyleSheet.create({
   badgeText: {
     fontSize: 10,
     fontWeight: "700",
-    color: "#38BDF8",
+    color: "#0369A1",
   },
   editToggleBtn: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: "#0F172A",
+    backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    borderColor: "#38BDF8",
+    borderColor: "#BAE6FD",
   },
   editBox: {
-    backgroundColor: "#1E293B",
+    backgroundColor: "#F8FAFC",
     padding: 14,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E2E8F0",
     marginTop: 10,
   },
   inputLabel: {
     fontSize: 11,
     fontWeight: "700",
-    color: "#94A3B8",
+    color: "#475569",
     marginBottom: 4,
   },
   textInput: {
-    backgroundColor: "#0F172A",
+    backgroundColor: "#FFFFFF",
     borderWidth: 1,
-    borderColor: "#475569",
+    borderColor: "#CBD5E1",
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 10,
     fontSize: 13,
-    color: "#FFFFFF",
+    color: "#0F172A",
   },
   saveBtn: {
     backgroundColor: "#0284C7",
@@ -393,17 +434,64 @@ const styles = StyleSheet.create({
   sectionLabel: {
     fontSize: 11,
     fontWeight: "800",
-    color: "#64748B",
+    color: "#94A3B8",
     letterSpacing: 0.5,
     marginTop: 18,
     marginBottom: 8,
   },
+  langGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  langTile: {
+    flex: 1,
+    minWidth: "46%",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    position: "relative",
+  },
+  langTileActive: {
+    borderColor: "#0284C7",
+    backgroundColor: "#F0F9FF",
+    borderWidth: 1.5,
+  },
+  langLabel: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#1E293B",
+  },
+  langLabelActive: {
+    color: "#0284C7",
+  },
+  langSub: {
+    fontSize: 10,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  langSubActive: {
+    color: "#0369A1",
+    fontWeight: "600",
+  },
+  activeCheckDot: {
+    position: "absolute",
+    top: 8,
+    right: 8,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#0284C7",
+  },
   shareTripCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(16, 185, 129, 0.12)",
+    backgroundColor: "#ECFDF5",
     borderWidth: 1,
-    borderColor: "#10B981",
+    borderColor: "#A7F3D0",
     padding: 12,
     borderRadius: 14,
     gap: 12,
@@ -420,7 +508,7 @@ const styles = StyleSheet.create({
   shareTripTitle: {
     fontSize: 14,
     fontWeight: "800",
-    color: "#34D399",
+    color: "#065F46",
   },
   newBadge: {
     backgroundColor: "#059669",
@@ -435,17 +523,17 @@ const styles = StyleSheet.create({
   },
   shareTripDesc: {
     fontSize: 11,
-    color: "#A7F3D0",
+    color: "#047857",
     marginTop: 2,
     lineHeight: 15,
   },
   menuItemRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "transparent",
+    backgroundColor: "#FFFFFF",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: "#1E293B",
+    borderBottomColor: "#F1F5F9",
     gap: 12,
   },
   menuItemIconWrap: {
@@ -458,11 +546,11 @@ const styles = StyleSheet.create({
   menuItemTitle: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#FFFFFF",
+    color: "#1E293B",
   },
   menuItemSubtitle: {
     fontSize: 11,
-    color: "#94A3B8",
+    color: "#64748B",
     marginTop: 1,
   },
   logoutBtn: {
@@ -470,15 +558,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    backgroundColor: "rgba(239, 68, 68, 0.12)",
+    backgroundColor: "#FEF2F2",
     borderWidth: 1,
-    borderColor: "rgba(239, 68, 68, 0.3)",
+    borderColor: "#FECACA",
     paddingVertical: 12,
     borderRadius: 14,
     marginTop: 22,
   },
   logoutBtnText: {
-    color: "#EF4444",
+    color: "#DC2626",
     fontSize: 13,
     fontWeight: "800",
   },
