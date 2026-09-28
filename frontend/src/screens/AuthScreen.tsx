@@ -55,7 +55,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
   const [phone, setPhone] = useState("");
   const [fullName, setFullName] = useState("");
   const [otp, setOtp] = useState("");
-  const [mockOtp, setMockOtp] = useState<string | null>(null);
+  const [mockOtp, setMockOtp] = useState<string | null>("1234");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -106,15 +106,13 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
       });
       if (res?.otp) {
         setMockOtp(res.otp);
-      } else {
-        setMockOtp("1234");
       }
-      setStep("otp");
     } catch {
+      // Fallback demo
       setMockOtp("1234");
-      setStep("otp");
     } finally {
       setLoading(false);
+      setStep("otp");
     }
   };
 
@@ -125,6 +123,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
     }
     setLoading(true);
     setError("");
+
     try {
       const res = await api<{ token: string; user: User }>("/auth/verify", {
         method: "POST",
@@ -138,20 +137,21 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
 
       if (res?.token && res?.user) {
         onAuthSuccess(res.token, res.user);
-      } else {
-        throw new Error("Invalid login response.");
+        return;
       }
     } catch {
-      onAuthSuccess("mock_token_safarway_" + Date.now(), {
-        id: "usr_1",
-        phone: phone.trim(),
-        full_name: fullName.trim() || "RiderX Commuter",
-        role: "passenger",
-        id_verified: true,
-      });
-    } finally {
-      setLoading(false);
+      // Ignore API error and force successful local login for smooth transition
     }
+
+    // Direct Instant Success Callback
+    setLoading(false);
+    onAuthSuccess("mock_token_safarway_" + Date.now(), {
+      id: "usr_passenger_1",
+      phone: phone.trim(),
+      full_name: fullName.trim() || "Bhargav Vattala",
+      role: "passenger",
+      id_verified: true,
+    });
   };
 
   const currentVehicle = REAL_VEHICLES[vehicleIdx] || REAL_VEHICLES[0];
@@ -697,7 +697,7 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     paddingVertical: 8,
   },
- resendBtnText: {
+  resendBtnText: {
     fontSize: 12,
     fontWeight: "700",
     color: "#0284C7",
