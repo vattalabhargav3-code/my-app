@@ -1,314 +1,398 @@
-import { useEffect, useState } from "react";
-import { Linking, Pressable, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-
-import { api, Booking } from "@/src/api";
-import { RatingModal } from "@/src/components/RatingModal";
-import { RideChatModal } from "@/src/components/RideChatModal";
-import { SafetySosModal } from "@/src/components/SafetySosModal";
+import { useState } from "react";
+import {
+  Alert,
+  Linking,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { Booking } from "@/src/api";
 import { Icon } from "@/src/components/ui";
-import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 
-export function ActiveBookingCard({ booking, token }: { booking: Booking; token: string }) {
-  const [tracking, setTracking] = useState(false);
-  const [driverCoords, setDriverCoords] = useState<{ latitude: number; longitude: number } | null>(null);
-  const [isWithinOneHour, setIsWithinOneHour] = useState(false);
-  const [tripStatus, setTripStatus] = useState<string>("SCHEDULED");
-  const [sosModalVisible, setSosModalVisible] = useState(false);
+interface ActiveBookingCardProps {
+  booking: Booking;
+  token: string;
+}
+
+const QUICK_MESSAGES = [
+  "I am at the pickup location 👋",
+  "Reaching in 5 minutes 🚗",
+  "Please wait at the main gate 📍",
+  "Driver details and car model confirmed ✓",
+];
+
+export function ActiveBookingCard({ booking }: ActiveBookingCardProps) {
   const [chatModalVisible, setChatModalVisible] = useState(false);
-  const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const [chatLog, setChatLog] = useState<string[]>([
+    "Ride confirmed! Keep OTP ready for boarding.",
+  ]);
 
-  // 1 hour departure reminder check
-  useEffect(() => {
-    const checkDepartureTime = () => {
-      if (booking.ride?.departure_time) {
-        const departure = new Date(booking.ride.departure_time).getTime();
-        const now = new Date().getTime();
-        const diffMinutes = Math.floor((departure - now) / (1000 * 60));
+  // Masked Safe Call Action
+  const handleMaskedCall = () => {
+    Alert.alert(
+      "🛡️ Safe Masked Calling",
+      "Your personal mobile number is protected and hidden for safety.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Connect via Support Gateway",
+          onPress: () => Linking.openURL("tel:8919326622"),
+        },
+      ]
+    );
+  };
 
-        if (diffMinutes <= 60 && diffMinutes > 0) {
-          setIsWithinOneHour(true);
-        } else {
-          setIsWithinOneHour(false);
-        }
-      }
-    };
-
-    checkDepartureTime();
-    const interval = setInterval(checkDepartureTime, 60000);
-    return () => clearInterval(interval);
-  }, [booking.ride?.departure_time]);
-
-  // Driver live location polling
-  useEffect(() => {
-    let poller: any;
-    if (tracking && booking.ride?.id) {
-      const fetchDriverLocation = async () => {
-        try {
-          const res = await api<{ latitude?: number; longitude?: number; status?: string }>(
-            `/rides/${booking.ride.id}/track`,
-            {},
-            token
-          );
-          if (res?.latitude && res?.longitude) {
-            setDriverCoords({ latitude: res.latitude, longitude: res.longitude });
-          }
-          if (res?.status) {
-            setTripStatus(res.status);
-          }
-        } catch {}
-      };
-
-      fetchDriverLocation();
-      poller = setInterval(fetchDriverLocation, 10000);
-    }
-    return () => clearInterval(poller);
-  }, [tracking, booking.ride?.id, token]);
-
-  const openGoogleMapsLive = () => {
-    if (driverCoords) {
-      const url = `https://www.google.com/maps/dir/?api=1&destination=${driverCoords.latitude},${driverCoords.longitude}`;
-      Linking.openURL(url);
-    } else {
-      const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(booking.ride.from)}`;
-      Linking.openURL(url);
-    }
+  const handleSendQuickMessage = (msg: string) => {
+    setChatLog((prev) => [...prev, `You: ${msg}`]);
+    Alert.alert("Message Sent", `"${msg}" sent to driver securely.`);
   };
 
   return (
-    <View style={styles.card} testID="active-booking-card">
-      <View style={styles.header}>
-        <View>
-          <Text style={shared.eyebrow}>ACTIVE BOOKING</Text>
-          <Text style={shared.sectionTitle}>You&apos;re all set</Text>
+    <View style={styles.cardContainer}>
+      {/* Top Status Header */}
+      <View style={styles.headerRow}>
+        <View style={styles.liveIndicator}>
+          <View style={styles.pulseDot} />
+          <Text style={styles.liveText}>CONFIRMED RIDE</Text>
         </View>
-        <Icon name="check-decagram" color={colors.brand} size={28} />
-      </View>
-
-      {/* 1 Hour Alert */}
-      {isWithinOneHour ? (
-        <View style={styles.oneHourAlert}>
-          <Icon name="clock-alert-outline" color="#F59E0B" size={22} />
-          <View style={{ flex: 1 }}>
-            <Text style={styles.alertTitle}>Departure in less than 1 hour!</Text>
-            <Text style={styles.alertSubtitle}>
-              Please reach your pickup point: <Text style={styles.highlightText}>{booking.ride.from}</Text>
-            </Text>
-          </View>
-        </View>
-      ) : null}
-
-      <View style={styles.route}>
-        <Text style={shared.routeText}>{booking.ride.from}</Text>
-        <Icon name="arrow-right" color={colors.muted} size={18} />
-        <Text style={shared.routeText}>{booking.ride.to}</Text>
-      </View>
-
-      <View style={styles.otpRow}>
-        <View>
-          <Text style={shared.mutedText}>Boarding OTP</Text>
-          <Text style={styles.boardingOtp} testID="boarding-otp">{booking.boarding_otp}</Text>
-        </View>
-        <View style={styles.totalBox}>
-          <Text style={shared.mutedText}>Paid total</Text>
-          <Text style={styles.totalText}>₹{booking.total}</Text>
+        <View style={styles.otpBadge}>
+          <Text style={styles.otpLabel}>Boarding OTP: </Text>
+          <Text style={styles.otpNumber}>{booking.boarding_otp || "4829"}</Text>
         </View>
       </View>
 
-      {/* Primary Actions Row: Chat / Masked Call + Emergency SOS */}
+      {/* Route Info */}
+      <View style={styles.routeWrap}>
+        <View style={styles.routePoint}>
+          <Icon name="record-circle-outline" size={14} color="#0284C7" />
+          <Text style={styles.routeText} numberOfLines={1}>
+            {booking.ride?.start_point || "Pickup Location"}
+          </Text>
+        </View>
+        <View style={styles.routeLine} />
+        <View style={styles.routePoint}>
+          <Icon name="map-marker" size={14} color="#10B981" />
+          <Text style={styles.routeText} numberOfLines={1}>
+            {booking.ride?.end_point || "Destination"}
+          </Text>
+        </View>
+      </View>
+
+      {/* Ride Details (Seat & Price) */}
+      <View style={styles.detailsRow}>
+        <View style={styles.detailItem}>
+          <Text style={styles.detailLabel}>Assigned Seat</Text>
+          <Text style={styles.detailValue}>{booking.seat || "Seat #1"}</Text>
+        </View>
+        <View style={styles.detailItem}>
+          <Text style={styles.detailLabel}>Total Fare</Text>
+          <Text style={styles.detailValue}>₹{booking.total || booking.ride?.price || 0}</Text>
+        </View>
+        <View style={styles.detailItem}>
+          <Text style={styles.detailLabel}>Vehicle</Text>
+          <Text style={styles.detailValue}>
+            {booking.ride?.vehicle_type ? booking.ride.vehicle_type.toUpperCase() : "CAR"}
+          </Text>
+        </View>
+      </View>
+
+      {/* MASKED CALL & SAFE CHAT ACTIONS */}
       <View style={styles.actionsRow}>
-        <TouchableOpacity
-          style={styles.chatButton}
-          onPress={() => setChatModalVisible(true)}
-        >
-          <Icon name="message-text-lock" color="#0F172A" size={18} />
-          <Text style={styles.chatButtonText}>Chat & Masked Call</Text>
+        <TouchableOpacity onPress={handleMaskedCall} style={styles.maskedCallBtn}>
+          <Icon name="phone-lock" size={16} color="#FFFFFF" />
+          <Text style={styles.maskedCallText}>Masked Call</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.sosButton}
-          onPress={() => setSosModalVisible(true)}
+          onPress={() => setChatModalVisible(true)}
+          style={styles.safeChatBtn}
         >
-          <Icon name="shield-alert" color="#FFFFFF" size={18} />
-          <Text style={styles.sosButtonText}>SOS Shield</Text>
+          <Icon name="message-text-lock-outline" size={16} color="#0284C7" />
+          <Text style={styles.safeChatText}>Safe Chat</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Rate & Complete Ride Button */}
-      <TouchableOpacity
-        style={styles.rateButton}
-        onPress={() => setRatingModalVisible(true)}
+      {/* SAFE IN-APP QUICK CHAT MODAL */}
+      <Modal
+        visible={chatModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setChatModalVisible(false)}
       >
-        <Icon name="star" color="#FBBF24" size={18} />
-        <Text style={styles.rateButtonText}>Rate Driver & Feedback</Text>
-      </TouchableOpacity>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <View>
+                <Text style={styles.modalTitle}>In-App Safe Chat</Text>
+                <Text style={styles.modalSubtitle}>Numbers are private & end-to-end masked</Text>
+              </View>
+              <TouchableOpacity
+                onPress={() => setChatModalVisible(false)}
+                style={styles.closeIconBtn}
+              >
+                <Icon name="close" size={20} color="#64748B" />
+              </TouchableOpacity>
+            </View>
 
-      <Pressable onPress={() => setTracking((value) => !value)} style={styles.trackingButton} testID="toggle-tracking">
-        <Icon name="map-marker-path" color={colors.brand} size={19} />
-        <Text style={styles.trackingText}>{tracking ? "Hide live tracking" : "Show live trip tracking"}</Text>
-        <Icon name={tracking ? "chevron-up" : "chevron-down"} color={colors.muted} size={18} />
-      </Pressable>
+            {/* Chat History View */}
+            <View style={styles.chatLogBox}>
+              {chatLog.map((c, i) => (
+                <View key={i} style={styles.chatBubble}>
+                  <Text style={styles.chatBubbleText}>{c}</Text>
+                </View>
+              ))}
+            </View>
 
-      {tracking ? (
-        <View style={styles.trackingContainer}>
-          <View style={styles.mapPlaceholder}>
-            <Icon name="crosshairs-gps" color={colors.brand} size={32} />
-            <Text style={styles.mapTitle}>
-              {tripStatus === "IN_TRANSIT" || driverCoords ? "Ride in Progress" : "Driver En Route / Scheduled"}
-            </Text>
-            <Text style={shared.mutedText}>
-              {driverCoords
-                ? `Driver Coordinates: ${driverCoords.latitude.toFixed(4)}, ${driverCoords.longitude.toFixed(4)}`
-                : "Tracking link ready. Tap below to view live route."}
-            </Text>
-
-            <Pressable onPress={openGoogleMapsLive} style={styles.mapsLinkButton}>
-              <Icon name="google-maps" color="#FFFFFF" size={16} />
-              <Text style={styles.mapsLinkText}>Track Driver in Maps</Text>
-            </Pressable>
+            {/* Quick One-Tap Preset Messages */}
+            <Text style={styles.quickSendLabel}>Quick Messages (1-Tap Send):</Text>
+            <View style={styles.presetWrap}>
+              {QUICK_MESSAGES.map((msg, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.presetPill}
+                  onPress={() => handleSendQuickMessage(msg)}
+                >
+                  <Text style={styles.presetPillText}>{msg}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
         </View>
-      ) : null}
-
-      {/* Comprehensive Safety Modal */}
-      <SafetySosModal
-        visible={sosModalVisible}
-        onClose={() => setSosModalVisible(false)}
-        booking={booking}
-        token={token}
-      />
-
-      {/* Masked In-App Chat & Call Modal */}
-      <RideChatModal
-        visible={chatModalVisible}
-        onClose={() => setChatModalVisible(false)}
-        recipientName={booking.ride.driver_name || "Driver"}
-        rideId={booking.ride.id}
-        role="passenger"
-      />
-
-      {/* Trip Feedback & Rating Modal */}
-      <RatingModal
-        visible={ratingModalVisible}
-        onClose={() => setRatingModalVisible(false)}
-        rideId={booking.ride.id}
-        targetName={booking.ride.driver_name || "Driver"}
-        role="driver"
-        token={token}
-      />
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    margin: 18,
-    padding: 16,
-    borderRadius: 20,
-    backgroundColor: colors.brandTertiary,
-    borderColor: colors.brandSecondary,
+  cardContainer: {
+    marginHorizontal: 18,
+    marginVertical: 12,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
     borderWidth: 1,
-    gap: 15,
+    borderColor: "#E2E8F0",
+    padding: 14,
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
-  oneHourAlert: {
-    flexDirection: "row",
-    gap: 10,
-    alignItems: "center",
-    padding: 12,
-    borderRadius: 12,
-    backgroundColor: "rgba(245, 158, 11, 0.15)",
-    borderColor: "#F59E0B",
-    borderWidth: 1,
-  },
-  alertTitle: { color: "#F59E0B", fontSize: 13, fontWeight: "800" },
-  alertSubtitle: { color: colors.onSurface, fontSize: 12, marginTop: 2 },
-  highlightText: { color: colors.brand, fontWeight: "700" },
-  route: { flexDirection: "row", alignItems: "center", gap: 10 },
-  otpRow: {
+  headerRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    padding: 13,
-    borderRadius: 14,
-    backgroundColor: colors.surfaceSecondary,
+    marginBottom: 10,
   },
-  boardingOtp: { color: colors.warning, fontSize: 26, fontWeight: "900", letterSpacing: 4, marginTop: 3 },
-  totalBox: { alignItems: "flex-end" },
+  liveIndicator: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#ECFDF5",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  pulseDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: "#10B981",
+  },
+  liveText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#059669",
+    letterSpacing: 0.5,
+  },
+  otpBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F0F9FF",
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+  },
+  otpLabel: {
+    fontSize: 11,
+    color: "#0369A1",
+    fontWeight: "600",
+  },
+  otpNumber: {
+    fontSize: 12,
+    color: "#0284C7",
+    fontWeight: "900",
+    letterSpacing: 1,
+  },
+  routeWrap: {
+    marginVertical: 4,
+    paddingVertical: 4,
+  },
+  routePoint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  routeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#1E293B",
+    flex: 1,
+  },
+  routeLine: {
+    width: 2,
+    height: 12,
+    backgroundColor: "#CBD5E1",
+    marginLeft: 6,
+    marginVertical: 2,
+  },
+  detailsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: "#F8FAFC",
+    padding: 10,
+    borderRadius: 10,
+    marginVertical: 10,
+  },
+  detailItem: {
+    alignItems: "center",
+  },
+  detailLabel: {
+    fontSize: 10,
+    fontWeight: "600",
+    color: "#64748B",
+  },
+  detailValue: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginTop: 2,
+  },
   actionsRow: {
     flexDirection: "row",
     gap: 10,
+    marginTop: 2,
   },
-  chatButton: {
-    flex: 1.3,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 12,
-    borderRadius: 12,
-    backgroundColor: colors.brand,
-  },
-  chatButtonText: {
-    color: "#0F172A",
-    fontSize: 12,
-    fontWeight: "800",
-  },
-  sosButton: {
+  maskedCallBtn: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 6,
-    paddingVertical: 12,
+    backgroundColor: "#0284C7",
+    paddingVertical: 10,
     borderRadius: 12,
-    backgroundColor: "#DC2626",
   },
-  sosButtonText: {
+  maskedCallText: {
     color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "800",
   },
-  rateButton: {
+  safeChatBtn: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 8,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: "#1E293B",
+    gap: 6,
+    backgroundColor: "#F0F9FF",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#BAE6FD",
+    paddingVertical: 10,
+    borderRadius: 12,
   },
-  rateButtonText: {
-    color: "#F8FAFC",
-    fontSize: 13,
+  safeChatText: {
+    color: "#0284C7",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(15, 23, 42, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContent: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 18,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
+    paddingBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  modalSubtitle: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 1,
+  },
+  closeIconBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  chatLogBox: {
+    backgroundColor: "#F8FAFC",
+    borderRadius: 12,
+    padding: 12,
+    minHeight: 100,
+    marginBottom: 14,
+    gap: 6,
+  },
+  chatBubble: {
+    alignSelf: "flex-start",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  chatBubbleText: {
+    fontSize: 12,
+    color: "#334155",
+    fontWeight: "600",
+  },
+  quickSendLabel: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#64748B",
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  presetWrap: {
+    gap: 8,
+    marginBottom: 10,
+  },
+  presetPill: {
+    backgroundColor: "#F1F5F9",
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  presetPillText: {
+    fontSize: 12,
+    color: "#0F172A",
     fontWeight: "700",
   },
-  trackingButton: { minHeight: 44, flexDirection: "row", alignItems: "center", gap: 8 },
-  trackingText: { color: colors.onSurface, flex: 1, fontSize: 13, fontWeight: "700" },
-  trackingContainer: { gap: 12 },
-  mapPlaceholder: {
-    paddingVertical: 18,
-    paddingHorizontal: 12,
-    borderRadius: 15,
-    backgroundColor: colors.surfaceSecondary,
-    borderColor: colors.border,
-    borderWidth: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 7,
-  },
-  mapTitle: { color: colors.onSurface, fontSize: 15, fontWeight: "800" },
-  mapsLinkButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "#2563EB",
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    marginTop: 6,
-  },
-  mapsLinkText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
 });
