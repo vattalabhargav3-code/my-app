@@ -1,12 +1,19 @@
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import * as Haptics from "expo-haptics";
 import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 
 export function Icon({ name, size = 20, color = colors.onSurfaceSecondary }: { name: string; size?: number; color?: string }) {
-  return <MaterialCommunityIcons name={name as never} size={size} color={color} />;
+  // Safe emoji mapping to avoid @expo/vector-icons web rendering crashes
+  let emoji = "🔹";
+  if (name.includes("shield-check") || name.includes("check")) emoji = "🛡️";
+  else if (name.includes("cash")) emoji = "💸";
+  else if (name.includes("alert")) emoji = "🚨";
+  else if (name.includes("map") || name.includes("compass")) emoji = "📍";
+  else if (name.includes("steering") || name.includes("car")) emoji = "🚗";
+  else if (name.includes("arrow-left")) emoji = "←";
+
+  return <Text style={{ fontSize: size, color }}>{emoji}</Text>;
 }
 
 type ButtonTone = "brand" | "soft" | "danger";
@@ -32,10 +39,7 @@ export function Button({
       testID={testID}
       accessibilityRole="button"
       disabled={disabled || loading}
-      onPress={() => {
-        Haptics.selectionAsync();
-        onPress();
-      }}
+      onPress={onPress}
       style={({ pressed }) => [styles.button, toneStyle, (pressed || disabled) && shared.pressed]}
     >
       {loading ? (
@@ -83,9 +87,9 @@ export function BrandMark({ compact = false }: { compact?: boolean }) {
   return (
     <View style={styles.brandRow}>
       <View style={styles.brandIcon}>
-        <Icon name="compass-outline" size={compact ? 20 : 28} color={colors.onBrandPrimary} />
+        <Text style={{ fontSize: compact ? 16 : 22 }}>🚗</Text>
       </View>
-      <Text style={[styles.brandName, compact && styles.brandNameCompact]}>SafarWay</Text>
+      <Text style={[styles.brandName, compact && styles.brandNameCompact]}>RiderX</Text>
     </View>
   );
 }
@@ -94,7 +98,7 @@ export function ErrorBanner({ message }: { message: string }) {
   if (!message) return null;
   return (
     <View style={styles.errorBanner} testID="error-banner">
-      <Icon name="alert-circle-outline" color={colors.error} size={18} />
+      <Text style={{ fontSize: 16 }}>⚠️</Text>
       <Text style={styles.errorText}>{message}</Text>
     </View>
   );
