@@ -1,10 +1,5 @@
-import { StorageBase, StorageItemKey, StorageItemValue } from "./base";
-
-class WebStorage extends StorageBase {
-  async getItem<Fallback extends StorageItemValue>(
-    key: StorageItemKey,
-    fallback: Fallback,
-  ): Promise<any> {
+export const storage = {
+  async getItem(key: string, fallback: any = null): Promise<any> {
     if (typeof window === "undefined" || !window.localStorage) {
       return fallback;
     }
@@ -16,12 +11,9 @@ class WebStorage extends StorageBase {
     } catch {
       return raw;
     }
-  }
+  },
 
-  async setItem<Value extends StorageItemValue>(
-    key: StorageItemKey,
-    value: Value,
-  ): Promise<boolean> {
+  async setItem(key: string, value: any): Promise<boolean> {
     if (typeof window === "undefined" || !window.localStorage) {
       return false;
     }
@@ -30,12 +22,12 @@ class WebStorage extends StorageBase {
       window.localStorage.setItem(key, payload);
       return true;
     } catch (e) {
-      this.warn("setItem", key, e);
+      console.warn(`[storage] setItem(${key}) failed`, e);
       return false;
     }
-  }
+  },
 
-  async removeItem(key: StorageItemKey): Promise<boolean> {
+  async removeItem(key: string): Promise<boolean> {
     if (typeof window === "undefined" || !window.localStorage) {
       return false;
     }
@@ -43,28 +35,20 @@ class WebStorage extends StorageBase {
       window.localStorage.removeItem(key);
       return true;
     } catch (e) {
-      this.warn("removeItem", key, e);
+      console.warn(`[storage] removeItem(${key}) failed`, e);
       return false;
     }
-  }
+  },
 
-  async secureGet<Fallback extends StorageItemValue>(
-    key: StorageItemKey,
-    fallback: Fallback,
-  ): Promise<any> {
+  async secureGet(key: string, fallback: any = null): Promise<any> {
     return this.getItem(key, fallback);
-  }
+  },
 
-  async secureSet<Value extends StorageItemValue>(
-    key: StorageItemKey,
-    value: Value,
-  ): Promise<boolean> {
+  async secureSet(key: string, value: any): Promise<boolean> {
     return this.setItem(key, value);
-  }
+  },
 
-  async secureRemove(key: StorageItemKey): Promise<boolean> {
+  async secureRemove(key: string): Promise<boolean> {
     return this.removeItem(key);
-  }
-}
-
-export const storage = new WebStorage();
+  },
+};
