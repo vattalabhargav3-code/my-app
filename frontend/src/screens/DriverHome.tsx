@@ -8,6 +8,7 @@ import { SafetySosModal } from "@/src/components/SafetySosModal";
 import { ScreenHeader } from "@/src/components/navigation";
 import { RideCard } from "@/src/components/RideCard";
 import { Button, ErrorBanner, Field, Icon, Segmented } from "@/src/components/ui";
+import { UserMenuModal } from "@/src/components/UserMenuModal";
 import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 
@@ -52,6 +53,7 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
   const [pickerTarget, setPickerTarget] = useState<"start" | "end" | null>(null);
   const [sosModalVisible, setSosModalVisible] = useState(false);
   const [selectedSosRide, setSelectedSosRide] = useState<Ride | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
 
   const watchIdRef = useRef<any>(null);
 
@@ -227,8 +229,17 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           title="Host & Earn Fuel Rewards"
           onLogout={onLogout}
           right={
-            <View style={shared.iconTile}>
-              <Icon name="steering" size={22} color={colors.brand} />
+            <View style={styles.headerRightWrap}>
+              <TouchableOpacity
+                onPress={() => setMenuVisible(true)}
+                style={styles.menuIconBtn}
+                accessibilityLabel="Open Driver Menu"
+              >
+                <Icon name="menu" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+              <View style={shared.iconTile}>
+                <Icon name="steering" size={22} color={colors.brand} />
+              </View>
             </View>
           }
         />
@@ -456,11 +467,32 @@ export function DriverHome({ token, onLogout }: { token: string; onLogout: () =>
           token={token}
         />
       ) : null}
+
+      <UserMenuModal
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        token={token}
+        onLogout={onLogout}
+      />
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
+  headerRightWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  menuIconBtn: {
+    padding: 7,
+    borderRadius: 10,
+    backgroundColor: "#1E293B",
+    borderWidth: 1,
+    borderColor: "#334155",
+    alignItems: "center",
+    justifyContent: "center",
+  },
   petrolCard: {
     margin: 18,
     padding: 16,
@@ -529,56 +561,4 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     borderRadius: 10,
   },
-  vibeOptionActive: {
-    backgroundColor: colors.brand,
-    borderColor: colors.brand,
-  },
-  vibeOptionText: {
-    color: colors.muted,
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  vibeOptionTextActive: {
-    color: "#0F172A",
-  },
-  toggleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "rgba(236, 72, 153, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(236, 72, 153, 0.3)",
-    padding: 12,
-    borderRadius: 12,
-    marginVertical: 4,
-  },
-  toggleTextWrap: { flex: 1, paddingRight: 8 },
-  toggleTitleWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
-  toggleTitle: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
-  toggleSubtitle: { color: colors.muted, fontSize: 11, marginTop: 2 },
-  rideItemWrapper: { marginBottom: 14 },
-  driverActionsRow: { flexDirection: "row", gap: 10, marginHorizontal: 18, marginTop: -4 },
-  trackingActionBtn: {
-    flex: 2,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: "#059669",
-  },
-  trackingActiveBtn: { backgroundColor: "#DC2626" },
-  trackingActionText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
-  driverSosBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: "#DC2626",
-  },
-  driverSosText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
-});
+  vibeOptionActive:
