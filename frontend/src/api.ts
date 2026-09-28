@@ -1,5 +1,6 @@
 import Constants from "expo-constants";
 import { storage } from "./utils/storage";
+
 const API_BASE = "https://backend-alpha-gray.vercel.app";
 export const SESSION_KEY = "safarway.access-token";
 
@@ -31,40 +32,43 @@ export type Booking = {
 
 // Safe గా plain string లేదా JSON token ను లాగే ఫంక్షన్
 async function getCleanToken(explicitToken?: string): Promise<string | null> {
-  if (explicitToken) return explicitToken.replace(/^"(.*)"$/, "$1");
-
-  let raw: any = null;
+  let raw: any = explicitToken || null;
 
   // 1. Direct Web localStorage Check
-  if (typeof window !== "undefined" && window.localStorage) {
-    raw = window.localStorage.getItem(SESSION_KEY);
+  if (!raw && typeof window !== "undefined" && window.localStorage) {
+    raw =
+      window.localStorage.getItem(SESSION_KEY) ||
+      window.localStorage.getItem("safarway_token") ||
+      window.localStorage.getItem("token") ||
+      window.localStorage.getItem("access_token");
   }
 
   // 2. Fallback to storage helper
   if (!raw) {
     try {
-      raw = await storage.secureGet(SESSION_KEY);
+      raw =
+        (await storage.secureGet(SESSION_KEY)) ||
+        (await storage.secureGet("safarway_token")) ||
+        (await storage.secureGet("token"));
     } catch {
       raw = null;
     }
   }
 
-  if (!raw) return null;
+  if (!raw || raw === "undefined" || raw === "null") return null;
 
-  // ఒకవేళ raw అనేది ఆబ్జెక్ట్ లేదా స్ట్రింగ్ అయితే క్లీన్ చేయడం
   let tokenStr = typeof raw === "string" ? raw : JSON.stringify(raw);
-  
-  // Extra double quotes తీసివేయడం
   tokenStr = tokenStr.trim().replace(/^"(.*)"$/, "$1");
 
   // Unexpected JSON unwrap
   if (tokenStr.startsWith("{") && tokenStr.endsWith("}")) {
     try {
       const parsed = JSON.parse(tokenStr);
-      tokenStr = parsed.token || parsed.access_token || tokenStr;
+      tokenStr = parsed.access_token || parsed.token || parsed.jwt || tokenStr;
     } catch {}
   }
 
+  if (tokenStr === "undefined" || tokenStr === "null") return null;
   return tokenStr;
 }
 
@@ -80,7 +84,11 @@ export async function api<T = any>(path: string, options: RequestInit = {}, toke
     headers["Authorization"] = `Bearer ${savedToken}`;
   }
 
-  const response = await fetch(`${API_BASE}/api${path}`, {
+  // Handle direct paths vs /api prefixed paths automatically
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  const targetUrl = `${API_BASE}${cleanPath}`;
+
+  const response = await fetch(targetUrl, {
     ...options,
     headers,
   });
