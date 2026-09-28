@@ -115,7 +115,7 @@ export function PassengerHome({
         setSearch((prev) => ({ ...prev, fromLocation: placeName }));
       }
     } catch {
-      alert("Location permission allow చేయండి లేదా GPS ఆన్ చేయండి.");
+      alert("Location permission allow cheyandi leda GPS on cheyandi.");
     } finally {
       setDetectingLocation(false);
     }
@@ -170,10 +170,9 @@ export function PassengerHome({
         <ScreenHeader
           eyebrow="PASSENGER DASHBOARD"
           title="Where are you headed?"
-          onLogout={onLogout}
           right={
             <View style={styles.headerRightWrap}>
-              {/* Emergency SOS Button */}
+              {/* 1. SOS Emergency Button */}
               <TouchableOpacity
                 onPress={triggerDirectSos}
                 style={styles.sosQuickBtn}
@@ -183,7 +182,7 @@ export function PassengerHome({
                 <Text style={styles.sosQuickText}>SOS</Text>
               </TouchableOpacity>
 
-              {/* Menu Button */}
+              {/* 2. Menu Button (Edit profile, Trips, Log Out anni indhulo untayi) */}
               <TouchableOpacity
                 onPress={() => setMenuVisible(true)}
                 style={styles.menuIconBtn}
@@ -192,6 +191,7 @@ export function PassengerHome({
                 <Icon name="menu" size={18} color="#FFFFFF" />
               </TouchableOpacity>
 
+              {/* 3. Safe Badge */}
               <View style={styles.secureBadge}>
                 <Icon name="shield-check" size={15} color={colors.brand} />
                 <Text style={styles.secureBadgeText}>Safe</Text>
