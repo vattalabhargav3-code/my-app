@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
 
 interface LocationPickerProps {
   visible: boolean;
@@ -42,7 +41,6 @@ export function LocationPickerModal({
   const [coords, setCoords] = useState({ lat: 17.4435, lon: 78.3772 });
   const [address, setAddress] = useState("Hitec City, Hyderabad");
 
-  // Mapbox Autocomplete
   const handleSearch = async (text: string) => {
     setQuery(text);
     if (text.trim().length < 2) {
@@ -78,13 +76,11 @@ export function LocationPickerModal({
     onClose();
   };
 
-  // Mapbox Static High-Res Vector Map (ఎలాంటి క్రాష్‌లు ఉండవు, వేగంగా లోడ్ అవుతుంది)
   const mapImageUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${coords.lon},${coords.lat},14.5,0/800x600@2x?access_token=${MAPBOX_TOKEN}`;
 
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <View style={styles.container}>
-        {/* Fullscreen Map Layer */}
         <View style={styles.mapLayer}>
           <Image
             source={{ uri: mapImageUrl }}
@@ -92,7 +88,6 @@ export function LocationPickerModal({
             resizeMode="cover"
           />
 
-          {/* Center Target Pin (Uber / Rapido Style) */}
           <View style={styles.fixedPin} pointerEvents="none">
             <View style={styles.pinBubble}>
               <View style={styles.pinDot} />
@@ -101,14 +96,13 @@ export function LocationPickerModal({
           </View>
         </View>
 
-        {/* Top Header & Search Input */}
         <View style={styles.topHeader}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={22} color="#0F172A" />
+            <Text style={styles.backBtnText}>←</Text>
           </TouchableOpacity>
 
           <View style={styles.inputWrap}>
-            <Ionicons name="search" size={18} color="#64748B" />
+            <Text style={styles.searchIconText}>🔍</Text>
             <TextInput
               style={styles.input}
               placeholder="Search area (e.g. Hitec City, LB Nagar)..."
@@ -120,7 +114,6 @@ export function LocationPickerModal({
           </View>
         </View>
 
-        {/* Autocomplete Results Box */}
         {results.length > 0 && (
           <View style={styles.resultsBox}>
             <FlatList
@@ -135,7 +128,7 @@ export function LocationPickerModal({
                     pickLocation(shortName, item.center[1], item.center[0]);
                   }}
                 >
-                  <Ionicons name="location-outline" size={18} color="#0284C7" />
+                  <Text style={styles.resPinIcon}>📍</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.resPrimary}>{item.text}</Text>
                     <Text style={styles.resSecondary} numberOfLines={1}>{item.place_name}</Text>
@@ -146,12 +139,10 @@ export function LocationPickerModal({
           </View>
         )}
 
-        {/* Bottom Floating Selection Sheet */}
         <View style={styles.bottomCard}>
           <Text style={styles.sheetHeading}>{title}</Text>
           <Text style={styles.sheetSub}>Tap quick hubs or search to position pin</Text>
 
-          {/* Quick Hub Chips */}
           <View style={styles.chipsWrap}>
             {QUICK_HUBS.map((hub) => (
               <TouchableOpacity
@@ -250,6 +241,11 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 4,
   },
+  backBtnText: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: "#0F172A",
+  },
   inputWrap: {
     flex: 1,
     flexDirection: "row",
@@ -263,6 +259,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 6,
     elevation: 4,
+  },
+  searchIconText: {
+    fontSize: 14,
   },
   input: {
     flex: 1,
@@ -293,6 +292,9 @@ const styles = StyleSheet.create({
     gap: 10,
     borderBottomWidth: 0.5,
     borderBottomColor: "#F1F5F9",
+  },
+  resPinIcon: {
+    fontSize: 16,
   },
   resPrimary: {
     fontSize: 14,
