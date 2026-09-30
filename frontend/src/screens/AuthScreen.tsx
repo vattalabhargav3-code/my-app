@@ -13,22 +13,34 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { User } from "@/src/api";
 
-export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, user: User) => void }) {
+interface AuthScreenProps {
+  onLogin?: (token: string, user: User) => void;
+  onAuthSuccess?: (token: string, user: User) => void;
+}
+
+export function AuthScreen({ onLogin, onAuthSuccess }: AuthScreenProps) {
   const insets = useSafeAreaInsets();
   const [loading, setLoading] = useState(false);
 
   const handleDirectLogin = () => {
     setLoading(true);
+    const mockToken = "mock_token_riderx_" + Date.now();
+    const mockUser: User = {
+      id: "usr_passenger_1",
+      phone: "9876543210",
+      full_name: "Bhargav Vattala",
+      role: "passenger",
+      id_verified: true,
+    };
+
     setTimeout(() => {
       setLoading(false);
-      onAuthSuccess("mock_token_riderx_" + Date.now(), {
-        id: "usr_passenger_1",
-        phone: "9876543210",
-        full_name: "Bhargav Vattala",
-        role: "passenger",
-        id_verified: true,
-      });
-    }, 200);
+      if (typeof onLogin === "function") {
+        onLogin(mockToken, mockUser);
+      } else if (typeof onAuthSuccess === "function") {
+        onAuthSuccess(mockToken, mockUser);
+      }
+    }, 150);
   };
 
   return (
@@ -58,7 +70,6 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
           </View>
 
           <View style={styles.logoHeroContainer}>
-            {/* Real Original Google Map Style Box */}
             <View style={styles.originalMapBox}>
               <View style={styles.mapGridLineHorizontal} />
               <View style={styles.mapGridLineVertical} />
@@ -250,7 +261,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 3,
-    marginBottom: 10,
   },
   activePulseOrb: {
     position: "absolute",
@@ -268,6 +278,7 @@ const styles = StyleSheet.create({
     fontWeight: "900",
     color: "#0F172A",
     letterSpacing: 1,
+    marginTop: 8,
   },
   heroBrandAccent: {
     color: "#0284C7",
