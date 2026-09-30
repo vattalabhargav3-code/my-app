@@ -1,21 +1,16 @@
 import { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { api, SESSION_KEY, User } from "@/src/api";
-import { Role, RoleSwitcher } from "@/src/components/navigation";
 import { AuthScreen } from "@/src/screens/AuthScreen";
-import { DriverHome } from "@/src/screens/DriverHome";
 import { PassengerHome } from "@/src/screens/PassengerHome";
 import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 import { storage } from "@/src/utils/storage";
 
-export default function Index() {
-  const insets = useSafeAreaInsets();
+export default function PassengerApp() {
   const [token, setToken] = useState("");
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<Role>("driver"); // <-- Driver Home టెస్ట్ చేయడానికి "driver" పెట్టాం
   const [booting, setBooting] = useState(true);
 
   useEffect(() => {
@@ -62,16 +57,26 @@ export default function Index() {
 
   return (
     <View style={shared.screen}>
-      {role === "driver" ? (
-        <DriverHome token={token} user={user} onUserUpdate={setUser} onLogout={logout} />
-      ) : (
-        <PassengerHome token={token} user={user} onUserUpdate={setUser} onLogout={logout} />
-      )}
+      <PassengerHome
+        token={token}
+        user={user}
+        onUserUpdate={setUser}
+        onLogout={logout}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  loadingScreen: { flex: 1, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", gap: 12 },
-  loadingText: { color: colors.onSurfaceSecondary, fontSize: 14 },
+  loadingScreen: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  loadingText: {
+    color: colors.onSurfaceSecondary,
+    fontSize: 14,
+  },
 });
