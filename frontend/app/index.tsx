@@ -15,7 +15,7 @@ export default function Index() {
   const insets = useSafeAreaInsets();
   const [token, setToken] = useState("");
   const [user, setUser] = useState<User | null>(null);
-  const [role, setRole] = useState<Role>("passenger");
+  const [role, setRole] = useState<Role>("driver"); // <-- Driver Home టెస్ట్ చేయడానికి "driver" పెట్టాం
   const [booting, setBooting] = useState(true);
 
   useEffect(() => {
@@ -59,12 +59,16 @@ export default function Index() {
       />
     );
   }
-return (
+
+  return (
     <View style={shared.screen}>
-      <PassengerHome token={token} user={user} onUserUpdate={setUser} onLogout={logout} />
+      {role === "driver" ? (
+        <DriverHome token={token} user={user} onUserUpdate={setUser} onLogout={logout} />
+      ) : (
+        <PassengerHome token={token} user={user} onUserUpdate={setUser} onLogout={logout} />
+      )}
     </View>
   );
- 
 }
 
 const styles = StyleSheet.create({
