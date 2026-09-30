@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -20,6 +20,16 @@ interface LocationPickerProps {
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoiYmhhcmdhdjE4MTkiLCJhIjoiY211bnJxOGJ6MDJnNjJ4cGNucWV3ZTB5ZyJ9.eeQZMTPajF3ggl5E1ovH0Q";
 
+// Quick Select Localities for Hyderabad Commute
+const QUICK_LOCALITIES = [
+  { name: "Hitec City", lat: 17.4435, lon: 78.3772 },
+  { name: "Madhapur", lat: 17.4483, lon: 78.3915 },
+  { name: "Gachibowli", lat: 17.4401, lon: 78.3489 },
+  { name: "LB Nagar", lat: 17.3457, lon: 78.5522 },
+  { name: "Kukatpally", lat: 17.4947, lon: 78.3996 },
+  { name: "Secunderabad", lat: 17.4399, lon: 78.4983 },
+];
+
 export function LocationPickerModal({
   visible,
   onClose,
@@ -29,11 +39,11 @@ export function LocationPickerModal({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [centerCoords, setCenterCoords] = useState({ lat: 17.3457, lon: 78.5522 }); // Sagar Road / Hyderabad Corridor
+  const [centerCoords, setCenterCoords] = useState({ lat: 17.3457, lon: 78.5522 }); // LB Nagar / Hyderabad Corridor
   const [pickedAddress, setPickedAddress] = useState("Locating your point...");
   const [detecting, setDetecting] = useState(false);
 
-  // Mapbox Fastest Autocomplete (Focused on Telangana / AP)
+  // Mapbox Fastest Autocomplete (Restricted strictly to Hyderabad corridor)
   const searchPlaces = async (text: string) => {
     setQuery(text);
     if (text.trim().length < 2) {
@@ -44,7 +54,7 @@ export function LocationPickerModal({
     try {
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
         text.trim()
-      )}.json?access_token=${MAPBOX_TOKEN}&country=in&proximity=78.55,17.34&types=neighborhood,locality,place,poi,address&limit=5`;
+      )}.json?access_token=${MAPBOX_TOKEN}&country=in&proximity=78.4867,17.3850&types=neighborhood,locality,place,poi,address&limit=6`;
 
       const res = await fetch(url);
       const data = await res.json();
@@ -58,7 +68,7 @@ export function LocationPickerModal({
     }
   };
 
-  // Reverse geocoding on pin drag/movement
+  // Reverse geocoding on coordinates update
   const reverseGeocode = async (lat: number, lon: number) => {
     setDetecting(true);
     try {
@@ -93,8 +103,16 @@ export function LocationPickerModal({
     reverseGeocode(lat, lon);
   };
 
+  const handleSelectQuickHub = (hub: { name: string; lat: number; lon: number }) => {
+    setCenterCoords({ lat: hub.lat, lon: hub.lon });
+    setPickedAddress(`${hub.name}, Hyderabad`);
+    setQuery("");
+    setResults([]);
+  };
+
   const handleConfirmLocation = () => {
-    const cleanShortName = pickedAddress.split(",")[0] + ", " + (pickedAddress.split(",")[1] || "Hyderabad").trim();
+    const parts = pickedAddress.split(",");
+    const cleanShortName = parts[0] + ", " + (parts[1] || "Hyderabad").trim();
     onSelect(cleanShortName, centerCoords.lat, centerCoords.lon);
     onClose();
   };
@@ -102,11 +120,12 @@ export function LocationPickerModal({
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
-        {/* Full-screen fast interactive Mapbox Webview */}
+        {/* Full-screen fast interactive Mapbox Webview with proper lon/lat anchor */}
         <View style={styles.mapFullscreen}>
           <iframe
+            key={`${centerCoords.lat}-${centerCoords.lon}`}
             title="mapbox-live"
-            src={`https://api.mapbox.com/styles/v1/mapbox/streets-v12.html?title=true&access_token=${MAPBOX_TOKEN}#15/${centerCoords.lat}/${centerCoords.lon}`}
+            src={`https://api.mapbox.com/styles/v1/mapbox/streets-v12.html?title=false&access_token=${MAPBOX_TOKEN}#15/${centerCoords.lon}/${centerCoords.lat}`}
             style={{ width: "100%", height: "100%", border: "none" }}
           />
 
@@ -136,10 +155,15 @@ export function LocationPickerModal({
               onChangeText={searchPlaces}
             />
             {loading && <ActivityIndicator size="small" color="#0284C7" />}
+            {query.length > 0 && !loading && (
+              <TouchableOpacity onPress={() => setQuery("")}>
+                <Icon name="close-circle" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+            )}
           </View>
         </View>
 
-        {/* Dropdown search autocomplete results */}
+        {/* Autocomplete Dropdown */}
         {results.length > 0 && (
           <View style={styles.searchResultsDropdown}>
             <FlatList
@@ -168,6 +192,20 @@ export function LocationPickerModal({
         <View style={styles.bottomCard}>
           <Text style={styles.cardInstruction}>Select your location</Text>
           <Text style={styles.cardSubInstruction}>Move the map or search to adjust point</Text>
+
+          {/* Quick Area Chips */}
+          <View style={styles.quickChipsRow}>
+            {QUICK_LOCALITIES.map((loc) => (
+              <TouchableOpacity
+                key={loc.name}
+                onPress={() => handleSelectQuickHub(loc)}
+                style={styles.chip}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.chipText}>{loc.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
           <View style={styles.locationPreviewBox}>
             <View style={styles.activeDot} />
@@ -207,6 +245,7 @@ const styles = StyleSheet.create({
     left: "50%",
     transform: [{ translateX: -15 }, { translateY: -36 }],
     alignItems: "center",
+    zIndex: 10,
   },
   pinBubble: {
     width: 30,
@@ -248,6 +287,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
+    zIndex: 100,
   },
   backCircleBtn: {
     width: 44,
@@ -294,6 +334,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 10,
     elevation: 6,
+    zIndex: 101,
   },
   searchResultItem: {
     flexDirection: "row",
@@ -328,6 +369,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 10,
     elevation: 8,
+    zIndex: 90,
   },
   cardInstruction: {
     fontSize: 17,
@@ -338,7 +380,24 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748B",
     marginTop: 2,
+    marginBottom: 8,
+  },
+  quickChipsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
     marginBottom: 12,
+  },
+  chip: {
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+  },
+  chipText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#334155",
   },
   locationPreviewBox: {
     flexDirection: "row",
@@ -363,7 +422,7 @@ const styles = StyleSheet.create({
     color: "#0F172A",
   },
   confirmActionButton: {
-    backgroundColor: "#FFC000", // Rapido / Uber Style Prominent Yellow/Gold
+    backgroundColor: "#FFC000", // Rapido Yellow Highlight
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: "center",
