@@ -130,7 +130,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 10,
     flex: 1,
-    marginRight: 10,
   },
   avatarCircle: {
     width: 38,
