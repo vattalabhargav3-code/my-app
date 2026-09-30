@@ -1,289 +1,268 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ride } from "@/src/api";
-import { Icon } from "@/src/components/ui";
-import { colors } from "@/src/theme";
-
-interface ExtendedRide extends Ride {
-  women_only?: boolean;
-  ride_vibe?: "silent" | "music" | "chitchat";
-  affiliation_badge?: string; // e.g., "Campus Verified • JNTU" or "Corporate • Hitec City"
-}
+import { Ionicons } from "@expo/vector-icons";
 
 interface RideCardProps {
-  ride: ExtendedRide;
-  onPress?: () => void;
+  ride: Ride;
+  onPress: () => void;
 }
 
 export function RideCard({ ride, onPress }: RideCardProps) {
-  const isWomenOnly = (ride as any).women_only;
-  const vibe = (ride as any).ride_vibe || "music";
-  const badge = (ride as any).affiliation_badge || "Campus / Tech Park";
+  if (!ride) {
+    return null;
+  }
 
-  const renderVibeIcon = () => {
-    switch (vibe) {
-      case "silent":
-        return { icon: "headphones", label: "Silent Ride" };
-      case "chitchat":
-        return { icon: "chat-processing-outline", label: "Chill & Connect" };
-      case "music":
-      default:
-        return { icon: "music", label: "Music Vibe" };
-    }
-  };
+  // Amount & Fields fallback check
+  const fare =
+    (ride as any).price_per_seat ??
+    (ride as any).price ??
+    (ride as any).seat_price ??
+    95;
 
-  const vibeInfo = renderVibeIcon();
+  const seatsLeft =
+    (ride as any).available_seats ??
+    (ride as any).seats_left ??
+    3;
+
+  const pickupPoint =
+    (ride as any).from_location ||
+    (ride as any).from ||
+    "Pickup Point";
+
+  const dropPoint =
+    (ride as any).to_location ||
+    (ride as any).to ||
+    "Destination Point";
+
+  const driverName =
+    (ride as any).driver_name ||
+    (ride as any).driver ||
+    "Verified Partner";
+
+  const vehicleName =
+    (ride as any).vehicle_name ||
+    `${((ride as any).vehicle_type || (ride as any).type || "car").toUpperCase()} POOL`;
 
   return (
-    <TouchableOpacity
-      activeOpacity={onPress ? 0.8 : 1}
-      onPress={onPress}
-      style={[styles.card, isWomenOnly && styles.womenOnlyBorder]}
-    >
-      {/* Top Profile & Affiliation Tag */}
+    <View style={styles.cardContainer}>
+      {/* Header: Driver Info & Price */}
       <View style={styles.topRow}>
-        <View style={styles.driverInfo}>
-          <View style={[styles.avatar, isWomenOnly && styles.womenAvatar]}>
-            <Icon
-              name={isWomenOnly ? "face-woman" : "account"}
-              size={20}
-              color={isWomenOnly ? "#EC4899" : colors.brand}
-            />
+        <View style={styles.driverInfoWrap}>
+          <View style={styles.avatarCircle}>
+            <Ionicons name="person" size={18} color="#0284C7" />
           </View>
-          <View>
+          <View style={{ flex: 1 }}>
             <View style={styles.nameRow}>
-              <Text style={styles.driverName}>{ride.driver_name || "Verified Member"}</Text>
-              <View style={styles.campusTag}>
-                <Icon name="check-decagram" size={11} color="#38BDF8" />
-                <Text style={styles.campusTagText}>{badge}</Text>
+              <Text style={styles.driverName} numberOfLines={1}>
+                {driverName}
+              </Text>
+              <View style={styles.verifiedBadge}>
+                <Text style={styles.verifiedBadgeText}>Verified</Text>
               </View>
             </View>
-            <Text style={styles.vehicleText}>
-              {ride.vehicle} • {ride.type?.toUpperCase()}
+            <Text style={styles.vehicleText} numberOfLines={1}>
+              {vehicleName}
             </Text>
           </View>
         </View>
 
-        {isWomenOnly ? (
-          <View style={styles.womenBadge}>
-            <Icon name="shield-heart" size={13} color="#FFFFFF" />
-            <Text style={styles.womenBadgeText}>Women Only</Text>
-          </View>
-        ) : (
-          <View style={styles.seatsBadge}>
-            <Icon name="seat-passenger" size={13} color={colors.brand} />
-            <Text style={styles.seatsText}>{ride.seats} seats</Text>
-          </View>
-        )}
-      </View>
-
-      {/* Gen-Z Ride Vibe Indicator */}
-      <View style={styles.vibeRow}>
-        <View style={styles.vibeChip}>
-          <Icon name={vibeInfo.icon as any} size={13} color="#FBBF24" />
-          <Text style={styles.vibeChipText}>{vibeInfo.label}</Text>
-        </View>
-        <Text style={styles.ecoSavingText}>🌱 ~3.8 kg CO₂ saved</Text>
-      </View>
-
-      {/* Route Info */}
-      <View style={styles.routeContainer}>
-        <View style={styles.routeRow}>
-          <Icon name="circle-slice-8" size={14} color={colors.brand} />
-          <Text style={styles.routePoint} numberOfLines={1}>{ride.from}</Text>
-        </View>
-        <View style={styles.routeDivider} />
-        <View style={styles.routeRow}>
-          <Icon name="map-marker" size={15} color="#EF4444" />
-          <Text style={styles.routePoint} numberOfLines={1}>{ride.to}</Text>
+        {/* Fare Highlight */}
+        <View style={styles.priceContainer}>
+          <Text style={styles.priceValue}>₹{fare}</Text>
+          <Text style={styles.perSeatLabel}>per seat</Text>
         </View>
       </View>
 
-      {/* Card Footer */}
-      <View style={styles.footer}>
-        <View style={styles.timeWrap}>
-          <Icon name="clock-outline" size={14} color={colors.muted} />
-          <Text style={styles.timeText}>
-            {ride.departure_time ? ride.departure_time : "Scheduled"}
+      {/* Route Section */}
+      <View style={styles.routeBox}>
+        <View style={styles.locationItem}>
+          <View style={styles.greenDot} />
+          <Text style={styles.locationText} numberOfLines={1}>
+            {pickupPoint}
           </Text>
         </View>
-        <Text style={styles.priceText}>
-          ₹{ride.price}
-          <Text style={styles.priceSub}>/seat</Text>
-        </Text>
+        <View style={styles.routeLine} />
+        <View style={styles.locationItem}>
+          <View style={styles.redDot} />
+          <Text style={styles.locationText} numberOfLines={1}>
+            {dropPoint}
+          </Text>
+        </View>
       </View>
-    </TouchableOpacity>
+
+      {/* Footer: Departure & Direct Action Button */}
+      <View style={styles.bottomRow}>
+        <View style={styles.timeWrap}>
+          <Ionicons name="time-outline" size={15} color="#64748B" />
+          <Text style={styles.timeText}>
+            {(ride as any).departure_time || "Today in 15 mins"}
+          </Text>
+          <Text style={styles.seatsBadge}>• {seatsLeft} seats left</Text>
+        </View>
+
+        <TouchableOpacity
+          activeOpacity={0.85}
+          onPress={onPress}
+          style={styles.bookBtn}
+        >
+          <Text style={styles.bookBtnText}>Book (₹{fare}) ➔</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: "#1E293B",
+  cardContainer: {
+    backgroundColor: "#FFFFFF",
     borderRadius: 16,
-    padding: 14,
-    marginHorizontal: 18,
-    marginBottom: 12,
+    padding: 16,
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: "#334155",
-    gap: 10,
-  },
-  womenOnlyBorder: {
-    borderColor: "rgba(236, 72, 153, 0.45)",
-    backgroundColor: "#1A1B35",
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-start",
+    marginBottom: 12,
   },
-  driverInfo: {
+  driverInfoWrap: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     flex: 1,
+    marginRight: 10,
   },
-  avatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.brandTertiary,
+  avatarCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#F0F9FF",
     alignItems: "center",
     justifyContent: "center",
-  },
-  womenAvatar: {
-    backgroundColor: "rgba(236, 72, 153, 0.2)",
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
   },
   nameRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    flexWrap: "wrap",
   },
   driverName: {
-    color: "#FFFFFF",
-    fontSize: 13,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#0F172A",
   },
-  campusTag: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    backgroundColor: "rgba(56, 189, 248, 0.15)",
+  verifiedBadge: {
+    backgroundColor: "#F0FDF4",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
   },
-  campusTagText: {
-    color: "#38BDF8",
-    fontSize: 10,
-    fontWeight: "700",
-  },
-  vehicleText: {
-    color: colors.muted,
-    fontSize: 11,
-    marginTop: 1,
-  },
-  womenBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: "#DB2777",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 99,
-  },
-  womenBadgeText: {
-    color: "#FFFFFF",
+  verifiedBadgeText: {
     fontSize: 10,
     fontWeight: "800",
+    color: "#16A34A",
   },
-  seatsBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: colors.brandTertiary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 99,
-  },
-  seatsText: {
-    color: colors.brand,
+  vehicleText: {
     fontSize: 11,
-    fontWeight: "700",
-  },
-  vibeRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 2,
-  },
-  vibeChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "#0F172A",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#334155",
-  },
-  vibeChipText: {
-    color: "#FBBF24",
-    fontSize: 11,
-    fontWeight: "700",
-  },
-  ecoSavingText: {
-    color: "#22C55E",
-    fontSize: 11,
+    color: "#64748B",
+    marginTop: 2,
     fontWeight: "600",
   },
-  routeContainer: {
-    backgroundColor: "#0F172A",
+  priceContainer: {
+    alignItems: "flex-end",
+  },
+  priceValue: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#16A34A",
+  },
+  perSeatLabel: {
+    fontSize: 10,
+    color: "#94A3B8",
+    fontWeight: "700",
+  },
+  routeBox: {
+    backgroundColor: "#F8FAFC",
     borderRadius: 12,
-    padding: 10,
-    gap: 6,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
   },
-  routeRow: {
+  locationItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
-  routePoint: {
-    color: "#F8FAFC",
+  greenDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#10B981",
+  },
+  redDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: "#EF4444",
+  },
+  routeLine: {
+    width: 2,
+    height: 12,
+    backgroundColor: "#CBD5E1",
+    marginLeft: 3,
+    marginVertical: 2,
+  },
+  locationText: {
     fontSize: 13,
-    fontWeight: "600",
-    flex: 1,
+    fontWeight: "700",
+    color: "#1E293B",
   },
-  routeDivider: {
-    height: 10,
-    width: 1,
-    backgroundColor: "#334155",
-    marginLeft: 7,
-  },
-  footer: {
+  bottomRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 2,
   },
   timeWrap: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 5,
+    gap: 4,
   },
   timeText: {
-    color: colors.muted,
     fontSize: 12,
+    fontWeight: "700",
+    color: "#64748B",
   },
-  priceText: {
-    color: colors.brand,
-    fontSize: 16,
-    fontWeight: "900",
-  },
-  priceSub: {
-    color: colors.muted,
+  seatsBadge: {
     fontSize: 11,
-    fontWeight: "500",
+    fontWeight: "700",
+    color: "#0284C7",
+    marginLeft: 4,
+  },
+  bookBtn: {
+    backgroundColor: "#0284C7",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    shadowColor: "#0284C7",
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  bookBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
   },
 });
