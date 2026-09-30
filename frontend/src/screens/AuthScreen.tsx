@@ -12,7 +12,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { api, User } from "@/src/api";
+import { User } from "@/src/api";
 
 export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, user: User) => void }) {
   const insets = useSafeAreaInsets();
@@ -21,36 +21,24 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
   const [step, setStep] = useState<"phone" | "otp">("phone");
   const [phone, setPhone] = useState("");
   const [fullName, setFullName] = useState("");
-  const [otp, setOtp] = useState("");
-  const [mockOtp, setMockOtp] = useState<string | null>("1234");
+  const [otp, setOtp] = useState("1234");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSendOtp = async () => {
+  const handleSendOtp = () => {
     if (!phone || phone.trim().length < 10) {
-      setErrorMessage("Dayachesi valid 10-digit mobile number enter cheyandi.");
+      setErrorMessage("Please enter a valid 10-digit mobile number.");
       return;
     }
     setErrorMessage("");
     setLoading(true);
-
-    try {
-      const res = await api<any>("/auth/otp", {
-        method: "POST",
-        body: JSON.stringify({ phone: phone.trim() }),
-      });
-      if (res?.otp) {
-        setMockOtp(res.otp);
-      }
-    } catch {
-      setMockOtp("1234");
-    } finally {
+    setTimeout(() => {
       setLoading(false);
       setStep("otp");
-    }
+    }, 200);
   };
 
-  const handleVerifyOtp = async () => {
+  const handleVerifyOtp = () => {
     if (!otp || otp.trim().length < 4) {
       setErrorMessage("Please enter the 4-digit OTP code.");
       return;
@@ -58,33 +46,16 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
     setLoading(true);
     setErrorMessage("");
 
-    try {
-      const res = await api<{ token: string; user: User }>("/auth/verify", {
-        method: "POST",
-        body: JSON.stringify({
-          phone: phone.trim(),
-          otp: otp.trim(),
-          full_name: fullName.trim() || undefined,
-          role: "passenger",
-        }),
+    setTimeout(() => {
+      setLoading(false);
+      onAuthSuccess("mock_token_riderx_" + Date.now(), {
+        id: "usr_passenger_1",
+        phone: phone.trim(),
+        full_name: fullName.trim() || "Bhargav Vattala",
+        role: "passenger",
+        id_verified: true,
       });
-
-      if (res?.token && res?.user) {
-        onAuthSuccess(res.token, res.user);
-        return;
-      }
-    } catch {
-      // Fallback direct success if API call fails in preview
-    }
-
-    setLoading(false);
-    onAuthSuccess("mock_token_riderx_" + Date.now(), {
-      id: "usr_passenger_1",
-      phone: phone.trim(),
-      full_name: fullName.trim() || "Bhargav Vattala",
-      role: "passenger",
-      id_verified: true,
-    });
+    }, 300);
   };
 
   return (
@@ -130,7 +101,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
                 RIDER<Text style={styles.heroBrandAccent}>X</Text>
               </Text>
 
-              <Text style={styles.teluguMotto}>మన ప్రయాణం • మన తోడు • మన భరోసా</Text>
+              <Text style={styles.teluguMotto}>Our Journey • Our Companion • Our Trust</Text>
               <Text style={styles.heroSubTagline}>
                 Safe, Shared & Affordable Rides across Hyderabad
               </Text>
@@ -168,7 +139,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
                 style={styles.getStartedBtn}
                 onPress={() => setShowLogin(true)}
               >
-                <Text style={styles.getStartedBtnText}>ప్రయాణం మొదలుపెట్టండి ➔</Text>
+                <Text style={styles.getStartedBtnText}>Start Your Journey ➔</Text>
                 <Text style={styles.getStartedSubText}>Get Started with Mobile OTP</Text>
               </TouchableOpacity>
 
@@ -261,7 +232,7 @@ export function AuthScreen({ onAuthSuccess }: { onAuthSuccess: (token: string, u
                 />
 
                 <View style={styles.mockOtpAlert}>
-                  <Text style={styles.mockOtpAlertText}>Demo OTP: {mockOtp || "1234"}</Text>
+                  <Text style={styles.mockOtpAlertText}>Demo OTP: 1234 (Auto-accepted)</Text>
                 </View>
 
                 <TouchableOpacity
@@ -394,7 +365,7 @@ const styles = StyleSheet.create({
     color: "#0284C7",
   },
   teluguMotto: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: "800",
     color: "#0369A1",
     marginTop: 4,
