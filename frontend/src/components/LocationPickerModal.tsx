@@ -20,8 +20,7 @@ interface LocationPickerProps {
 
 const MAPBOX_TOKEN = "pk.eyJ1IjoiYmhhcmdhdjE4MTkiLCJhIjoiY211bnJxOGJ6MDJnNjJ4cGNucWV3ZTB5ZyJ9.eeQZMTPajF3ggl5E1ovH0Q";
 
-// Quick Select Localities for Hyderabad Commute
-const QUICK_LOCALITIES = [
+const QUICK_HUBS = [
   { name: "Hitec City", lat: 17.4435, lon: 78.3772 },
   { name: "Madhapur", lat: 17.4483, lon: 78.3915 },
   { name: "Gachibowli", lat: 17.4401, lon: 78.3489 },
@@ -39,12 +38,11 @@ export function LocationPickerModal({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [centerCoords, setCenterCoords] = useState({ lat: 17.3457, lon: 78.5522 }); // LB Nagar / Hyderabad Corridor
-  const [pickedAddress, setPickedAddress] = useState("Locating your point...");
-  const [detecting, setDetecting] = useState(false);
+  const [coords, setCoords] = useState({ lat: 17.4435, lon: 78.3772 });
+  const [address, setAddress] = useState("Hitec City, Hyderabad");
 
-  // Mapbox Fastest Autocomplete (Restricted strictly to Hyderabad corridor)
-  const searchPlaces = async (text: string) => {
+  // Mapbox Autocomplete
+  const handleSearch = async (text: string) => {
     setQuery(text);
     if (text.trim().length < 2) {
       setResults([]);
@@ -55,7 +53,6 @@ export function LocationPickerModal({
       const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
         text.trim()
       )}.json?access_token=${MAPBOX_TOKEN}&country=in&proximity=78.4867,17.3850&types=neighborhood,locality,place,poi,address&limit=6`;
-
       const res = await fetch(url);
       const data = await res.json();
       if (data && data.features) {
@@ -68,119 +65,83 @@ export function LocationPickerModal({
     }
   };
 
-  // Reverse geocoding on coordinates update
-  const reverseGeocode = async (lat: number, lon: number) => {
-    setDetecting(true);
-    try {
-      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json?access_token=${MAPBOX_TOKEN}&types=neighborhood,locality,place,poi,address&limit=1`;
-      const res = await fetch(url);
-      const data = await res.json();
-      if (data && data.features && data.features.length > 0) {
-        setPickedAddress(data.features[0].place_name);
-      } else {
-        setPickedAddress(`Location: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
-      }
-    } catch {
-      setPickedAddress("Hyderabad Corridor");
-    } finally {
-      setDetecting(false);
-    }
-  };
-
-  useEffect(() => {
-    if (visible) {
-      reverseGeocode(centerCoords.lat, centerCoords.lon);
-    }
-  }, [visible]);
-
-  const handleSelectSearchResult = (feature: any) => {
-    const lon = feature.center[0];
-    const lat = feature.center[1];
-    setCenterCoords({ lat, lon });
-    setPickedAddress(feature.place_name);
-    setQuery("");
-    setResults([]);
-    reverseGeocode(lat, lon);
-  };
-
-  const handleSelectQuickHub = (hub: { name: string; lat: number; lon: number }) => {
-    setCenterCoords({ lat: hub.lat, lon: hub.lon });
-    setPickedAddress(`${hub.name}, Hyderabad`);
+  const pickLocation = (name: string, lat: number, lon: number) => {
+    setCoords({ lat, lon });
+    setAddress(name);
     setQuery("");
     setResults([]);
   };
 
-  const handleConfirmLocation = () => {
-    const parts = pickedAddress.split(",");
-    const cleanShortName = parts[0] + ", " + (parts[1] || "Hyderabad").trim();
-    onSelect(cleanShortName, centerCoords.lat, centerCoords.lon);
+  const handleConfirm = () => {
+    onSelect(address, coords.lat, coords.lon);
     onClose();
   };
+
+  // Mapbox Static High-Res Vector Map Preview (Super Fast & Zero Crashes)
+  const mapImageUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+ef4444(${coords.lon},${coords.lat})/${coords.lon},${coords.lat},14,0/600x400@2x?access_token=${MAPBOX_TOKEN}`;
 
   return (
     <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
-        {/* Full-screen fast interactive Mapbox Webview with proper lon/lat anchor */}
-        <View style={styles.mapFullscreen}>
-          <iframe
-            key={`${centerCoords.lat}-${centerCoords.lon}`}
-            title="mapbox-live"
-            src={`https://api.mapbox.com/styles/v1/mapbox/streets-v12.html?title=false&access_token=${MAPBOX_TOKEN}#15/${centerCoords.lon}/${centerCoords.lat}`}
-            style={{ width: "100%", height: "100%", border: "none" }}
-          />
+        {/* Fullscreen Map Preview Layer */}
+        <View style={styles.mapLayer}>
+          {typeof window !== "undefined" ? (
+            <iframe
+              title="mapbox-frame"
+              src={`https://api.mapbox.com/styles/v1/mapbox/streets-v12.html?title=false&access_token=${MAPBOX_TOKEN}#15/${coords.lat}/${coords.lon}`}
+              style={{ width: "100%", height: "100%", border: "none" }}
+            />
+          ) : (
+            <View style={{ flex: 1, backgroundColor: "#E2E8F0" }} />
+          )}
 
-          {/* Center Target Pin (Uber/Rapido style) */}
-          <View style={styles.fixedPinContainer} pointerEvents="none">
+          {/* Center Target Marker */}
+          <View style={styles.fixedPin} pointerEvents="none">
             <View style={styles.pinBubble}>
-              <View style={styles.pinCenterDot} />
+              <View style={styles.pinDot} />
             </View>
-            <View style={styles.pinStem} />
-            <View style={styles.pinShadow} />
+            <View style={styles.pinLeg} />
           </View>
         </View>
 
-        {/* Top Floating Header & Search */}
-        <View style={styles.topFloatHeader}>
-          <TouchableOpacity onPress={onClose} style={styles.backCircleBtn}>
+        {/* Top Header & Search Input */}
+        <View style={styles.topHeader}>
+          <TouchableOpacity onPress={onClose} style={styles.backBtn}>
             <Icon name="arrow-left" size={22} color="#0F172A" />
           </TouchableOpacity>
 
-          <View style={styles.searchBar}>
+          <View style={styles.inputWrap}>
             <Icon name="magnify" size={18} color="#64748B" />
             <TextInput
-              style={styles.searchInput}
-              placeholder="Search pickup or destination area..."
+              style={styles.input}
+              placeholder="Search area (e.g. Hitec City, LB Nagar)..."
               placeholderTextColor="#94A3B8"
               value={query}
-              onChangeText={searchPlaces}
+              onChangeText={handleSearch}
             />
             {loading && <ActivityIndicator size="small" color="#0284C7" />}
-            {query.length > 0 && !loading && (
-              <TouchableOpacity onPress={() => setQuery("")}>
-                <Icon name="close-circle" size={18} color="#94A3B8" />
-              </TouchableOpacity>
-            )}
           </View>
         </View>
 
-        {/* Autocomplete Dropdown */}
+        {/* Autocomplete Results Box */}
         {results.length > 0 && (
-          <View style={styles.searchResultsDropdown}>
+          <View style={styles.resultsBox}>
             <FlatList
               data={results}
               keyExtractor={(item) => item.id}
               keyboardShouldPersistTaps="handled"
               renderItem={({ item }) => (
                 <TouchableOpacity
-                  style={styles.searchResultItem}
-                  onPress={() => handleSelectSearchResult(item)}
+                  style={styles.resRow}
+                  onPress={() => {
+                    const shortName = item.text + ", Hyderabad";
+                    pickLocation(shortName, item.center[1], item.center[0]);
+                  }}
                 >
                   <Icon name="map-marker-outline" size={18} color="#0284C7" />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.resPrimaryText}>{item.text}</Text>
-                    <Text style={styles.resSecondaryText} numberOfLines={1}>
-                      {item.place_name}
-                    </Text>
+                    <Text style={styles.resPrimary}>{item.text}</Text>
+                    <Text style={styles.resSecondary} numberOfLines={1}>{item.place_name}</Text>
                   </View>
                 </TouchableOpacity>
               )}
@@ -188,40 +149,37 @@ export function LocationPickerModal({
           </View>
         )}
 
-        {/* Bottom Sheet Card (Uber/Rapido style) */}
+        {/* Bottom Floating Selection Sheet */}
         <View style={styles.bottomCard}>
-          <Text style={styles.cardInstruction}>Select your location</Text>
-          <Text style={styles.cardSubInstruction}>Move the map or search to adjust point</Text>
+          <Text style={styles.sheetHeading}>{title}</Text>
+          <Text style={styles.sheetSub}>Tap quick hubs or search to position pin</Text>
 
-          {/* Quick Area Chips */}
-          <View style={styles.quickChipsRow}>
-            {QUICK_LOCALITIES.map((loc) => (
+          {/* Quick Hub Chips */}
+          <View style={styles.chipsWrap}>
+            {QUICK_HUBS.map((hub) => (
               <TouchableOpacity
-                key={loc.name}
-                onPress={() => handleSelectQuickHub(loc)}
+                key={hub.name}
+                onPress={() => pickLocation(`${hub.name}, Hyderabad`, hub.lat, hub.lon)}
                 style={styles.chip}
-                activeOpacity={0.7}
               >
-                <Text style={styles.chipText}>{loc.name}</Text>
+                <Text style={styles.chipText}>{hub.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
 
-          <View style={styles.locationPreviewBox}>
-            <View style={styles.activeDot} />
-            <View style={{ flex: 1 }}>
-              <Text style={styles.previewAddressText} numberOfLines={2}>
-                {detecting ? "Locating exact spot..." : pickedAddress}
-              </Text>
-            </View>
+          <View style={styles.selectedRow}>
+            <View style={styles.redDot} />
+            <Text style={styles.selectedText} numberOfLines={2}>
+              {address}
+            </Text>
           </View>
 
           <TouchableOpacity
-            activeOpacity={0.88}
-            onPress={handleConfirmLocation}
-            style={styles.confirmActionButton}
+            activeOpacity={0.85}
+            onPress={handleConfirm}
+            style={styles.confirmBtn}
           >
-            <Text style={styles.confirmActionButtonText}>Confirm Location ➔</Text>
+            <Text style={styles.confirmBtnText}>Confirm Location ➔</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -234,54 +192,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
-  mapFullscreen: {
+  mapLayer: {
     flex: 1,
     width: "100%",
     position: "relative",
   },
-  fixedPinContainer: {
+  fixedPin: {
     position: "absolute",
     top: "50%",
     left: "50%",
-    transform: [{ translateX: -15 }, { translateY: -36 }],
+    transform: [{ translateX: -12 }, { translateY: -28 }],
     alignItems: "center",
     zIndex: 10,
   },
   pinBubble: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: "#DC2626",
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#EF4444",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 3,
+    borderWidth: 2.5,
     borderColor: "#FFFFFF",
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 5,
-    elevation: 5,
   },
-  pinCenterDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  pinDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: "#FFFFFF",
   },
-  pinStem: {
-    width: 3,
-    height: 10,
-    backgroundColor: "#DC2626",
+  pinLeg: {
+    width: 2.5,
+    height: 8,
+    backgroundColor: "#EF4444",
   },
-  pinShadow: {
-    width: 14,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: "rgba(0,0,0,0.25)",
-    marginTop: 1,
-  },
-  topFloatHeader: {
+  topHeader: {
     position: "absolute",
-    top: 50,
+    top: 40,
     left: 16,
     right: 16,
     flexDirection: "row",
@@ -289,7 +236,7 @@ const styles = StyleSheet.create({
     gap: 10,
     zIndex: 100,
   },
-  backCircleBtn: {
+  backBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -298,36 +245,36 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     shadowColor: "#000",
     shadowOpacity: 0.15,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 4,
   },
-  searchBar: {
+  inputWrap: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFFFFF",
-    borderRadius: 24,
+    borderRadius: 22,
     paddingHorizontal: 14,
-    height: 46,
+    height: 44,
     gap: 8,
     shadowColor: "#000",
     shadowOpacity: 0.15,
-    shadowRadius: 8,
+    shadowRadius: 6,
     elevation: 4,
   },
-  searchInput: {
+  input: {
     flex: 1,
     fontSize: 13,
     fontWeight: "700",
     color: "#0F172A",
   },
-  searchResultsDropdown: {
+  resultsBox: {
     position: "absolute",
-    top: 105,
+    top: 95,
     left: 16,
     right: 16,
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    borderRadius: 14,
     maxHeight: 220,
     paddingVertical: 6,
     shadowColor: "#000",
@@ -336,7 +283,7 @@ const styles = StyleSheet.create({
     elevation: 6,
     zIndex: 101,
   },
-  searchResultItem: {
+  resRow: {
     flexDirection: "row",
     alignItems: "center",
     paddingVertical: 12,
@@ -345,12 +292,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: "#F1F5F9",
   },
-  resPrimaryText: {
+  resPrimary: {
     fontSize: 14,
     fontWeight: "800",
     color: "#0F172A",
   },
-  resSecondaryText: {
+  resSecondary: {
     fontSize: 11,
     color: "#64748B",
     marginTop: 2,
@@ -364,25 +311,25 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 20,
-    paddingBottom: 30,
+    paddingBottom: 28,
     shadowColor: "#000",
-    shadowOpacity: 0.12,
+    shadowOpacity: 0.15,
     shadowRadius: 10,
     elevation: 8,
     zIndex: 90,
   },
-  cardInstruction: {
+  sheetHeading: {
     fontSize: 17,
     fontWeight: "900",
     color: "#0F172A",
   },
-  cardSubInstruction: {
+  sheetSub: {
     fontSize: 12,
     color: "#64748B",
     marginTop: 2,
-    marginBottom: 8,
+    marginBottom: 10,
   },
-  quickChipsRow: {
+  chipsWrap: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 6,
@@ -391,7 +338,7 @@ const styles = StyleSheet.create({
   chip: {
     backgroundColor: "#F1F5F9",
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: 6,
     borderRadius: 14,
   },
   chipText: {
@@ -399,39 +346,38 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#334155",
   },
-  locationPreviewBox: {
+  selectedRow: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#F8FAFC",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 12,
     gap: 10,
-    marginBottom: 16,
+    marginBottom: 14,
   },
-  activeDot: {
+  redDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
     backgroundColor: "#EF4444",
   },
-  previewAddressText: {
+  selectedText: {
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#0F172A",
+    flex: 1,
   },
-  confirmActionButton: {
-    backgroundColor: "#FFC000", // Rapido Yellow Highlight
+  confirmBtn: {
+    backgroundColor: "#FFC000",
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: "center",
-    justifyContent: "center",
   },
-  confirmActionButtonText: {
+  confirmBtnText: {
     fontSize: 15,
     fontWeight: "900",
     color: "#0F172A",
-    letterSpacing: 0.3,
   },
 });
