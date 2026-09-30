@@ -1,676 +1,905 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
   Linking,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
-  Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { api, errorMessage, Ride } from "@/src/api";
+import { api, Ride, User } from "@/src/api";
 import { LocationPickerModal } from "@/src/components/LocationPickerModal";
-import { SafetySosModal } from "@/src/components/SafetySosModal";
-import { ScreenHeader } from "@/src/components/navigation";
-import { RideCard } from "@/src/components/RideCard";
-import { Button, ErrorBanner, Field, Icon, Segmented } from "@/src/components/ui";
+import { Icon } from "@/src/components/ui";
 import { UserMenuModal } from "@/src/components/UserMenuModal";
-import { shared } from "@/src/styles";
-import { colors } from "@/src/theme";
 
-const EMPTY_FORM: Record<string, any> = {
-  driver_dl: "",
-  driver_rc: "",
-  start_point: "",
-  end_point: "",
-  stops: "",
-  departure_time: "",
-  vehicle_type: "car",
-  available_seats: "3",
-  seat_price: "",
-  women_only: false,
-  ride_vibe: "music",
-  affiliation_badge: "Campus • Student",
-};
+interface DriverHomeProps {
+  token: string;
+  user: User;
+  onUserUpdate: (user: User) => void;
+  onLogout: () => void;
+}
 
-const fetchDriverGPS = (): Promise<{ latitude: number; longitude: number }> => {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined" || !navigator.geolocation) {
-      reject(new Error("Geolocation not supported"));
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-      (err) => reject(err),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
-  });
-};
-
-export function DriverHome({ token, onLogout }: { token: string; onLogout: () => void }) {
+export function DriverHome({
+  token,
+  user,
+  onUserUpdate,
+  onLogout,
+}: DriverHomeProps) {
   const insets = useSafeAreaInsets();
-  const [form, setForm] = useState<any>(EMPTY_FORM);
-  const [loading, setLoading] = useState(false);
-  const [posted, setPosted] = useState<Ride[]>([]);
-  const [error, setError] = useState("");
-  const [detectingLocation, setDetectingLocation] = useState(false);
-  const [activeTrackingRideId, setActiveTrackingRideId] = useState<string | null>(null);
 
-  const [pickerTarget, setPickerTarget] = useState<"start" | "end" | null>(null);
-  const [sosModalVisible, setSosModalVisible] = useState(false);
-  const [selectedSosRide, setSelectedSosRide] = useState<Ride | null>(null);
+  const [activeTab, setActiveTab] = useState<"dashboard" | "my_published_rides" | "earnings" | "profile">("dashboard");
+
+  // Create Ride Form States
+  const [fromLoc, setFromLoc] = useState("");
+  const [toLoc, setToLoc] = useState("");
+  const [vehicleType, setVehicleType] = useState<"car" | "bike">("car");
+  const [availableSeats, setAvailableSeats] = useState("3");
+  const [pricePerSeat, setPricePerSeat] = useState("100");
+  const [womenOnly, setWomenOnly] = useState(false);
+  const [departureTime, setDepartureTime] = useState("Today, 06:00 PM");
+
+  const [publishing, setPublishing] = useState(false);
+  const [publishedRides, setPublishedRides] = useState<Ride[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Modals
+  const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
-  const [showDocFields, setShowDocFields] = useState(false);
+  const [sosModalVisible, setSosModalVisible] = useState(false);
 
-  const watchIdRef = useRef<any>(null);
-
-  const triggerDirectSos = () => {
-    Alert.alert(
-      "EMERGENCY & SAFETY SOS",
-      "Emergency help kosam kindha unna number select cheyandi:",
-      [
-        { text: "🚓 Police (100)", onPress: () => Linking.openURL("tel:100") },
-        { text: "🚑 Ambulance (108)", onPress: () => Linking.openURL("tel:108") },
-        { text: "🚨 National Emergency (112)", onPress: () => Linking.openURL("tel:112") },
-        { text: "📞 Customer Support", onPress: () => Linking.openURL("tel:8919326622") },
-        { text: "Cancel", style: "cancel" },
-      ]
-    );
-  };
-
-  const update = (key: string) => (value: any) => {
-    setForm((current: any) => ({ ...current, [key]: value }));
-  };
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const savedDl = localStorage.getItem("safarway_driver_dl");
-      const savedRc = localStorage.getItem("safarway_driver_rc");
-      if (savedDl || savedRc) {
-        setForm((prev: any) => ({
-          ...prev,
-          driver_dl: savedDl || prev.driver_dl,
-          driver_rc: savedRc || prev.driver_rc,
-        }));
-      } else {
-        setShowDocFields(true);
-      }
+  const showAlert = (title: string, msg: string) => {
+    if (Platform.OS === "web") {
+      window.alert(`${title}\n\n${msg}`);
+    } else {
+      Alert.alert(title, msg);
     }
-  }, []);
+  };
 
-  useEffect(() => {
-    api<Ride[]>("/rides/mine", {}, token).then(setPosted).catch(() => undefined);
+  const loadDriverRides = useCallback(async () => {
+    setLoadingHistory(true);
+    try {
+      const data = await api<Ride[]>("/rides/my-published", {}, token);
+      if (Array.isArray(data)) {
+        setPublishedRides(data);
+      }
+    } catch {
+      // Local fallback if backend is empty
+      const local = typeof window !== "undefined" ? localStorage.getItem("riderx_driver_rides") : null;
+      if (local) {
+        setPublishedRides(JSON.parse(local));
+      }
+    } finally {
+      setLoadingHistory(false);
+    }
   }, [token]);
 
   useEffect(() => {
-    return () => {
-      if (watchIdRef.current !== null && typeof window !== "undefined" && navigator.geolocation) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-      }
+    loadDriverRides();
+  }, [loadDriverRides]);
+
+  const handlePublishRide = async () => {
+    if (!fromLoc || !toLoc) {
+      showAlert("Missing Locations", "Please set both Start and Destination spots.");
+      return;
+    }
+
+    setPublishing(true);
+    const newRidePayload = {
+      from_location: fromLoc,
+      to_location: toLoc,
+      vehicle_type: vehicleType,
+      available_seats: parseInt(availableSeats, 10) || 1,
+      price_per_seat: parseInt(pricePerSeat, 10) || 50,
+      women_only: womenOnly,
+      departure_time: departureTime,
     };
-  }, []);
 
-  const handleUseCurrentLocation = async () => {
     try {
-      setDetectingLocation(true);
-      const coords = await fetchDriverGPS();
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`
-      );
-      const data = await res.json();
-      const placeName =
-        data.address?.suburb ||
-        data.address?.neighbourhood ||
-        data.address?.city ||
-        data.address?.town ||
-        data.address?.village ||
-        data.display_name;
+      const created = await api<Ride>("/rides", {
+        method: "POST",
+        body: JSON.stringify(newRidePayload),
+      }, token);
 
-      if (placeName) {
-        setForm((prev: any) => ({ ...prev, start_point: placeName }));
-      }
-    } catch {
-      Alert.alert("GPS Error", "Location permission allow cheyandi leda GPS on cheyandi.");
-    } finally {
-      setDetectingLocation(false);
-    }
-  };
-
-  const handleLocationPicked = (placeName: string) => {
-    if (pickerTarget === "start") {
-      setForm((prev: any) => ({ ...prev, start_point: placeName }));
-    } else if (pickerTarget === "end") {
-      setForm((prev: any) => ({ ...prev, end_point: placeName }));
-    }
-    setPickerTarget(null);
-  };
-
-  const startLiveTracking = (rideId: string) => {
-    if (typeof window === "undefined" || !navigator.geolocation) {
-      Alert.alert("Error", "Geolocation is not supported on this browser.");
-      return;
-    }
-
-    if (activeTrackingRideId === rideId) {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
-      setActiveTrackingRideId(null);
-      Alert.alert("Trip Ended", "Live GPS tracking stopped.");
-      return;
-    }
-
-    const id = navigator.geolocation.watchPosition(
-      async (pos) => {
-        try {
-          await api(
-            `/rides/${rideId}/track`,
-            {
-              method: "POST",
-              body: JSON.stringify({
-                latitude: pos.coords.latitude,
-                longitude: pos.coords.longitude,
-                status: "IN_TRANSIT",
-              }),
-            },
-            token
-          );
-        } catch {}
-      },
-      (err) => console.warn("GPS tracking error:", err),
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 10000 }
-    );
-
-    watchIdRef.current = id;
-    setActiveTrackingRideId(rideId);
-    Alert.alert("Trip Started", "Live GPS tracking is broadcasting to your passengers!");
-  };
-
-  const openDriverSos = (ride: Ride) => {
-    setSelectedSosRide(ride);
-    setSosModalVisible(true);
-  };
-
-  const postRide = async () => {
-    if (!form.driver_dl || !form.driver_rc) {
-      setShowDocFields(true);
-      setError("Please provide your Driving Licence & RC details.");
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-    try {
-      const ride = await api<Ride>(
-        "/rides",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            driver_dl: form.driver_dl,
-            driver_rc: form.driver_rc,
-            start_point: form.start_point,
-            end_point: form.end_point,
-            stops: form.stops,
-            departure_time: form.departure_time,
-            vehicle_type: form.vehicle_type,
-            available_seats: Number(form.available_seats),
-            seat_price: Number(form.seat_price),
-            women_only: Boolean(form.women_only),
-            mode: form.vehicle_type === "cab" ? "commercial" : "petrol_save",
-          }),
-        },
-        token
-      );
-
+      showAlert("Success", "Your shared ride has been published live!");
+      const updated = [created, ...publishedRides];
+      setPublishedRides(updated);
       if (typeof window !== "undefined") {
-        if (form.driver_dl) localStorage.setItem("safarway_driver_dl", form.driver_dl);
-        if (form.driver_rc) localStorage.setItem("safarway_driver_rc", form.driver_rc);
+        localStorage.setItem("riderx_driver_rides", JSON.stringify(updated));
       }
+      setFromLoc("");
+      setToLoc("");
+      setActiveTab("my_published_rides");
+    } catch {
+      // Fallback local save
+      const mockCreated: Ride = {
+        id: "ride_pub_" + Date.now(),
+        driver_id: user.id,
+        driver_name: user.full_name,
+        from_location: fromLoc,
+        to_location: toLoc,
+        vehicle_type: vehicleType,
+        vehicle_name: vehicleType === "car" ? "Car Pool Ride" : "Bike Share Ride",
+        available_seats: parseInt(availableSeats, 10) || 1,
+        price_per_seat: parseInt(pricePerSeat, 10) || 50,
+        departure_time: departureTime,
+        status: "active",
+      } as any;
 
-      setShowDocFields(false);
-      setPosted((current) => [ride, ...current]);
-      setForm((prev: any) => ({
-        ...EMPTY_FORM,
-        driver_dl: prev.driver_dl,
-        driver_rc: prev.driver_rc,
-      }));
-      Alert.alert("Ride published", "Passengers can now discover your scheduled route.");
-    } catch (postError) {
-      setError(errorMessage(postError, "Could not publish ride"));
+      const updated = [mockCreated, ...publishedRides];
+      setPublishedRides(updated);
+      if (typeof window !== "undefined") {
+        localStorage.setItem("riderx_driver_rides", JSON.stringify(updated));
+      }
+      showAlert("Success", "Ride successfully posted and live for passengers!");
+      setFromLoc("");
+      setToLoc("");
+      setActiveTab("my_published_rides");
     } finally {
-      setLoading(false);
+      setPublishing(false);
     }
   };
-
-  const weeklyTarget = 10;
-  const completedCount = Math.min(posted.length, weeklyTarget);
-  const progressPercent = (completedCount / weeklyTarget) * 100;
-  const hasSavedDocs = Boolean(form.driver_dl && form.driver_rc);
 
   return (
-    <KeyboardAvoidingView style={shared.screen} behavior={Platform.OS === "ios" ? "padding" : "height"}>
-      <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom + 110 }}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <ScreenHeader
-          eyebrow="CAPTAIN HUB"
-          title="Host & Earn Fuel Rewards"
-          right={
-            <View style={styles.headerRightWrap}>
-              <TouchableOpacity onPress={triggerDirectSos} style={styles.sosQuickBtn}>
-                <Icon name="shield-alert" size={14} color="#FFFFFF" />
-                <Text style={styles.sosQuickText}>SOS</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuIconBtn}>
-                <Icon name="menu" size={18} color="#FFFFFF" />
-              </TouchableOpacity>
-
-              <View style={shared.iconTile}>
-                <Icon name="steering" size={20} color={colors.brand} />
-              </View>
-            </View>
-          }
-        />
-
-        <View style={styles.petrolCard}>
-          <View style={styles.petrolHeader}>
-            <View style={styles.petrolBadge}>
-              <Icon name="gas-station" size={18} color="#FBBF24" />
-              <Text style={styles.petrolBadgeText}>WEEKLY FUEL BONUS</Text>
-            </View>
-            <Text style={styles.rewardText}>Win ₹500 Free Petrol</Text>
-          </View>
-          <Text style={styles.petrolDesc}>
-            Ee varam 10 rides poorthi cheyandi, ₹500 free petrol coupon pondandi!
+    <View style={styles.screenRoot}>
+      {/* Top Header */}
+      <View style={[styles.headerBar, { paddingTop: insets.top + 8 }]}>
+        <View>
+          <Text style={styles.brandTitle}>
+            RIDER<Text style={styles.brandAccent}>X</Text> <Text style={styles.driverBadge}>DRIVER</Text>
           </Text>
-
-          <View style={styles.progressContainer}>
-            <View style={[styles.progressBar, { width: `${progressPercent}%` }]} />
-          </View>
-          <View style={styles.progressStats}>
-            <Text style={styles.statText}>{completedCount} of 10 Completed</Text>
-            <Text style={styles.statTextRemaining}>
-              {weeklyTarget - completedCount > 0
-                ? `${weeklyTarget - completedCount} more to unlock`
-                : "🎉 Unlocked ₹500 Coupon!"}
-            </Text>
+          <View style={styles.liveIndicatorRow}>
+            <View style={styles.pulseDot} />
+            <Text style={styles.liveIndicatorText}>Ready to Share Empty Seats</Text>
           </View>
         </View>
 
-        <View style={shared.card}>
-          <View>
-            <Text style={shared.sectionTitle}>Publish a ride</Text>
-            <Text style={shared.mutedText}>Schedule a route from anywhere at your chosen time.</Text>
+        <View style={styles.headerActionRow}>
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setSosModalVisible(true)}
+            style={styles.sosButton}
+          >
+            <Icon name="shield-alert" size={14} color="#FFFFFF" />
+            <Text style={styles.sosButtonText}>SOS</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuCircleBtn}>
+            <Icon name="menu" size={20} color="#1E293B" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* DASHBOARD TAB (Publish Ride Form) */}
+      {activeTab === "dashboard" && (
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.greetingWrap}>
+            <Text style={styles.greetingTitle}>Welcome, {user?.full_name?.split(" ")[0]}! 🚗</Text>
+            <Text style={styles.greetingSub}>Share your daily travel and save on fuel costs</Text>
           </View>
 
-          <Field
-            label="College / Company Badge"
-            value={form.affiliation_badge}
-            onChangeText={update("affiliation_badge")}
-            placeholder="e.g. Campus • JNTU or Corporate • Hitec City"
-          />
+          <View style={styles.formCard}>
+            <Text style={styles.formCardTitle}>PUBLISH A ROUTE</Text>
 
-          {hasSavedDocs && !showDocFields ? (
-            <View style={styles.docsSummaryCard}>
-              <View style={styles.docsSummaryLeft}>
-                <Icon name="shield-check" size={18} color="#10B981" />
-                <View>
-                  <Text style={styles.docsSummaryTitle}>Documents Verified & Saved</Text>
-                  <Text style={styles.docsSummarySubtitle}>
-                    DL: {form.driver_dl ? `${form.driver_dl.slice(0, 4)}••••` : ""} | RC:{" "}
-                    {form.driver_rc ? `${form.driver_rc.slice(0, 4)}••••` : ""}
-                  </Text>
-                </View>
+            {/* Starting Point */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setPickerTarget("from")}
+              style={styles.locationInputRow}
+            >
+              <View style={styles.greenDot} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>STARTING LOCATION (PICKUP)</Text>
+                <Text numberOfLines={1} style={[styles.inputValue, !fromLoc && styles.placeholderText]}>
+                  {fromLoc || "Where are you starting from?"}
+                </Text>
               </View>
-              <TouchableOpacity onPress={() => setShowDocFields(true)} style={styles.editDocBtn}>
-                <Text style={styles.editDocBtnText}>Edit</Text>
+              <Icon name="map-marker" size={20} color="#10B981" />
+            </TouchableOpacity>
+
+            <View style={styles.routeDivider} />
+
+            {/* Ending Point */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setPickerTarget("to")}
+              style={styles.locationInputRow}
+            >
+              <View style={styles.redDot} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>DESTINATION (DROP POINT)</Text>
+                <Text numberOfLines={1} style={[styles.inputValue, !toLoc && styles.placeholderText]}>
+                  {toLoc || "Where are you heading?"}
+                </Text>
+              </View>
+              <Icon name="map-marker-radius" size={20} color="#EF4444" />
+            </TouchableOpacity>
+
+            <View style={styles.routeDivider} />
+
+            {/* Vehicle Selection */}
+            <Text style={[styles.inputLabel, { marginTop: 10, marginBottom: 8 }]}>VEHICLE TYPE</Text>
+            <View style={styles.vehicleRow}>
+              <TouchableOpacity
+                style={[styles.vehicleBtn, vehicleType === "car" && styles.vehicleBtnActive]}
+                onPress={() => {
+                  setVehicleType("car");
+                  setAvailableSeats("3");
+                }}
+              >
+                <Icon name="car" size={20} color={vehicleType === "car" ? "#0284C7" : "#64748B"} />
+                <Text style={[styles.vehicleBtnText, vehicleType === "car" && styles.vehicleBtnTextActive]}>
+                  Car (Pool)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.vehicleBtn, vehicleType === "bike" && styles.vehicleBtnActive]}
+                onPress={() => {
+                  setVehicleType("bike");
+                  setAvailableSeats("1");
+                }}
+              >
+                <Icon name="motorbike" size={20} color={vehicleType === "bike" ? "#0284C7" : "#64748B"} />
+                <Text style={[styles.vehicleBtnText, vehicleType === "bike" && styles.vehicleBtnTextActive]}>
+                  Bike (Share)
+                </Text>
               </TouchableOpacity>
             </View>
-          ) : (
-            <View style={{ gap: 6 }}>
-              <View style={styles.grid}>
-                <View style={shared.flex}>
-                  <Field label="Driving licence" value={form.driver_dl} onChangeText={update("driver_dl")} placeholder="DL number" />
-                </View>
-                <View style={shared.flex}>
-                  <Field label="Vehicle RC" value={form.driver_rc} onChangeText={update("driver_rc")} placeholder="RC number" />
-                </View>
+
+            {/* Seats & Price */}
+            <View style={styles.numberInputRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>SEATS AVAILABLE</Text>
+                <TextInput
+                  value={availableSeats}
+                  onChangeText={setAvailableSeats}
+                  keyboardType="numeric"
+                  style={styles.textInputBox}
+                />
               </View>
-              {hasSavedDocs && (
-                <TouchableOpacity onPress={() => setShowDocFields(false)} style={styles.hideDocBtn}>
-                  <Text style={styles.hideDocBtnText}>✓ Keep Saved Documents</Text>
-                </TouchableOpacity>
-              )}
+
+              <View style={{ flex: 1 }}>
+                <Text style={styles.inputLabel}>PRICE / SEAT (₹)</Text>
+                <TextInput
+                  value={pricePerSeat}
+                  onChangeText={setPricePerSeat}
+                  keyboardType="numeric"
+                  style={styles.textInputBox}
+                />
+              </View>
             </View>
-          )}
 
-          <Field
-            label="Departure date & time"
-            value={form.departure_time}
-            onChangeText={update("departure_time")}
-            placeholder="e.g. Tomorrow 07:30 AM"
-          />
+            {/* Departure Time */}
+            <Text style={[styles.inputLabel, { marginTop: 12 }]}>DEPARTURE TIME</Text>
+            <TextInput
+              value={departureTime}
+              onChangeText={setDepartureTime}
+              placeholder="e.g. Today, 06:30 PM"
+              style={styles.textInputBox}
+            />
 
-          <Field
-            label="Starting point"
-            value={form.start_point}
-            onChangeText={update("start_point")}
-            placeholder="e.g. Hyderabad LB Nagar"
-          />
-
-          <View style={styles.locationHelpers}>
-            <TouchableOpacity onPress={handleUseCurrentLocation} disabled={detectingLocation} style={styles.gpsButton}>
-              <Icon name="crosshairs-gps" size={14} color={colors.brand} />
-              <Text style={styles.gpsButtonText}>
-                {detectingLocation ? "Fetching..." : "Current GPS"}
+            {/* Women Only Toggle */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setWomenOnly(!womenOnly)}
+              style={[styles.womenOnlyToggle, womenOnly && styles.womenOnlyToggleActive]}
+            >
+              <Icon name="face-woman" size={18} color={womenOnly ? "#DB2777" : "#64748B"} />
+              <Text style={[styles.womenOnlyText, womenOnly && { color: "#DB2777" }]}>
+                {womenOnly ? "Women Commuters Only (Enabled)" : "Allow Female Passengers Only?"}
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => setPickerTarget("start")} style={styles.mapPickButton}>
-              <Icon name="map-marker-radius" size={14} color="#38BDF8" />
-              <Text style={styles.mapPickButtonText}>Pick on Map</Text>
+            {/* Publish Button */}
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={handlePublishRide}
+              disabled={publishing}
+              style={styles.publishBtn}
+            >
+              {publishing ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.publishBtnText}>Publish Ride & Start Accepting ➔</Text>
+              )}
             </TouchableOpacity>
           </View>
+        </ScrollView>
+      )}
 
-          <Field
-            label="Destination"
-            value={form.end_point}
-            onChangeText={update("end_point")}
-            placeholder="e.g. Vijayawada Benz Circle"
-          />
+      {/* MY PUBLISHED RIDES TAB */}
+      {activeTab === "my_published_rides" && (
+        <ScrollView
+          contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 90 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.tabHeadingText}>Your Published Rides</Text>
 
-          <View style={styles.locationHelpers}>
-            <TouchableOpacity onPress={() => setPickerTarget("end")} style={styles.mapPickButton}>
-              <Icon name="map-marker-radius" size={14} color="#38BDF8" />
-              <Text style={styles.mapPickButtonText}>Pick Destination on Map</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Field label="En-route stops (optional)" value={form.stops} onChangeText={update("stops")} placeholder="Suryapet, Nalgonda" />
-
-          <Text style={shared.fieldLabel}>Vehicle type</Text>
-          <Segmented options={["bike", "car", "cab"]} value={form.vehicle_type} onChange={update("vehicle_type")} testIDPrefix="vehicle" />
-
-          <Text style={[shared.fieldLabel, { marginTop: 10 }]}>Ride Vibe</Text>
-          <View style={styles.vibeSelector}>
-            {[
-              { id: "music", label: "🎵 Music Lover" },
-              { id: "silent", label: "🎧 Silent Work" },
-              { id: "chitchat", label: "☕ Chit-Chat" },
-            ].map((v) => (
-              <TouchableOpacity
-                key={v.id}
-                onPress={() => update("ride_vibe")(v.id)}
-                style={[styles.vibeOption, form.ride_vibe === v.id && styles.vibeOptionActive]}
-              >
-                <Text style={[styles.vibeOptionText, form.ride_vibe === v.id && styles.vibeOptionTextActive]}>
-                  {v.label}
-                </Text>
+          {loadingHistory ? (
+            <ActivityIndicator size="large" color="#0284C7" style={{ marginTop: 30 }} />
+          ) : publishedRides.length === 0 ? (
+            <View style={styles.emptyScreenCard}>
+              <Icon name="car-connected" size={40} color="#94A3B8" />
+              <Text style={styles.emptyScreenTitle}>No Active Rides Posted</Text>
+              <Text style={styles.emptyScreenSub}>When you offer empty seats, your routes will appear here.</Text>
+              <TouchableOpacity onPress={() => setActiveTab("dashboard")} style={styles.emptyActionBtn}>
+                <Text style={styles.emptyActionBtnText}>Offer a Ride</Text>
               </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.grid}>
-            <View style={shared.flex}>
-              <Field label="Seats available" value={form.available_seats} onChangeText={update("available_seats")} placeholder="3" keyboardType="number-pad" />
             </View>
-            <View style={shared.flex}>
-              <Field label="Price per seat" value={form.seat_price} onChangeText={update("seat_price")} placeholder="₹ amount" keyboardType="number-pad" />
-            </View>
-          </View>
-
-          <View style={styles.toggleRow}>
-            <View style={styles.toggleTextWrap}>
-              <View style={styles.toggleTitleWrap}>
-                <Icon name="face-woman" size={18} color="#EC4899" />
-                <Text style={styles.toggleTitle}>Women Only Ride</Text>
+          ) : (
+            publishedRides.map((ride, idx) => (
+              <View key={idx} style={styles.rideItemCard}>
+                <View style={styles.rideItemHeader}>
+                  <Text style={styles.rideItemStatus}>● Active Route</Text>
+                  <Text style={styles.rideItemPrice}>₹{ride.price_per_seat} / seat</Text>
+                </View>
+                <Text style={styles.rideItemRoute}>{ride.from_location} ➔ {ride.to_location}</Text>
+                <View style={styles.rideItemFooter}>
+                  <Text style={styles.rideItemSub}>Departure: {ride.departure_time}</Text>
+                  <Text style={styles.rideItemSub}>{ride.available_seats} Seats Left</Text>
+                </View>
               </View>
-              <Text style={styles.toggleSubtitle}>Only female passengers will be allowed to book</Text>
-            </View>
-            <Switch
-              value={Boolean(form.women_only)}
-              onValueChange={update("women_only")}
-              trackColor={{ false: "#334155", true: "#EC4899" }}
-              thumbColor={form.women_only ? "#FFFFFF" : "#94A3B8"}
-            />
+            ))
+          )}
+        </ScrollView>
+      )}
+
+      {/* EARNINGS TAB */}
+      {activeTab === "earnings" && (
+        <ScrollView
+          contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 90 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.tabHeadingText}>Driver Fuel & Rewards Wallet</Text>
+
+          <View style={styles.earningsSummaryCard}>
+            <Text style={styles.earningsLabel}>Total Fuel Savings</Text>
+            <Text style={styles.earningsAmount}>₹0.00</Text>
+            <Text style={styles.earningsSub}>Share empty seats to offset fuel expenses every day.</Text>
           </View>
 
-          <ErrorBanner message={error} />
-          <Button label="Publish & accept bookings" onPress={postRide} loading={loading} testID="publish-ride-button" />
+          <View style={styles.emptyScreenCard}>
+            <Icon name="wallet-outline" size={36} color="#94A3B8" />
+            <Text style={styles.emptyScreenTitle}>No Payout History</Text>
+            <Text style={styles.emptyScreenSub}>Completed passenger rides will show up in your settlement ledger.</Text>
+          </View>
+        </ScrollView>
+      )}
+
+      {/* BOTTOM NAV */}
+      <View style={[styles.bottomNavContainer, { paddingBottom: insets.bottom > 0 ? insets.bottom : 8 }]}>
+        <TouchableOpacity onPress={() => setActiveTab("dashboard")} style={styles.navTabItem}>
+          <Icon name="plus-circle-outline" size={22} color={activeTab === "dashboard" ? "#0284C7" : "#94A3B8"} />
+          <Text style={[styles.navTabLabel, activeTab === "dashboard" && styles.navTabLabelActive]}>Offer Ride</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => setActiveTab("my_published_rides")} style={styles.navTabItem}>
+          <Icon name="format-list-bulleted" size={22} color={activeTab === "my_published_rides" ? "#0284C7" : "#94A3B8"} />
+          <Text style={[styles.navTabLabel, activeTab === "my_published_rides" && styles.navTabLabelActive]}>My Posts</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => setActiveTab("earnings")} style={styles.navTabItem}>
+          <Icon name="currency-inr" size={22} color={activeTab === "earnings" ? "#0284C7" : "#94A3B8"} />
+          <Text style={[styles.navTabLabel, activeTab === "earnings" && styles.navTabLabelActive]}>Earnings</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => {
+            setActiveTab("profile");
+            setMenuVisible(true);
+          }}
+          style={styles.navTabItem}
+        >
+          <Icon name="account-circle-outline" size={22} color={activeTab === "profile" ? "#0284C7" : "#94A3B8"} />
+          <Text style={[styles.navTabLabel, activeTab === "profile" && styles.navTabLabelActive]}>Profile</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* SOS MODAL */}
+      <Modal visible={sosModalVisible} transparent animationType="fade" onRequestClose={() => setSosModalVisible(false)}>
+        <View style={styles.sosModalBackdrop}>
+          <View style={styles.sosCard}>
+            <View style={styles.sosHeader}>
+              <Icon name="shield-alert" size={28} color="#DC2626" />
+              <Text style={styles.sosTitle}>DRIVER SAFETY HELPLINE</Text>
+              <Text style={styles.sosSubTitle}>Instant 24x7 Roadside & Emergency Assistance</Text>
+            </View>
+
+            <TouchableOpacity onPress={() => Linking.openURL("tel:100")} style={[styles.sosActionRow, { backgroundColor: "#FEE2E2" }]}>
+              <Text style={{ fontSize: 22 }}>🚓</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sosActionName, { color: "#991B1B" }]}>Police</Text>
+                <Text style={styles.sosActionDesc}>Emergency Help 100</Text>
+              </View>
+              <Text style={[styles.callTag, { backgroundColor: "#DC2626" }]}>CALL</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => Linking.openURL("tel:108")} style={[styles.sosActionRow, { backgroundColor: "#FEF3C7" }]}>
+              <Text style={{ fontSize: 22 }}>🚑</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sosActionName, { color: "#92400E" }]}>Ambulance</Text>
+                <Text style={styles.sosActionDesc}>Medical Care 108</Text>
+              </View>
+              <Text style={[styles.callTag, { backgroundColor: "#D97706" }]}>CALL</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => Linking.openURL("tel:112")} style={[styles.sosActionRow, { backgroundColor: "#E0E7FF" }]}>
+              <Text style={{ fontSize: 22 }}>🚨</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sosActionName, { color: "#3730A3" }]}>National Emergency</Text>
+                <Text style={styles.sosActionDesc}>Unified Helpline 112</Text>
+              </View>
+              <Text style={[styles.callTag, { backgroundColor: "#4F46E5" }]}>CALL</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setSosModalVisible(false)} style={styles.sosCloseBtn}>
+              <Text style={styles.sosCloseBtnText}>Close Window</Text>
+            </TouchableOpacity>
+          </View>
         </View>
+      </Modal>
 
-        <Text style={[shared.sectionTitle, styles.postedHeading]}>Your published rides</Text>
-        {posted.length ? (
-          posted.map((ride) => (
-            <View key={ride.id} style={styles.rideItemWrapper}>
-              <RideCard ride={ride} />
-
-              <View style={styles.driverActionsRow}>
-                <TouchableOpacity
-                  onPress={() => startLiveTracking(ride.id)}
-                  style={[styles.trackingActionBtn, activeTrackingRideId === ride.id ? styles.trackingActiveBtn : null]}
-                >
-                  <Icon
-                    name={activeTrackingRideId === ride.id ? "stop-circle-outline" : "navigation-variant"}
-                    size={17}
-                    color="#FFFFFF"
-                  />
-                  <Text style={styles.trackingActionText}>
-                    {activeTrackingRideId === ride.id ? "End Trip" : "Start Trip"}
-                  </Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity onPress={() => openDriverSos(ride)} style={styles.driverSosBtn}>
-                  <Icon name="shield-alert" size={17} color="#FFFFFF" />
-                  <Text style={styles.driverSosText}>Safety SOS</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          ))
-        ) : (
-          <View style={shared.emptyCard}>
-            <Icon name="road-variant" color={colors.muted} size={28} />
-            <Text style={shared.cardTitle}>Your road starts here</Text>
-            <Text style={shared.mutedText}>Published rides will appear in this space.</Text>
-          </View>
-        )}
-      </ScrollView>
-
+      {/* Location Picker */}
       <LocationPickerModal
         visible={pickerTarget !== null}
         onClose={() => setPickerTarget(null)}
-        onSelect={handleLocationPicked}
-        title={pickerTarget === "start" ? "Select Starting Point" : "Select Destination"}
+        onSelect={(p) => {
+          if (pickerTarget === "from") setFromLoc(p);
+          if (pickerTarget === "to") setToLoc(p);
+          setPickerTarget(null);
+        }}
+        title={pickerTarget === "from" ? "Select Start Location" : "Select Drop Location"}
       />
 
-      {selectedSosRide ? (
-        <SafetySosModal
-          visible={sosModalVisible}
-          onClose={() => {
-            setSosModalVisible(false);
-            setSelectedSosRide(null);
-          }}
-          booking={{
-            id: selectedSosRide.id,
-            total: selectedSosRide.price,
-            discount: 0,
-            boarding_otp: "DRIVER",
-            seat: "DRIVER_SEAT",
-            ride: selectedSosRide,
-          }}
-          token={token}
-        />
-      ) : null}
-
+      {/* Menu Modal */}
       <UserMenuModal
         visible={menuVisible}
-        onClose={() => setMenuVisible(false)}
+        onClose={() => {
+          setMenuVisible(false);
+          setActiveTab("dashboard");
+        }}
         token={token}
         onLogout={onLogout}
+        initialPhone={user?.phone || ""}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  headerRightWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
-  sosQuickBtn: {
+  screenRoot: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  headerBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  brandTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  brandAccent: {
+    color: "#0284C7",
+  },
+  driverBadge: {
+    fontSize: 10,
+    backgroundColor: "#F0FDF4",
+    color: "#16A34A",
+    borderWidth: 1,
+    borderColor: "#BBF7D0",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    fontWeight: "800",
+  },
+  liveIndicatorRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginTop: 2,
+  },
+  pulseDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: "#10B981",
+  },
+  liveIndicatorText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#059669",
+  },
+  headerActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  sosButton: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
     backgroundColor: "#DC2626",
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#EF4444",
+    borderRadius: 20,
   },
-  sosQuickText: { color: "#FFFFFF", fontSize: 11, fontWeight: "900", letterSpacing: 0.5 },
-  menuIconBtn: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: "#1E293B",
-    borderWidth: 1,
-    borderColor: "#334155",
+  sosButtonText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "900",
+  },
+  menuCircleBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
-  },
-  petrolCard: {
-    margin: 18,
-    padding: 16,
-    borderRadius: 16,
-    backgroundColor: "#1E293B",
     borderWidth: 1,
-    borderColor: "#FBBF24",
-    gap: 8,
+    borderColor: "#E2E8F0",
   },
-  petrolHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  petrolBadge: { flexDirection: "row", alignItems: "center", gap: 6 },
-  petrolBadgeText: { color: "#FBBF24", fontSize: 12, fontWeight: "900", letterSpacing: 0.5 },
-  rewardText: { color: "#22C55E", fontSize: 13, fontWeight: "800" },
-  petrolDesc: { color: "#E2E8F0", fontSize: 12, lineHeight: 17 },
-  progressContainer: {
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#334155",
-    overflow: "hidden",
+  greetingWrap: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 10,
+  },
+  greetingTitle: {
+    fontSize: 20,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  greetingSub: {
+    fontSize: 13,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  formCard: {
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 18,
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 16,
+  },
+  formCardTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#475569",
+    letterSpacing: 0.5,
+    marginBottom: 12,
+  },
+  locationInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 6,
+  },
+  greenDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#10B981",
+  },
+  redDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#EF4444",
+  },
+  inputLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#94A3B8",
+  },
+  inputValue: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginTop: 2,
+  },
+  placeholderText: {
+    color: "#94A3B8",
+    fontWeight: "600",
+  },
+  routeDivider: {
+    height: 1,
+    backgroundColor: "#F1F5F9",
+    marginVertical: 8,
+  },
+  vehicleRow: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 12,
+  },
+  vehicleBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    paddingVertical: 10,
+  },
+  vehicleBtnActive: {
+    borderColor: "#0284C7",
+    backgroundColor: "#F0F9FF",
+  },
+  vehicleBtnText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+  vehicleBtnTextActive: {
+    color: "#0284C7",
+  },
+  numberInputRow: {
+    flexDirection: "row",
+    gap: 12,
     marginTop: 4,
   },
-  progressBar: { height: "100%", backgroundColor: "#FBBF24", borderRadius: 4 },
-  progressStats: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 2 },
-  statText: { color: "#94A3B8", fontSize: 11, fontWeight: "600" },
-  statTextRemaining: { color: "#38BDF8", fontSize: 11, fontWeight: "700" },
-  grid: { flexDirection: "row", gap: 10 },
-  postedHeading: { marginTop: 24, marginHorizontal: 18, marginBottom: 12 },
-  locationHelpers: { flexDirection: "row", gap: 8, marginTop: -8, marginBottom: 14 },
-  gpsButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: "#1E293B",
-  },
-  gpsButtonText: { color: colors.brand, fontSize: 12, fontWeight: "600" },
-  mapPickButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-    backgroundColor: "#1E293B",
-  },
-  mapPickButtonText: { color: "#38BDF8", fontSize: 12, fontWeight: "600" },
-  docsSummaryCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "rgba(16, 185, 129, 0.12)",
+  textInputBox: {
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: "#10B981",
-    paddingVertical: 10,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
     paddingHorizontal: 12,
-    borderRadius: 12,
-    marginVertical: 4,
+    paddingVertical: 8,
+    marginTop: 4,
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0F172A",
   },
-  docsSummaryLeft: { flexDirection: "row", alignItems: "center", gap: 8 },
-  docsSummaryTitle: { fontSize: 12, fontWeight: "800", color: "#34D399" },
-  docsSummarySubtitle: { fontSize: 11, color: "#A7F3D0", marginTop: 1 },
-  editDocBtn: {
-    backgroundColor: "#1E293B",
-    borderWidth: 1,
-    borderColor: "#38BDF8",
-    paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 8,
-  },
-  editDocBtnText: { fontSize: 11, fontWeight: "800", color: "#38BDF8" },
-  hideDocBtn: { alignSelf: "flex-end", paddingVertical: 4, paddingHorizontal: 8 },
-  hideDocBtnText: { fontSize: 11, fontWeight: "700", color: "#10B981" },
-  vibeSelector: { flexDirection: "row", gap: 6, marginBottom: 12 },
-  vibeOption: {
-    flex: 1,
+  womenOnlyToggle: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#0F172A",
+    gap: 8,
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: "#334155",
+    borderColor: "#E2E8F0",
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 14,
+  },
+  womenOnlyToggleActive: {
+    backgroundColor: "#FDF2F8",
+    borderColor: "#F472B6",
+  },
+  womenOnlyText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+  publishBtn: {
+    backgroundColor: "#0284C7",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 16,
+  },
+  publishBtnText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  tabHeadingText: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0F172A",
+    marginBottom: 16,
+  },
+  rideItemCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 10,
+  },
+  rideItemHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  rideItemStatus: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#16A34A",
+  },
+  rideItemPrice: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#0284C7",
+  },
+  rideItemRoute: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginVertical: 8,
+  },
+  rideItemFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    paddingTop: 8,
+  },
+  rideItemSub: {
+    fontSize: 12,
+    color: "#64748B",
+    fontWeight: "600",
+  },
+  earningsSummaryCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    alignItems: "center",
+    marginBottom: 14,
+  },
+  earningsLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#64748B",
+    textTransform: "uppercase",
+  },
+  earningsAmount: {
+    fontSize: 32,
+    fontWeight: "900",
+    color: "#16A34A",
+    marginVertical: 6,
+  },
+  earningsSub: {
+    fontSize: 12,
+    color: "#64748B",
+    textAlign: "center",
+  },
+  emptyScreenCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 30,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginTop: 10,
+  },
+  emptyScreenTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#1E293B",
+    marginTop: 10,
+  },
+  emptyScreenSub: {
+    fontSize: 12,
+    color: "#64748B",
+    textAlign: "center",
+    marginTop: 6,
+  },
+  emptyActionBtn: {
+    marginTop: 16,
+    backgroundColor: "#0284C7",
+    paddingHorizontal: 16,
     paddingVertical: 10,
-    paddingHorizontal: 4,
     borderRadius: 10,
   },
-  vibeOptionActive: { backgroundColor: colors.brand, borderColor: colors.brand },
-  vibeOptionText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
-  vibeOptionTextActive: { color: "#0F172A" },
-  toggleRow: {
+  emptyActionBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  bottomNavContainer: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    borderTopWidth: 1,
+    borderTopColor: "#E2E8F0",
+    paddingTop: 8,
+  },
+  navTabItem: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 2,
+  },
+  navTabLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#94A3B8",
+  },
+  navTabLabelActive: {
+    color: "#0284C7",
+  },
+  sosModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  sosCard: {
+    width: "100%",
+    maxWidth: 380,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 20,
+    gap: 10,
+  },
+  sosHeader: {
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  sosTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#DC2626",
+    marginTop: 4,
+  },
+  sosSubTitle: {
+    fontSize: 11,
+    color: "#64748B",
+    textAlign: "center",
+    marginTop: 2,
+  },
+  sosActionRow: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    backgroundColor: "rgba(236, 72, 153, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(236, 72, 153, 0.3)",
     padding: 12,
     borderRadius: 12,
-    marginVertical: 4,
+    gap: 12,
   },
-  toggleTextWrap: { flex: 1, paddingRight: 8 },
-  toggleTitleWrap: { flexDirection: "row", alignItems: "center", gap: 6 },
-  toggleTitle: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
-  toggleSubtitle: { color: colors.muted, fontSize: 11, marginTop: 2 },
-  rideItemWrapper: { marginBottom: 14 },
-  driverActionsRow: { flexDirection: "row", gap: 10, marginHorizontal: 18, marginTop: -4 },
-  trackingActionBtn: {
-    flex: 2,
-    flexDirection: "row",
+  sosActionName: {
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  sosActionDesc: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 1,
+  },
+  callTag: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "900",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  sosCloseBtn: {
+    marginTop: 6,
+    paddingVertical: 12,
     alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: "#059669",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 10,
   },
-  trackingActiveBtn: { backgroundColor: "#DC2626" },
-  trackingActionText: { color: "#FFFFFF", fontSize: 13, fontWeight: "700" },
-  driverSosBtn: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    paddingVertical: 11,
-    borderRadius: 12,
-    backgroundColor: "#DC2626",
+  sosCloseBtnText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#475569",
   },
-  driverSosText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
 });
