@@ -1,6 +1,5 @@
-import React, { useEffect, useState } from "react";
-import { ActivityIndicator, Platform, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { api, SESSION_KEY, User } from "@/src/api";
 import { AuthScreen } from "@/src/screens/AuthScreen";
@@ -9,48 +8,38 @@ import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 import { storage } from "@/src/utils/storage";
 
-export default function DriverPage() {
-  const insets = useSafeAreaInsets();
+export default function DriverApp() {
   const [token, setToken] = useState("");
   const [user, setUser] = useState<User | null>(null);
   const [booting, setBooting] = useState(true);
 
   useEffect(() => {
-    let mounted = true;
     (async () => {
-      try {
-        const savedToken = (await storage.secureGet(SESSION_KEY)) || (typeof window !== "undefined" ? localStorage.getItem(SESSION_KEY) : null);
-        if (savedToken) {
-          setToken(savedToken);
-          const me = await api<User>("/auth/me", {}, savedToken);
-          if (mounted) setUser(me);
+      const saved = await storage.secureGet<string | null>(SESSION_KEY + "_driver", null);
+      if (saved) {
+        try {
+          const me = await api<User>("/me", {}, saved);
+          setToken(saved);
+          setUser(me);
+        } catch {
+          await storage.secureRemove(SESSION_KEY + "_driver");
         }
-      } catch {
-        await storage.secureRemove(SESSION_KEY);
-      } finally {
-        if (mounted) setBooting(false);
       }
+      setBooting(false);
     })();
-
-    return () => {
-      mounted = false;
-    };
   }, []);
 
   const logout = async () => {
-    await storage.secureRemove(SESSION_KEY);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem(SESSION_KEY);
-    }
+    await storage.secureRemove(SESSION_KEY + "_driver");
     setToken("");
     setUser(null);
   };
 
   if (booting) {
     return (
-      <View style={[shared.screen, styles.loadingScreen]}>
-        <ActivityIndicator size="large" color={colors.primary} />
-        <Text style={styles.loadingText}>Opening Driver Portal...</Text>
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator color={colors.brand} size="large" />
+        <Text style={styles.loadingText}>Starting Driver Console...</Text>
       </View>
     );
   }
@@ -59,8 +48,14 @@ export default function DriverPage() {
     return (
       <AuthScreen
         onLogin={(newToken, newUser) => {
+          const driverUser: User = {
+            ...newUser,
+            role: "driver",
+            full_name: newUser.full_name || "Driver Partner",
+          };
           setToken(newToken);
-          setUser(newUser);
+          setUser(driverUser);
+          storage.secureSet(SESSION_KEY + "_driver", newToken);
         }}
       />
     );
@@ -68,12 +63,27 @@ export default function DriverPage() {
 
   return (
     <View style={shared.screen}>
-      <DriverHome token={token} onLogout={logout} />
+      <DriverHome
+        token={token}
+        user={user}
+        onUserUpdate={setUser}
+        onLogout={logout}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  loadingScreen: { flex: 1, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center", gap: 12 },
-  loadingText: { color: colors.onSurfaceSecondary, fontSize: 14 },
+  loadingScreen: {
+    flex: 1,
+    backgroundColor: colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 12,
+  },
+  loadingText: {
+    color: colors.onSurfaceSecondary,
+    fontSize: 14,
+    fontWeight: "700",
+  },
 });
