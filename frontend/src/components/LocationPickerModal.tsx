@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Modal,
   StyleSheet,
   Text,
@@ -9,7 +10,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { Icon } from "@/src/components/ui";
+import { Ionicons } from "@expo/vector-icons";
 
 interface LocationPickerProps {
   visible: boolean;
@@ -77,25 +78,21 @@ export function LocationPickerModal({
     onClose();
   };
 
-  // Mapbox Static High-Res Vector Map Preview (Super Fast & Zero Crashes)
-  const mapImageUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/pin-s+ef4444(${coords.lon},${coords.lat})/${coords.lon},${coords.lat},14,0/600x400@2x?access_token=${MAPBOX_TOKEN}`;
+  // Mapbox Static High-Res Vector Map (ఎలాంటి క్రాష్‌లు ఉండవు, వేగంగా లోడ్ అవుతుంది)
+  const mapImageUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${coords.lon},${coords.lat},14.5,0/800x600@2x?access_token=${MAPBOX_TOKEN}`;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <View style={styles.container}>
-        {/* Fullscreen Map Preview Layer */}
+        {/* Fullscreen Map Layer */}
         <View style={styles.mapLayer}>
-          {typeof window !== "undefined" ? (
-            <iframe
-              title="mapbox-frame"
-              src={`https://api.mapbox.com/styles/v1/mapbox/streets-v12.html?title=false&access_token=${MAPBOX_TOKEN}#15/${coords.lat}/${coords.lon}`}
-              style={{ width: "100%", height: "100%", border: "none" }}
-            />
-          ) : (
-            <View style={{ flex: 1, backgroundColor: "#E2E8F0" }} />
-          )}
+          <Image
+            source={{ uri: mapImageUrl }}
+            style={styles.mapImage}
+            resizeMode="cover"
+          />
 
-          {/* Center Target Marker */}
+          {/* Center Target Pin (Uber / Rapido Style) */}
           <View style={styles.fixedPin} pointerEvents="none">
             <View style={styles.pinBubble}>
               <View style={styles.pinDot} />
@@ -107,11 +104,11 @@ export function LocationPickerModal({
         {/* Top Header & Search Input */}
         <View style={styles.topHeader}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn}>
-            <Icon name="arrow-left" size={22} color="#0F172A" />
+            <Ionicons name="arrow-back" size={22} color="#0F172A" />
           </TouchableOpacity>
 
           <View style={styles.inputWrap}>
-            <Icon name="magnify" size={18} color="#64748B" />
+            <Ionicons name="search" size={18} color="#64748B" />
             <TextInput
               style={styles.input}
               placeholder="Search area (e.g. Hitec City, LB Nagar)..."
@@ -138,7 +135,7 @@ export function LocationPickerModal({
                     pickLocation(shortName, item.center[1], item.center[0]);
                   }}
                 >
-                  <Icon name="map-marker-outline" size={18} color="#0284C7" />
+                  <Ionicons name="location-outline" size={18} color="#0284C7" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.resPrimary}>{item.text}</Text>
                     <Text style={styles.resSecondary} numberOfLines={1}>{item.place_name}</Text>
@@ -196,6 +193,11 @@ const styles = StyleSheet.create({
     flex: 1,
     width: "100%",
     position: "relative",
+    backgroundColor: "#E2E8F0",
+  },
+  mapImage: {
+    width: "100%",
+    height: "100%",
   },
   fixedPin: {
     position: "absolute",
