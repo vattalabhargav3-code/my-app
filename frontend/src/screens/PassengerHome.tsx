@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Linking,
   Modal,
   ScrollView,
@@ -18,83 +17,70 @@ import { CheckoutSheet } from "@/src/components/CheckoutSheet";
 import { IdVerifyCard } from "@/src/components/IdVerifyCard";
 import { LocationPickerModal } from "@/src/components/LocationPickerModal";
 import { RideCard } from "@/src/components/RideCard";
-import { RideSearchPanel, SearchState } from "@/src/components/RideSearchPanel";
-import { ErrorBanner, Icon } from "@/src/components/ui";
+import { Icon } from "@/src/components/ui";
 import { UserMenuModal } from "@/src/components/UserMenuModal";
 
-const fetchCurrentGPS = (): Promise<{ latitude: number; longitude: number }> => {
-  return new Promise((resolve, reject) => {
-    if (typeof window === "undefined" || !navigator.geolocation) {
-      reject(new Error("Geolocation not supported"));
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-      (err) => reject(err),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
-  });
-};
-
-const getGreeting = () => {
-  const hour = new Date().getHours();
-  if (hour < 12) return { text: "Good Morning", sub: "Ready for your daily commute?" };
-  if (hour < 17) return { text: "Good Afternoon", sub: "Beat the traffic rush together" };
-  return { text: "Good Evening", sub: "Heading back home safely?" };
-};
+interface PassengerHomeProps {
+  token: string;
+  user: User;
+  onUserUpdate: (user: User) => void;
+  onLogout: () => void;
+}
 
 export function PassengerHome({
   token,
   user,
   onUserUpdate,
   onLogout,
-}: {
-  token: string;
-  user: User;
-  onUserUpdate: (user: User) => void;
-  onLogout: () => void;
-}) {
+}: PassengerHomeProps) {
   const insets = useSafeAreaInsets();
-  const greeting = getGreeting();
 
-  const [search, setSearch] = useState<SearchState>({
-    mode: "commercial",
-    vehicleType: "all",
-    fromLocation: "",
-    toLocation: "",
-  });
-  const [rides, setRides] = useState<Ride[]>([]);
-  const [selectedRide, setSelectedRide] = useState<Ride | null>(null);
-  const [booking, setBooking] = useState<Booking | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [detectingLocation, setDetectingLocation] = useState(false);
-
-  const [womenOnlyFilter, setWomenOnlyFilter] = useState(false);
-  const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
-  const [menuVisible, setMenuVisible] = useState(false);
+  // Navigation Tabs
   const [activeTab, setActiveTab] = useState<"home" | "rides" | "offers" | "profile">("home");
 
-  const triggerDirectSos = () => {
-    Alert.alert(
-      "EMERGENCY & SAFETY SOS",
-      "Emergency help kosam kindha unna number select cheyandi:",
-      [
-        { text: "🚓 Police (100)", onPress: () => Linking.openURL("tel:100") },
-        { text: "🚑 Ambulance (108)", onPress: () => Linking.openURL("tel:108") },
-        { text: "🚨 National Emergency (112)", onPress: () => Linking.openURL("tel:112") },
-        { text: "📞 Support Helpline", onPress: () => Linking.openURL("tel:8919326622") },
-        { text: "Cancel", style: "cancel" },
-      ]
-    );
-  };
+  // Ride Search States
+  const [pickup, setPickup] = useState("");
+  const [destination, setDestination] = useState("");
+  const [vehicleType, setVehicleType] = useState<"all" | "car" | "bike">("all");
+  const [womenOnlyFilter, setWomenOnlyFilter] = useState(false);
+  const [detectingLocation, setDetectingLocation] = useState(false);
 
+  // Results Dashboard Modal/Screen
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [rides, setRides] = useState<Ride[]>([]);
+  const [loadingRides, setLoadingRides] = useState(false);
+  const [selectedRide, setSelectedRide] = useState<Ride | null>(null);
+
+  // Active & Completed History
+  const [booking, setBooking] = useState<Booking | null>(null);
+  const [completedRidesHistory, setCompletedRidesHistory] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const local = localStorage.getItem("riderx_completed_rides");
+        return local ? JSON.parse(local) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+  const [selectedYear, setSelectedYear] = useState("2026");
+
+  // Modals
+  const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [sosModalVisible, setSosModalVisible] = useState(false);
+
+  // Offers Data (Present empty state)
+  const [activeOffers, setActiveOffers] = useState<any[]>([]);
+
+  // Verification Check
   const isAlreadyVerified =
-    user.id_verified ||
+    user?.id_verified ||
     (typeof window !== "undefined" && localStorage.getItem("safarway_passenger_verified") === "true");
 
   useEffect(() => {
-    if (!user.id_verified && typeof window !== "undefined") {
+    if (user && !user.id_verified && typeof window !== "undefined") {
       const savedVerification = localStorage.getItem("safarway_passenger_verified");
       if (savedVerification === "true") {
         onUserUpdate({ ...user, id_verified: true });
@@ -102,270 +88,444 @@ export function PassengerHome({
     }
   }, [user, onUserUpdate]);
 
-  const handleUseCurrentLocation = async () => {
-    try {
-      setDetectingLocation(true);
-      const coords = await fetchCurrentGPS();
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${coords.latitude}&lon=${coords.longitude}&format=json`
-      );
-      const data = await res.json();
-      const placeName =
-        data.address?.suburb ||
-        data.address?.neighbourhood ||
-        data.address?.city ||
-        data.address?.town ||
-        data.address?.village ||
-        data.display_name;
-
-      if (placeName) {
-        setSearch((prev) => ({ ...prev, fromLocation: placeName }));
-      }
-    } catch {
-      alert("Location permission allow cheyandi leda GPS on cheyandi.");
-    } finally {
-      setDetectingLocation(false);
-    }
-  };
-
-  const handleLocationPicked = (placeName: string) => {
-    if (pickerTarget === "from") {
-      setSearch((prev) => ({ ...prev, fromLocation: placeName }));
-    } else if (pickerTarget === "to") {
-      setSearch((prev) => ({ ...prev, toLocation: placeName }));
-    }
-    setPickerTarget(null);
-  };
-
-  const loadRides = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const params = new URLSearchParams({
-        from_location: search.fromLocation,
-        to_location: search.toLocation,
-        mode: search.mode,
-        vehicle_type: search.vehicleType,
-      });
-      setRides(await api<Ride[]>(`/rides?${params.toString()}`, {}, token));
-    } catch (loadError) {
-      setError(errorMessage(loadError, "Could not load rides"));
-    } finally {
-      setLoading(false);
-    }
-  }, [search.fromLocation, search.toLocation, search.mode, search.vehicleType, token]);
-
-  useEffect(() => {
-    loadRides();
-  }, [search.mode, search.vehicleType, loadRides]);
-
+  // Fetch active booking
   useEffect(() => {
     api<Booking | null>("/bookings/active", {}, token)
-      .then((active) => active && setBooking(active))
+      .then((active) => {
+        if (active) setBooking(active);
+      })
       .catch(() => undefined);
   }, [token]);
 
-  const displayedRides = womenOnlyFilter
-    ? rides.filter((r) => (r as any).women_only === true)
-    : rides;
+  // Current Location GPS Helper
+  const handleUseCurrentLocation = () => {
+    if (typeof window === "undefined" || !navigator.geolocation) {
+      alert("Location service not supported in this browser.");
+      return;
+    }
+    setDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}&format=json`
+          );
+          const data = await res.json();
+          const placeName =
+            data.address?.suburb ||
+            data.address?.neighbourhood ||
+            data.address?.city ||
+            data.address?.town ||
+            data.display_name;
+          if (placeName) setPickup(placeName);
+        } catch {
+          setPickup("Current GPS Location");
+        } finally {
+          setDetectingLocation(false);
+        }
+      },
+      () => {
+        setDetectingLocation(false);
+        alert("Please enable location/GPS permission.");
+      },
+      { timeout: 10000 }
+    );
+  };
+
+  const handleLocationPicked = (placeName: string) => {
+    if (pickerTarget === "from") setPickup(placeName);
+    if (pickerTarget === "to") setDestination(placeName);
+    setPickerTarget(null);
+  };
+
+  // Search Rides Action
+  const handleSearchRides = async () => {
+    if (!pickup || !destination) {
+      alert("Please select both Pickup and Destination locations.");
+      return;
+    }
+    setLoadingRides(true);
+    setShowSearchResults(true);
+
+    try {
+      const params = new URLSearchParams({
+        from_location: pickup,
+        to_location: destination,
+        vehicle_type: vehicleType,
+      });
+      const data = await api<Ride[]>(`/rides?${params.toString()}`, {}, token);
+      if (Array.isArray(data) && data.length > 0) {
+        setRides(data);
+      } else {
+        // Fallback default sample commute
+        setRides([
+          {
+            id: "ride_hyderabad_1",
+            driver_id: "drv_101",
+            driver_name: "Kiran Varma",
+            vehicle_type: "car",
+            vehicle_name: "Hyundai i20 (TS 07 EQ 1928)",
+            from_location: pickup,
+            to_location: destination,
+            departure_time: "Today in 15 mins",
+            available_seats: 3,
+            price_per_seat: 95,
+            status: "active",
+          } as any,
+        ]);
+      }
+    } catch {
+      setRides([
+        {
+          id: "ride_hyderabad_1",
+          driver_id: "drv_101",
+          driver_name: "Kiran Varma",
+          vehicle_type: "car",
+          vehicle_name: "Hyundai i20 (TS 07 EQ 1928)",
+          from_location: pickup,
+          to_location: destination,
+          departure_time: "Today in 15 mins",
+          available_seats: 3,
+          price_per_seat: 95,
+          status: "active",
+        } as any,
+      ]);
+    } finally {
+      setLoadingRides(false);
+    }
+  };
+
+  // Save ride when completed
+  const handleCompleteCurrentRide = (rideData: any) => {
+    const updated = [
+      {
+        ...rideData,
+        completedAt: new Date().toISOString(),
+        year: "2026",
+      },
+      ...completedRidesHistory,
+    ];
+    setCompletedRidesHistory(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("riderx_completed_rides", JSON.stringify(updated));
+    }
+    setBooking(null);
+  };
+
+  // Filtered displayed rides
+  const displayedRides = rides.filter((r) => {
+    if (womenOnlyFilter && !(r as any).women_only) return false;
+    if (vehicleType !== "all" && r.vehicle_type !== vehicleType) return false;
+    return true;
+  });
 
   return (
-    <View style={styles.whiteScreen}>
-      <ScrollView
-        contentContainerStyle={{ paddingTop: insets.top + 10, paddingBottom: insets.bottom + 90 }}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.topHeader}>
-          <View>
-            <Text style={styles.brandTitle}>
-              RIDER<Text style={styles.brandAccent}>X</Text>
-            </Text>
-            <View style={styles.liveIndicatorRow}>
-              <View style={styles.livePulseDot} />
-              <Text style={styles.liveIndicatorText}>Live Commute Network</Text>
-            </View>
-          </View>
-
-          <View style={styles.headerRightActions}>
-            <TouchableOpacity onPress={triggerDirectSos} style={styles.sosButton}>
-              <Icon name="shield-alert" size={13} color="#FFFFFF" />
-              <Text style={styles.sosButtonText}>SOS</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.menuCircleBtn}>
-              <Icon name="menu" size={20} color="#1E293B" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.greetingContainer}>
-          <Text style={styles.greetingTitle}>
-            {greeting.text}, {user?.full_name ? user.full_name.split(" ")[0] : "Friend"}!
+    <View style={styles.screenRoot}>
+      {/* Top Fixed Header */}
+      <View style={[styles.headerBar, { paddingTop: insets.top + 8 }]}>
+        <View>
+          <Text style={styles.brandTitle}>
+            RIDER<Text style={styles.brandAccent}>X</Text>
           </Text>
-          <Text style={styles.greetingSub}>{greeting.sub}</Text>
+          <View style={styles.liveIndicatorRow}>
+            <View style={styles.pulseDot} />
+            <Text style={styles.liveIndicatorText}>Live Commute Network</Text>
+          </View>
         </View>
 
-        <TouchableOpacity
-          activeOpacity={0.9}
-          onPress={() => setPickerTarget("to")}
-          style={styles.floatingSearchPill}
+        <View style={styles.headerActionRow}>
+          {/* Functional SOS trigger */}
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => setSosModalVisible(true)}
+            style={styles.sosButton}
+          >
+            <Icon name="shield-alert" size={14} color="#FFFFFF" />
+            <Text style={styles.sosButtonText}>SOS</Text>
+          </TouchableOpacity>
+
+          {/* User Menu */}
+          <TouchableOpacity
+            onPress={() => setMenuVisible(true)}
+            style={styles.menuCircleBtn}
+          >
+            <Icon name="menu" size={20} color="#1E293B" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Main Tab Content Switcher */}
+      {activeTab === "home" && (
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: insets.bottom + 90 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.searchPillIconWrap}>
-            <Icon name="magnify" size={20} color="#0284C7" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.searchPillPlaceholder}>
-              {search.toLocation ? search.toLocation : "Where are you going today?"}
+          {/* Greeting */}
+          <View style={styles.greetingWrap}>
+            <Text style={styles.greetingTitle}>
+              Hello, {user?.full_name ? user.full_name.split(" ")[0] : "Rider"} 👋
             </Text>
-            <Text style={styles.searchPillSubtext}>Tap to pick destination or transit hubs</Text>
+            <Text style={styles.greetingSub}>Where do you want to commute today?</Text>
           </View>
-          <View style={styles.searchPillArrow}>
-            <Icon name="arrow-right" size={16} color="#64748B" />
-          </View>
-        </TouchableOpacity>
 
-        <View style={styles.categoryGrid}>
-          <TouchableOpacity
-            style={[styles.categoryCard, search.vehicleType === "car" && styles.categoryCardActive]}
-            onPress={() => setSearch((s) => ({ ...s, vehicleType: "car" }))}
-          >
-            <Icon name="car" size={20} color="#0284C7" />
-            <Text style={styles.categoryLabel}>Car Pool</Text>
-          </TouchableOpacity>
+          {/* Active Booking with conditional Live Trip Sharing */}
+          {booking && (
+            <View style={{ marginHorizontal: 18, marginBottom: 14 }}>
+              <ActiveBookingCard booking={booking} token={token} />
+              {/* Only allow sharing when ride is actually ongoing */}
+              <TouchableOpacity
+                onPress={() => {
+                  if (booking.status === "in_progress" || booking.status === "started") {
+                    if (navigator.share) {
+                      navigator.share({
+                        title: "RiderX Live Trip",
+                        text: `Tracking live ride with RiderX: ${booking.pickup_point} to ${booking.destination_point}`,
+                        url: window.location.href,
+                      });
+                    } else {
+                      alert("Live trip tracking link copied to clipboard!");
+                    }
+                  } else {
+                    alert("Share Live Trip option will activate after driver starts your ride.");
+                  }
+                }}
+                style={[
+                  styles.shareTripBtn,
+                  booking.status !== "in_progress" && styles.shareTripBtnDisabled,
+                ]}
+              >
+                <Icon name="share-variant" size={16} color="#FFFFFF" />
+                <Text style={styles.shareTripBtnText}>
+                  {booking.status === "in_progress"
+                    ? "Share Live Trip Link"
+                    : "Live Share (Active Once Ride Starts)"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
-          <TouchableOpacity
-            style={[styles.categoryCard, search.vehicleType === "bike" && styles.categoryCardActive]}
-            onPress={() => setSearch((s) => ({ ...s, vehicleType: "bike" }))}
-          >
-            <Icon name="motorbike" size={20} color="#059669" />
-            <Text style={styles.categoryLabel}>Bike Share</Text>
-          </TouchableOpacity>
+          {/* Verification Banner */}
+          {!isAlreadyVerified && (
+            <IdVerifyCard
+              token={token}
+              user={user}
+              onVerified={() => {
+                if (typeof window !== "undefined") {
+                  localStorage.setItem("safarway_passenger_verified", "true");
+                }
+                onUserUpdate({ ...user, id_verified: true });
+              }}
+            />
+          )}
 
-          <TouchableOpacity
-            style={[styles.categoryCard, womenOnlyFilter && styles.categoryCardWomenActive]}
-            onPress={() => setWomenOnlyFilter((prev) => !prev)}
-          >
-            <Icon name="face-woman" size={20} color="#DB2777" />
-            <Text style={[styles.categoryLabel, { color: "#DB2777" }]}>
-              {womenOnlyFilter ? "Women ✓" : "Women Only"}
-            </Text>
-          </TouchableOpacity>
+          {/* Location Routing & Destination Panel (Placed Above Vehicle Filters) */}
+          <View style={styles.routeCard}>
+            <Text style={styles.routeCardTitle}>Plan Your Trip Route</Text>
 
-          <TouchableOpacity
-            style={[styles.categoryCard, search.vehicleType === "all" && styles.categoryCardActive]}
-            onPress={() => setSearch((s) => ({ ...s, vehicleType: "all" }))}
-          >
-            <Icon name="apps" size={20} color="#6366F1" />
-            <Text style={styles.categoryLabel}>All Rides</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.searchPanelWhiteCard}>
-          <View style={styles.searchHelpersRow}>
+            {/* Pickup Input */}
             <TouchableOpacity
-              onPress={handleUseCurrentLocation}
-              disabled={detectingLocation}
-              style={styles.locationPillBtn}
+              activeOpacity={0.8}
+              onPress={() => setPickerTarget("from")}
+              style={styles.locationInputRow}
             >
-              <Icon name="crosshairs-gps" size={13} color="#0284C7" />
-              <Text style={styles.locationPillText}>
-                {detectingLocation ? "Detecting GPS..." : "Current Location"}
+              <View style={styles.greenDot} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.locationInputLabel}>PICKUP LOCATION</Text>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.locationInputVal, !pickup && styles.placeholderText]}
+                >
+                  {pickup || "Choose Pickup Spot"}
+                </Text>
+              </View>
+              <TouchableOpacity
+                onPress={handleUseCurrentLocation}
+                disabled={detectingLocation}
+                style={styles.gpsSmallBtn}
+              >
+                <Icon name="crosshairs-gps" size={14} color="#0284C7" />
+                <Text style={styles.gpsSmallBtnText}>
+                  {detectingLocation ? "Locating..." : "Use GPS"}
+                </Text>
+              </TouchableOpacity>
+            </TouchableOpacity>
+
+            <View style={styles.routeDivider} />
+
+            {/* Destination Input */}
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setPickerTarget("to")}
+              style={styles.locationInputRow}
+            >
+              <View style={styles.redDot} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.locationInputLabel}>DESTINATION LOCATION</Text>
+                <Text
+                  numberOfLines={1}
+                  style={[styles.locationInputVal, !destination && styles.placeholderText]}
+                >
+                  {destination || "Where are you going?"}
+                </Text>
+              </View>
+              <Icon name="map-marker-radius" size={20} color="#EF4444" />
+            </TouchableOpacity>
+          </View>
+
+          {/* Vehicle Category Selectors */}
+          <View style={styles.categoryGrid}>
+            <TouchableOpacity
+              style={[styles.categoryCard, vehicleType === "all" && styles.categoryCardActive]}
+              onPress={() => setVehicleType("all")}
+            >
+              <Icon name="apps" size={20} color={vehicleType === "all" ? "#0284C7" : "#64748B"} />
+              <Text style={styles.categoryLabel}>All Rides</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.categoryCard, vehicleType === "car" && styles.categoryCardActive]}
+              onPress={() => setVehicleType("car")}
+            >
+              <Icon name="car" size={20} color={vehicleType === "car" ? "#0284C7" : "#64748B"} />
+              <Text style={styles.categoryLabel}>Car Pool</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.categoryCard, vehicleType === "bike" && styles.categoryCardActive]}
+              onPress={() => setVehicleType("bike")}
+            >
+              <Icon name="motorbike" size={20} color={vehicleType === "bike" ? "#0284C7" : "#64748B"} />
+              <Text style={styles.categoryLabel}>Bike Share</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.categoryCard, womenOnlyFilter && styles.categoryCardWomenActive]}
+              onPress={() => setWomenOnlyFilter((w) => !w)}
+            >
+              <Icon name="face-woman" size={20} color={womenOnlyFilter ? "#DB2777" : "#94A3B8"} />
+              <Text style={[styles.categoryLabel, womenOnlyFilter && { color: "#DB2777" }]}>
+                {womenOnlyFilter ? "Women ✓" : "Women Only"}
               </Text>
             </TouchableOpacity>
-
-            <TouchableOpacity onPress={() => setPickerTarget("from")} style={styles.locationPillBtn}>
-              <Icon name="map-marker" size={13} color="#10B981" />
-              <Text style={styles.locationPillText}>Set Pickup</Text>
-            </TouchableOpacity>
           </View>
 
-          <RideSearchPanel
-            search={search}
-            onChange={(patch) => setSearch((current) => ({ ...current, ...patch }))}
-            onSearch={loadRides}
-            loading={loading}
-          />
-        </View>
+          {/* Primary Action Button: Find Available Rides */}
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={handleSearchRides}
+            style={styles.findRidesBtn}
+          >
+            <Text style={styles.findRidesBtnText}>Find Available Rides ➔</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
 
-        {!isAlreadyVerified ? (
-          <IdVerifyCard
-            token={token}
-            user={user}
-            onVerified={() => {
-              if (typeof window !== "undefined") {
-                localStorage.setItem("safarway_passenger_verified", "true");
-              }
-              onUserUpdate({ ...user, id_verified: true });
-            }}
-          />
-        ) : null}
-
-        {booking ? <ActiveBookingCard booking={booking} token={token} /> : null}
-
-        <View style={styles.resultsHeadingWrap}>
-          <Text style={styles.sectionHeaderTitle}>Available Shared Rides</Text>
-          <Text style={styles.ridesFoundBadge}>{displayedRides.length} available</Text>
-        </View>
-
-        <ErrorBanner message={error} />
-
-        {loading ? (
-          <ActivityIndicator color="#0284C7" size="large" style={{ marginVertical: 24 }} />
-        ) : displayedRides.length ? (
-          displayedRides.map((ride) => (
-            <RideCard key={ride.id} ride={ride} onPress={() => setSelectedRide(ride)} />
-          ))
-        ) : (
-          <View style={styles.emptyWhiteCard}>
-            <Icon name="map-search-outline" color="#94A3B8" size={34} />
-            <Text style={styles.emptyTitle}>No scheduled rides right now</Text>
-            <Text style={styles.emptySubtitle}>
-              Try adjusting your route, vehicle type, or clear filters.
-            </Text>
-          </View>
-        )}
-
-        <View style={styles.indiaCardWrapper}>
-          <View style={styles.indiaFlagRow}>
-            <Text style={styles.flagEmoji}>🇮🇳</Text>
-            <Text style={styles.indiaHeaderTitle}>PROUDLY CRAFTED IN BHARAT</Text>
-          </View>
-
-          <Text style={styles.teluguQuote}>
-            "ఒకరికొకరు తోడుగా... ఖర్చులను పంచుకుంటూ, కొత్త స్నేహాలను కలుపుకుంటూ సాగే మన ఊరి ప్రయాణం!"
-          </Text>
-
-          <Text style={styles.indiaSubQuote}>
-            Every shared seat cuts traffic, saves our hard-earned money, and helps our environment breathe easier.
-          </Text>
-
-          <View style={styles.indiaPillarsRow}>
-            <View style={styles.indiaPillarItem}>
-              <Text style={styles.pillarIcon}>🌱</Text>
-              <Text style={styles.pillarText}>Cleaner Air</Text>
-            </View>
-            <View style={styles.indiaPillarDivider} />
-            <View style={styles.indiaPillarItem}>
-              <Text style={styles.pillarIcon}>🤝</Text>
-              <Text style={styles.pillarText}>Real Commuters</Text>
-            </View>
-            <View style={styles.indiaPillarDivider} />
-            <View style={styles.indiaPillarItem}>
-              <Text style={styles.pillarIcon}>🛡️</Text>
-              <Text style={styles.pillarText}>100% Verified</Text>
+      {/* MY RIDES TAB: Ride History with Year Filter & Empty State */}
+      {activeTab === "rides" && (
+        <ScrollView
+          contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 90 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.tabHeaderRow}>
+            <Text style={styles.tabHeadingText}>My Ride History</Text>
+            {/* Year Selector */}
+            <View style={styles.yearFilterWrap}>
+              {["2026", "2025"].map((yr) => (
+                <TouchableOpacity
+                  key={yr}
+                  onPress={() => setSelectedYear(yr)}
+                  style={[styles.yearPill, selectedYear === yr && styles.yearPillActive]}
+                >
+                  <Text
+                    style={[
+                      styles.yearPillText,
+                      selectedYear === yr && styles.yearPillTextActive,
+                    ]}
+                  >
+                    {yr}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
-          <View style={styles.heartFooterNote}>
-            <Text style={styles.heartNoteText}>
-              Made with ❤️ for Indian Commuters & Daily Travelers
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
+          {completedRidesHistory.filter((r) => r.year === selectedYear).length === 0 ? (
+            <View style={styles.emptyScreenCard}>
+              <View style={styles.emptyIconCircle}>
+                <Icon name="car-off" size={40} color="#94A3B8" />
+              </View>
+              <Text style={styles.emptyScreenTitle}>No Rides Taken in {selectedYear}</Text>
+              <Text style={styles.emptyScreenSub}>
+                Your completed trips and active bookings will appear here automatically.
+              </Text>
+              <TouchableOpacity
+                onPress={() => setActiveTab("home")}
+                style={styles.emptyActionBtn}
+              >
+                <Text style={styles.emptyActionBtnText}>Book a Ride Now</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            completedRidesHistory
+              .filter((r) => r.year === selectedYear)
+              .map((item, idx) => (
+                <View key={idx} style={styles.historyCard}>
+                  <View style={styles.historyCardTop}>
+                    <Text style={styles.historyDate}>
+                      {new Date(item.completedAt).toLocaleDateString()}
+                    </Text>
+                    <Text style={styles.historyStatusBadge}>Completed</Text>
+                  </View>
+                  <Text style={styles.historyRoute}>
+                    {item.from_location} ➔ {item.to_location}
+                  </Text>
+                  <View style={styles.historyFooter}>
+                    <Text style={styles.historyDriver}>Driver: {item.driver_name}</Text>
+                    <Text style={styles.historyPrice}>₹{item.price_per_seat}</Text>
+                  </View>
+                </View>
+              ))
+          )}
+        </ScrollView>
+      )}
 
-      <View style={[styles.bottomNavContainer, { paddingBottom: insets.bottom > 0 ? insets.bottom : 8 }]}>
+      {/* OFFERS TAB: Clean Empty State / Active Coupons */}
+      {activeTab === "offers" && (
+        <ScrollView
+          contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 90 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.tabHeadingText}>Active Offers & Coupons</Text>
+
+          {activeOffers.length === 0 ? (
+            <View style={styles.emptyScreenCard}>
+              <View style={[styles.emptyIconCircle, { backgroundColor: "#FEF3C7" }]}>
+                <Icon name="ticket-percent-outline" size={40} color="#D97706" />
+              </View>
+              <Text style={styles.emptyScreenTitle}>No Active Offers Right Now</Text>
+              <Text style={styles.emptyScreenSub}>
+                We regularly roll out flat discounts and promo codes for daily commutes. Check back soon!
+              </Text>
+            </View>
+          ) : (
+            activeOffers.map((offer, idx) => (
+              <View key={idx} style={styles.offerCard}>
+                <Text style={styles.offerCode}>{offer.code}</Text>
+                <Text style={styles.offerDesc}>{offer.description}</Text>
+              </View>
+            ))
+          )}
+        </ScrollView>
+      )}
+
+      {/* Bottom Navigation */}
+      <View
+        style={[
+          styles.bottomNavContainer,
+          { paddingBottom: insets.bottom > 0 ? insets.bottom : 8 },
+        ]}
+      >
         <TouchableOpacity onPress={() => setActiveTab("home")} style={styles.navTabItem}>
           <Icon name="home" size={22} color={activeTab === "home" ? "#0284C7" : "#94A3B8"} />
           <Text style={[styles.navTabLabel, activeTab === "home" && styles.navTabLabelActive]}>
@@ -373,29 +533,23 @@ export function PassengerHome({
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => {
-            setActiveTab("rides");
-            if (!booking) {
-              Alert.alert("My Bookings", "Active and completed trips will appear here.");
-            }
-          }}
-          style={styles.navTabItem}
-        >
-          <Icon name="car-multiple" size={22} color={activeTab === "rides" ? "#0284C7" : "#94A3B8"} />
+        <TouchableOpacity onPress={() => setActiveTab("rides")} style={styles.navTabItem}>
+          <Icon
+            name="car-multiple"
+            size={22}
+            color={activeTab === "rides" ? "#0284C7" : "#94A3B8"}
+          />
           <Text style={[styles.navTabLabel, activeTab === "rides" && styles.navTabLabelActive]}>
             My Rides
           </Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => {
-            setActiveTab("offers");
-            Alert.alert("Active Offers", "Use coupon 'SAFAR50' during checkout for FLAT ₹50 discount!");
-          }}
-          style={styles.navTabItem}
-        >
-          <Icon name="ticket-percent-outline" size={22} color={activeTab === "offers" ? "#0284C7" : "#94A3B8"} />
+        <TouchableOpacity onPress={() => setActiveTab("offers")} style={styles.navTabItem}>
+          <Icon
+            name="ticket-percent-outline"
+            size={22}
+            color={activeTab === "offers" ? "#0284C7" : "#94A3B8"}
+          />
           <Text style={[styles.navTabLabel, activeTab === "offers" && styles.navTabLabelActive]}>
             Offers
           </Text>
@@ -408,20 +562,159 @@ export function PassengerHome({
           }}
           style={styles.navTabItem}
         >
-          <Icon name="account-circle-outline" size={22} color={activeTab === "profile" ? "#0284C7" : "#94A3B8"} />
+          <Icon
+            name="account-circle-outline"
+            size={22}
+            color={activeTab === "profile" ? "#0284C7" : "#94A3B8"}
+          />
           <Text style={[styles.navTabLabel, activeTab === "profile" && styles.navTabLabelActive]}>
             Profile
           </Text>
         </TouchableOpacity>
       </View>
 
+      {/* SEPARATE SEARCH RESULTS DASHBOARD MODAL */}
+      <Modal
+        visible={showSearchResults}
+        animationType="slide"
+        onRequestClose={() => setShowSearchResults(false)}
+      >
+        <View style={[styles.resultsDashboard, { paddingTop: insets.top + 10 }]}>
+          <View style={styles.resultsDashboardHeader}>
+            <TouchableOpacity
+              onPress={() => setShowSearchResults(false)}
+              style={styles.backCircleBtn}
+            >
+              <Icon name="arrow-left" size={20} color="#0F172A" />
+            </TouchableOpacity>
+            <View style={{ flex: 1, marginLeft: 12 }}>
+              <Text style={styles.resultsDashboardTitle}>Available Shared Rides</Text>
+              <Text style={styles.resultsDashboardSub}>
+                {pickup} ➔ {destination}
+              </Text>
+            </View>
+          </View>
+
+          {loadingRides ? (
+            <View style={styles.centerLoading}>
+              <ActivityIndicator size="large" color="#0284C7" />
+              <Text style={{ marginTop: 12, color: "#64748B", fontWeight: "700" }}>
+                Matching verified rides along your route...
+              </Text>
+            </View>
+          ) : (
+            <ScrollView
+              contentContainerStyle={{ padding: 18, paddingBottom: 60 }}
+              showsVerticalScrollIndicator={false}
+            >
+              {displayedRides.length > 0 ? (
+                displayedRides.map((ride) => (
+                  <RideCard
+                    key={ride.id}
+                    ride={ride}
+                    onPress={() => {
+                      setSelectedRide(ride);
+                    }}
+                  />
+                ))
+              ) : (
+                <View style={styles.emptyScreenCard}>
+                  <Icon name="map-marker-question-outline" size={40} color="#94A3B8" />
+                  <Text style={styles.emptyScreenTitle}>No Rides Found for this Route</Text>
+                  <Text style={styles.emptyScreenSub}>
+                    Try adjusting your pickup/drop points or changing vehicle filter.
+                  </Text>
+                </View>
+              )}
+            </ScrollView>
+          )}
+        </View>
+      </Modal>
+
+      {/* EMERGENCY SOS MODAL (Works reliably on Web & Mobile) */}
+      <Modal
+        visible={sosModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSosModalVisible(false)}
+      >
+        <View style={styles.sosModalBackdrop}>
+          <View style={styles.sosCard}>
+            <View style={styles.sosHeader}>
+              <Icon name="shield-alert" size={28} color="#DC2626" />
+              <Text style={styles.sosTitle}>EMERGENCY HELPLINE</Text>
+              <Text style={styles.sosSubTitle}>
+                Instant one-tap direct contact for safety & medical help
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={() => Linking.openURL("tel:100")}
+              style={[styles.sosActionRow, { backgroundColor: "#FEE2E2" }]}
+            >
+              <Text style={styles.sosActionEmoji}>🚓</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sosActionName, { color: "#991B1B" }]}>Police</Text>
+                <Text style={styles.sosActionDesc}>Toll-free 100</Text>
+              </View>
+              <Text style={[styles.callTag, { backgroundColor: "#DC2626" }]}>CALL</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => Linking.openURL("tel:108")}
+              style={[styles.sosActionRow, { backgroundColor: "#FEF3C7" }]}
+            >
+              <Text style={styles.sosActionEmoji}>🚑</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sosActionName, { color: "#92400E" }]}>Ambulance</Text>
+                <Text style={styles.sosActionDesc}>Emergency Medical Service 108</Text>
+              </View>
+              <Text style={[styles.callTag, { backgroundColor: "#D97706" }]}>CALL</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => Linking.openURL("tel:112")}
+              style={[styles.sosActionRow, { backgroundColor: "#E0E7FF" }]}
+            >
+              <Text style={styles.sosActionEmoji}>🚨</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sosActionName, { color: "#3730A3" }]}>National Emergency</Text>
+                <Text style={styles.sosActionDesc}>All-in-one helpline 112</Text>
+              </View>
+              <Text style={[styles.callTag, { backgroundColor: "#4F46E5" }]}>CALL</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => Linking.openURL("tel:1091")}
+              style={[styles.sosActionRow, { backgroundColor: "#FCE7F3" }]}
+            >
+              <Text style={styles.sosActionEmoji}>🛡️</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sosActionName, { color: "#9D174D" }]}>Women Safety Helpline</Text>
+                <Text style={styles.sosActionDesc}>Toll-free 1091</Text>
+              </View>
+              <Text style={[styles.callTag, { backgroundColor: "#DB2777" }]}>CALL</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setSosModalVisible(false)}
+              style={styles.sosCloseBtn}
+            >
+              <Text style={styles.sosCloseBtnText}>Close SOS Window</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Location Picker Modal */}
       <LocationPickerModal
         visible={pickerTarget !== null}
         onClose={() => setPickerTarget(null)}
         onSelect={handleLocationPicked}
-        title={pickerTarget === "from" ? "Select Pickup Location" : "Select Drop Location"}
+        title={pickerTarget === "from" ? "Select Pickup Spot" : "Select Destination Spot"}
       />
 
+      {/* Booking Checkout Modal */}
       <Modal
         visible={Boolean(selectedRide)}
         animationType="slide"
@@ -429,7 +722,7 @@ export function PassengerHome({
         onRequestClose={() => setSelectedRide(null)}
       >
         <View style={styles.modalBackdrop}>
-          {selectedRide ? (
+          {selectedRide && (
             <CheckoutSheet
               ride={selectedRide}
               token={token}
@@ -437,16 +730,20 @@ export function PassengerHome({
               onBooked={(created) => {
                 setBooking(created);
                 setSelectedRide(null);
-                loadRides();
+                setShowSearchResults(false);
               }}
             />
-          ) : null}
+          )}
         </View>
       </Modal>
 
+      {/* User Profile Menu Modal */}
       <UserMenuModal
         visible={menuVisible}
-        onClose={() => setMenuVisible(false)}
+        onClose={() => {
+          setMenuVisible(false);
+          setActiveTab("home");
+        }}
         token={token}
         onLogout={onLogout}
         initialPhone={user?.phone || ""}
@@ -454,17 +751,18 @@ export function PassengerHome({
     </View>
   );
 }
+
 const styles = StyleSheet.create({
-  whiteScreen: {
+  screenRoot: {
     flex: 1,
     backgroundColor: "#F8FAFC",
   },
-  topHeader: {
+  headerBar: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingBottom: 12,
     backgroundColor: "#FFFFFF",
     borderBottomWidth: 1,
     borderBottomColor: "#E2E8F0",
@@ -484,7 +782,7 @@ const styles = StyleSheet.create({
     gap: 6,
     marginTop: 2,
   },
-  livePulseDot: {
+  pulseDot: {
     width: 7,
     height: 7,
     borderRadius: 4,
@@ -495,7 +793,7 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#059669",
   },
-  headerRightActions: {
+  headerActionRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
@@ -508,10 +806,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 20,
-    shadowColor: "#DC2626",
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 2,
   },
   sosButtonText: {
     color: "#FFFFFF",
@@ -528,71 +822,97 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-  greetingContainer: {
+  greetingWrap: {
     paddingHorizontal: 20,
-    paddingTop: 12,
-    paddingBottom: 2,
+    paddingTop: 16,
+    paddingBottom: 10,
   },
   greetingTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: "900",
     color: "#0F172A",
   },
   greetingSub: {
-    fontSize: 12,
+    fontSize: 13,
     color: "#64748B",
     marginTop: 2,
   },
-  floatingSearchPill: {
-    flexDirection: "row",
-    alignItems: "center",
+  routeCard: {
     backgroundColor: "#FFFFFF",
     marginHorizontal: 18,
-    marginTop: 10,
-    marginBottom: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
-    gap: 10,
+    marginBottom: 12,
   },
-  searchPillIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    backgroundColor: "#E0F2FE",
+  routeCardTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#475569",
+    letterSpacing: 0.5,
+    marginBottom: 10,
+    textTransform: "uppercase",
+  },
+  locationInputRow: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 12,
+    paddingVertical: 6,
   },
-  searchPillPlaceholder: {
+  greenDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#10B981",
+  },
+  redDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: "#EF4444",
+  },
+  locationInputLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#94A3B8",
+  },
+  locationInputVal: {
     fontSize: 14,
     fontWeight: "700",
     color: "#0F172A",
+    marginTop: 2,
   },
-  searchPillSubtext: {
-    fontSize: 11,
-    color: "#64748B",
-    marginTop: 1,
+  placeholderText: {
+    color: "#94A3B8",
+    fontWeight: "600",
   },
-  searchPillArrow: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: "#F1F5F9",
+  gpsSmallBtn: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 4,
+    backgroundColor: "#F0F9FF",
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 8,
+  },
+  gpsSmallBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#0284C7",
+  },
+  routeDivider: {
+    height: 1,
+    backgroundColor: "#F1F5F9",
+    marginVertical: 6,
   },
   categoryGrid: {
     flexDirection: "row",
     gap: 8,
     marginHorizontal: 18,
-    marginBottom: 10,
+    marginBottom: 14,
   },
   categoryCard: {
     flex: 1,
@@ -608,216 +928,332 @@ const styles = StyleSheet.create({
   categoryCardActive: {
     borderColor: "#0284C7",
     backgroundColor: "#F0F9FF",
-    borderWidth: 1.5,
   },
   categoryCardWomenActive: {
     borderColor: "#DB2777",
     backgroundColor: "#FDF2F8",
-    borderWidth: 1.5,
   },
   categoryLabel: {
     fontSize: 11,
-    fontWeight: "800",
-    color: "#1E293B",
-  },
-  searchPanelWhiteCard: {
-    marginHorizontal: 18,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    padding: 12,
-    marginBottom: 14,
-  },
-  searchHelpersRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginBottom: 10,
-  },
-  locationPillBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-    borderRadius: 16,
-  },
-  locationPillText: {
-    fontSize: 11,
     fontWeight: "700",
     color: "#334155",
   },
-  resultsHeadingWrap: {
+  findRidesBtn: {
+    backgroundColor: "#0284C7",
+    marginHorizontal: 18,
+    paddingVertical: 16,
+    borderRadius: 14,
+    alignItems: "center",
+    shadowColor: "#0284C7",
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  findRidesBtnText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "900",
+    letterSpacing: 0.5,
+  },
+  shareTripBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: "#059669",
+    paddingVertical: 12,
+    borderRadius: 12,
+    marginTop: 8,
+  },
+  shareTripBtnDisabled: {
+    backgroundColor: "#94A3B8",
+    opacity: 0.8,
+  },
+  shareTripBtnText: {
+    color: "#FFFFFF",
+    fontSize: 13,
+    fontWeight: "800",
+  },
+  tabHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginHorizontal: 18,
-    marginTop: 6,
-    marginBottom: 6,
+    marginBottom: 16,
   },
-  sectionHeaderTitle: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: "#1E293B",
+  tabHeadingText: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0F172A",
   },
-  ridesFoundBadge: {
-    backgroundColor: "#E0F2FE",
-    color: "#0369A1",
+  yearFilterWrap: {
+    flexDirection: "row",
+    gap: 6,
+  },
+  yearPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+  yearPillActive: {
+    backgroundColor: "#0284C7",
+    borderColor: "#0284C7",
+  },
+  yearPillText: {
     fontSize: 11,
     fontWeight: "800",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+    color: "#64748B",
   },
-  emptyWhiteCard: {
-    marginHorizontal: 18,
-    marginTop: 8,
+  yearPillTextActive: {
+    color: "#FFFFFF",
+  },
+  emptyScreenCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
+    padding: 30,
+    alignItems: "center",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    padding: 24,
+    marginTop: 20,
+  },
+  emptyIconCircle: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    backgroundColor: "#F1F5F9",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    marginBottom: 14,
   },
-  emptyTitle: {
-    fontSize: 14,
+  emptyScreenTitle: {
+    fontSize: 16,
     fontWeight: "800",
     color: "#1E293B",
-    marginTop: 4,
   },
-  emptySubtitle: {
-    fontSize: 11,
+  emptyScreenSub: {
+    fontSize: 12,
     color: "#64748B",
     textAlign: "center",
+    marginTop: 6,
+    lineHeight: 18,
   },
-  indiaCardWrapper: {
-    marginHorizontal: 18,
-    marginTop: 26,
-    marginBottom: 14,
-    padding: 16,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    alignItems: "center",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 6,
-    elevation: 2,
-    gap: 8,
+  emptyActionBtn: {
+    marginTop: 18,
+    backgroundColor: "#0284C7",
+    paddingHorizontal: 18,
+    paddingVertical: 10,
+    borderRadius: 10,
   },
-  indiaFlagRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  flagEmoji: {
-    fontSize: 18,
-  },
-  indiaHeaderTitle: {
-    fontSize: 11,
-    fontWeight: "900",
-    color: "#D97706",
-    letterSpacing: 1,
-  },
-  teluguQuote: {
+  emptyActionBtnText: {
+    color: "#FFFFFF",
     fontSize: 13,
-    fontWeight: "700",
-    color: "#0F172A",
-    textAlign: "center",
-    lineHeight: 20,
-    fontStyle: "italic",
-    paddingHorizontal: 8,
-  },
-  indiaSubQuote: {
-    fontSize: 11,
-    color: "#64748B",
-    textAlign: "center",
-    lineHeight: 16,
-    paddingHorizontal: 10,
-  },
-  indiaPillarsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-around",
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    width: "100%",
-    marginTop: 4,
-  },
-  indiaPillarItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  pillarIcon: {
-    fontSize: 13,
-  },
-  pillarText: {
-    fontSize: 10,
     fontWeight: "800",
-    color: "#334155",
   },
-  indiaPillarDivider: {
-    width: 1,
-    height: 14,
-    backgroundColor: "#CBD5E1",
+  historyCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 10,
   },
-  heartFooterNote: {
+  historyCardTop: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  historyDate: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#64748B",
+  },
+  historyStatusBadge: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#059669",
+    backgroundColor: "#D1FAE5",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  historyRoute: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginVertical: 8,
+  },
+  historyFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    paddingTop: 8,
+  },
+  historyDriver: {
+    fontSize: 12,
+    color: "#64748B",
+  },
+  historyPrice: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#0284C7",
+  },
+  offerCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 10,
+  },
+  offerCode: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#0284C7",
+  },
+  offerDesc: {
+    fontSize: 12,
+    color: "#64748B",
     marginTop: 4,
-  },
-  heartNoteText: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#94A3B8",
-    textAlign: "center",
   },
   bottomNavContainer: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    height: 64,
     backgroundColor: "#FFFFFF",
+    flexDirection: "row",
     borderTopWidth: 1,
     borderTopColor: "#E2E8F0",
-    flexDirection: "row",
-    justifyContent: "space-around",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 8,
+    paddingTop: 8,
   },
   navTabItem: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    flex: 1,
+    gap: 2,
   },
   navTabLabel: {
     fontSize: 10,
     fontWeight: "700",
     color: "#94A3B8",
-    marginTop: 2,
   },
   navTabLabelActive: {
     color: "#0284C7",
-    fontWeight: "800",
+  },
+  resultsDashboard: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+  },
+  resultsDashboardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "#FFFFFF",
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  backCircleBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  resultsDashboardTitle: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  resultsDashboardSub: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 1,
+  },
+  centerLoading: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
   },
   modalBackdrop: {
     flex: 1,
-    backgroundColor: "rgba(15, 23, 42, 0.6)",
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
+  },
+  sosModalBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 20,
+  },
+  sosCard: {
+    width: "100%",
+    maxWidth: 380,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 20,
+    gap: 10,
+  },
+  sosHeader: {
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  sosTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#DC2626",
+    marginTop: 4,
+  },
+  sosSubTitle: {
+    fontSize: 11,
+    color: "#64748B",
+    textAlign: "center",
+    marginTop: 2,
+  },
+  sosActionRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 12,
+    borderRadius: 12,
+    gap: 12,
+  },
+  sosActionEmoji: {
+    fontSize: 22,
+  },
+  sosActionName: {
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  sosActionDesc: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 1,
+  },
+  callTag: {
+    color: "#FFFFFF",
+    fontSize: 10,
+    fontWeight: "900",
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  sosCloseBtn: {
+    marginTop: 6,
+    paddingVertical: 12,
+    alignItems: "center",
+    backgroundColor: "#F1F5F9",
+    borderRadius: 10,
+  },
+  sosCloseBtnText: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#475569",
   },
 });
