@@ -42,7 +42,6 @@ export function RideCard({ ride, onPress }: RideCardProps) {
 
   return (
     <View style={styles.cardContainer}>
-      {/* Header: Driver Info & Price */}
       <View style={styles.topRow}>
         <View style={styles.driverInfoWrap}>
           <View style={styles.avatarCircle}>
@@ -63,14 +62,12 @@ export function RideCard({ ride, onPress }: RideCardProps) {
           </View>
         </View>
 
-        {/* Fare Highlight */}
         <View style={styles.priceContainer}>
           <Text style={styles.priceValue}>₹{fare}</Text>
           <Text style={styles.perSeatLabel}>per seat</Text>
         </View>
       </View>
 
-      {/* Route Section */}
       <View style={styles.routeBox}>
         <View style={styles.locationItem}>
           <View style={styles.greenDot} />
@@ -87,7 +84,6 @@ export function RideCard({ ride, onPress }: RideCardProps) {
         </View>
       </View>
 
-      {/* Footer: Departure & Direct Action Button */}
       <View style={styles.bottomRow}>
         <View style={styles.timeWrap}>
           <Text style={styles.clockIcon}>🕒</Text>
