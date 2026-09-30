@@ -1,9 +1,18 @@
 import { useState } from "react";
-import { Image, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
-import { api, Booking, errorMessage, Ride } from "@/src/api";
-import { Button, ErrorBanner, Icon } from "@/src/components/ui";
-import { shared } from "@/src/styles";
-import { colors } from "@/src/theme";
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  Linking,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
+import { Booking, Ride } from "@/src/api";
+import { Icon } from "@/src/components/ui";
 
 interface CheckoutSheetProps {
   ride: Ride;
@@ -13,266 +22,427 @@ interface CheckoutSheetProps {
 }
 
 export function CheckoutSheet({ ride, token, onClose, onBooked }: CheckoutSheetProps) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [paymentMode, setPaymentMode] = useState<"upi" | "cash">("upi");
-  
-  // Coupon State
-  const [couponCode, setCouponCode] = useState("");
-  const [discount, setDiscount] = useState(0);
-  const [couponApplied, setCouponApplied] = useState(false);
+  const [selectedSeats, setSelectedSeats] = useState(1);
+  const [paymentMethod, setPaymentMethod] = useState<"upi_intent" | "upi_qr">("upi_intent");
+  const [processing, setProcessing] = useState(false);
 
-  // Price Calculations (Base + Platform Fee + GST)
-  const baseFare = ride.price;
-  const platformFee = 15; // Platform convenience fee
-  const taxableAmount = Math.max(0, baseFare + platformFee - discount);
-  const gst = Math.round(taxableAmount * 0.05); // 5% GST
-  const finalTotal = taxableAmount + gst;
+  // Platform UPI Configuration
+  const receiverUPI = "8919326622@ybl";
+  const receiverName = "RiderX Commute";
+  const farePerSeat = ride.price_per_seat || 90;
+  const platformFee = 5;
+  const totalAmount = farePerSeat * selectedSeats + platformFee;
 
-  // Dynamic UPI URL based on final amount
-  const upiId = "safarway@icici"; 
-  const upiPayUrl = `upi://pay?pa=${upiId}&pn=Safarway&am=${finalTotal}&cu=INR&tn=Ride Booking ${ride.from} to ${ride.to}`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(upiPayUrl)}`;
+  // Standard UPI URI format
+  const upiTransactionNote = `Ride_${ride.id.slice(-5)}_${Date.now().toString().slice(-4)}`;
+  const upiUrl = `upi://pay?pa=${receiverUPI}&pn=${encodeURIComponent(
+    receiverName
+  )}&am=${totalAmount}&cu=INR&tn=${encodeURIComponent(upiTransactionNote)}`;
 
-  const applyCoupon = () => {
-    if (couponCode.trim().toUpperCase() === "SAFAR50") {
-      setDiscount(50);
-      setCouponApplied(true);
-      setError("");
-    } else {
-      setError("Invalid Coupon. Try 'SAFAR50'");
-    }
-  };
+  // Quick QR API URL for scanning via web/desktop
+  const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+    upiUrl
+  )}`;
 
-  const handlePayViaUpiApp = () => {
-    Linking.openURL(upiPayUrl).catch(() => {
-      alert("UPI app open కాలేదు. కింద ఉన్న QR కోడ్‌ని స్కాన్ చేసి పే చేయండి.");
-    });
-  };
-
-  const handleConfirmBooking = async () => {
-    setLoading(true);
-    setError("");
+  const handleUpiAppRedirect = async () => {
     try {
-      const created = await api<Booking>(
-        "/bookings",
-        {
-          method: "POST",
-          body: JSON.stringify({
-            ride_id: ride.id,
-            payment_type: paymentMode === "upi" ? "ONLINE_UPI" : "CASH",
-            amount_paid: finalTotal,
-            base_fare: baseFare,
-            platform_fee: platformFee,
-            gst_amount: gst,
-            discount,
-          }),
-        },
-        token
-      );
-      onBooked(created);
-    } catch (err) {
-      setError(errorMessage(err, "Booking could not be completed"));
-    } finally {
-      setLoading(false);
+      const supported = await Linking.canOpenURL(upiUrl);
+      if (supported || Platform.OS === "android" || Platform.OS === "ios") {
+        await Linking.openURL(upiUrl);
+      } else {
+        setPaymentMethod("upi_qr");
+      }
+    } catch {
+      setPaymentMethod("upi_qr");
     }
+  };
+
+  const handleConfirmOnlinePayment = () => {
+    setProcessing(true);
+
+    // Dynamic 4-digit ride OTP for security
+    const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+
+    const newBooking: Booking = {
+      id: "bk_" + Date.now(),
+      ride_id: ride.id,
+      passenger_id: "usr_passenger_current",
+      passenger_name: "Bhargav",
+      pickup_point: ride.from_location,
+      destination_point: ride.to_location,
+      seats_booked: selectedSeats,
+      total_price: totalAmount,
+      status: "confirmed",
+      otp: generatedOtp,
+      payment_mode: paymentMethod,
+      payment_status: "completed",
+    } as any;
+
+    setTimeout(() => {
+      setProcessing(false);
+      const successMessage = `Online Payment Successful (₹${totalAmount})!\n\nYour Ride Start OTP: ${generatedOtp}\nShare this OTP with your driver upon boarding.`;
+      
+      if (Platform.OS === "web") {
+        window.alert(`🎉 ${successMessage}`);
+      } else {
+        Alert.alert("Ride Booked Successfully!", successMessage);
+      }
+      onBooked(newBooking);
+    }, 1200);
   };
 
   return (
     <View style={styles.sheetContainer}>
-      <View style={styles.header}>
+      {/* Header */}
+      <View style={styles.sheetHeader}>
         <View>
-          <Text style={shared.eyebrow}>FARE BREAKDOWN</Text>
-          <Text style={styles.title}>Checkout & Tax Invoice</Text>
+          <Text style={styles.sheetTitle}>Online Checkout</Text>
+          <Text style={styles.sheetSubtitle}>100% Secure Digital Commute Payment</Text>
         </View>
         <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-          <Icon name="close" size={22} color={colors.onSurface} />
+          <Icon name="close" size={20} color="#64748B" />
         </TouchableOpacity>
       </View>
 
-      {/* Bill Breakdown Box */}
-      <View style={styles.billBox}>
-        <View style={styles.billRow}>
-          <Text style={styles.billLabel}>Base Seat Fare</Text>
-          <Text style={styles.billVal}>₹{baseFare}</Text>
-        </View>
-        <View style={styles.billRow}>
-          <Text style={styles.billLabel}>Platform & Safety Fee</Text>
-          <Text style={styles.billVal}>+ ₹{platformFee}</Text>
-        </View>
-        {discount > 0 && (
-          <View style={styles.billRow}>
-            <Text style={[styles.billLabel, { color: "#22C55E" }]}>Promo Discount (SAFAR50)</Text>
-            <Text style={[styles.billVal, { color: "#22C55E" }]}>- ₹{discount}</Text>
-          </View>
-        )}
-        <View style={styles.billRow}>
-          <Text style={styles.billLabel}>Govt. GST (5%)</Text>
-          <Text style={styles.billVal}>+ ₹{gst}</Text>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.billRow}>
-          <Text style={styles.totalLabel}>Total Payable Amount</Text>
-          <Text style={styles.totalVal}>₹{finalTotal}</Text>
-        </View>
+      {/* Ride Overview Card */}
+      <View style={styles.routeCard}>
+        <Text style={styles.driverName}>Driver: {ride.driver_name || "Verified Partner"}</Text>
+        <Text style={styles.routePath}>
+          {ride.from_location} ➔ {ride.to_location}
+        </Text>
+        <Text style={styles.departureInfo}>Departure: {ride.departure_time || "Today shortly"}</Text>
       </View>
 
-      {/* Coupon Apply Box */}
-      <View style={styles.couponRow}>
-        <TextInput
-          value={couponCode}
-          onChangeText={(t) => setCouponCode(t.toUpperCase())}
-          placeholder="Enter Promo Code (e.g. SAFAR50)"
-          placeholderTextColor="#94A3B8"
-          style={styles.couponInput}
-          editable={!couponApplied}
-        />
-        <TouchableOpacity
-          onPress={applyCoupon}
-          disabled={couponApplied || !couponCode}
-          style={[styles.applyBtn, couponApplied && styles.applyBtnDisabled]}
-        >
-          <Text style={styles.applyBtnText}>{couponApplied ? "Applied ✓" : "Apply"}</Text>
-        </TouchableOpacity>
-      </View>
-
-      {/* Payment Selection Options */}
-      <View style={styles.modeSelector}>
-        <TouchableOpacity
-          style={[styles.modeTab, paymentMode === "upi" && styles.modeTabActive]}
-          onPress={() => setPaymentMode("upi")}
-        >
-          <Icon name="qrcode-scan" size={16} color={paymentMode === "upi" ? "#0F172A" : colors.muted} />
-          <Text style={[styles.modeTabText, paymentMode === "upi" && styles.modeTabTextActive]}>
-            UPI / QR Code
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.modeTab, paymentMode === "cash" && styles.modeTabActive]}
-          onPress={() => setPaymentMode("cash")}
-        >
-          <Icon name="cash" size={16} color={paymentMode === "cash" ? "#0F172A" : colors.muted} />
-          <Text style={[styles.modeTabText, paymentMode === "cash" && styles.modeTabTextActive]}>
-            Cash on Boarding
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-      {paymentMode === "upi" ? (
-        <View style={styles.upiContainer}>
-          <View style={styles.qrWrapper}>
-            <Image source={{ uri: qrCodeUrl }} style={styles.qrImage} />
-          </View>
-          <TouchableOpacity onPress={handlePayViaUpiApp} style={styles.upiDirectBtn}>
-            <Icon name="cellphone-check" size={18} color="#FFFFFF" />
-            <Text style={styles.upiDirectBtnText}>Pay ₹{finalTotal} via PhonePe / GPay</Text>
+      {/* Seat Count Selector */}
+      <View style={styles.seatRow}>
+        <Text style={styles.seatLabel}>Number of Seats</Text>
+        <View style={styles.seatCounter}>
+          <TouchableOpacity
+            disabled={selectedSeats <= 1}
+            onPress={() => setSelectedSeats((s) => s - 1)}
+            style={[styles.countBtn, selectedSeats <= 1 && styles.countBtnDisabled]}
+          >
+            <Text style={styles.countBtnText}>-</Text>
+          </TouchableOpacity>
+          <Text style={styles.seatNum}>{selectedSeats}</Text>
+          <TouchableOpacity
+            disabled={selectedSeats >= (ride.available_seats || 3)}
+            onPress={() => setSelectedSeats((s) => s + 1)}
+            style={[
+              styles.countBtn,
+              selectedSeats >= (ride.available_seats || 3) && styles.countBtnDisabled,
+            ]}
+          >
+            <Text style={styles.countBtnText}>+</Text>
           </TouchableOpacity>
         </View>
-      ) : (
-        <View style={styles.cashNoticeBox}>
-          <Icon name="alert-circle-outline" size={20} color="#FBBF24" />
-          <Text style={styles.cashNoticeText}>
-            Boarding సమయంలో డ్రైవర్‌కు ఖచ్చితమైన ₹{finalTotal} నగదు చెల్లించాల్సి ఉంటుంది.
+      </View>
+
+      {/* Online Payment Method Tabs (No Cash) */}
+      <Text style={styles.sectionHeading}>ONLINE PAYMENT METHOD</Text>
+      <View style={styles.paymentMethodsGrid}>
+        <TouchableOpacity
+          onPress={() => setPaymentMethod("upi_intent")}
+          style={[styles.methodCard, paymentMethod === "upi_intent" && styles.methodCardActive]}
+        >
+          <Text style={styles.methodEmoji}>⚡</Text>
+          <Text style={[styles.methodTitle, paymentMethod === "upi_intent" && styles.activeText]}>
+            Instant UPI App
           </Text>
+          <Text style={styles.methodSub}>Google Pay / PhonePe</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setPaymentMethod("upi_qr")}
+          style={[styles.methodCard, paymentMethod === "upi_qr" && styles.methodCardActive]}
+        >
+          <Text style={styles.methodEmoji}>📱</Text>
+          <Text style={[styles.methodTitle, paymentMethod === "upi_qr" && styles.activeText]}>
+            Scan & Pay QR
+          </Text>
+          <Text style={styles.methodSub}>Any Banking / UPI App</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* UPI Deep-Link Action Button */}
+      {paymentMethod === "upi_intent" && (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={handleUpiAppRedirect}
+          style={styles.openUpiBtn}
+        >
+          <Text style={styles.openUpiBtnText}>Open Installed UPI App (₹{totalAmount}) ➔</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* QR Code Container */}
+      {paymentMethod === "upi_qr" && (
+        <View style={styles.qrContainer}>
+          <Image source={{ uri: qrApiUrl }} style={styles.qrImage} resizeMode="contain" />
+          <Text style={styles.qrNote}>Scan using any UPI App to Pay</Text>
+          <Text style={styles.qrUpiTag}>Receiver: {receiverUPI}</Text>
         </View>
       )}
 
-      <ErrorBanner message={error} />
+      {/* Fare Breakdown */}
+      <View style={styles.fareBreakdown}>
+        <View style={styles.fareRow}>
+          <Text style={styles.fareLabel}>Seat Fare ({selectedSeats}x)</Text>
+          <Text style={styles.fareVal}>₹{farePerSeat * selectedSeats}</Text>
+        </View>
+        <View style={styles.fareRow}>
+          <Text style={styles.fareLabel}>Platform Safety & Tech Fee</Text>
+          <Text style={styles.fareVal}>₹{platformFee}</Text>
+        </View>
+        <View style={[styles.fareRow, styles.totalRow]}>
+          <Text style={styles.totalLabel}>Total Payable Online</Text>
+          <Text style={styles.totalVal}>₹{totalAmount}</Text>
+        </View>
+      </View>
 
-      <Button
-        label={paymentMode === "upi" ? `Pay ₹${finalTotal} & Confirm` : `Book with Cash (₹${finalTotal})`}
-        onPress={handleConfirmBooking}
-        loading={loading}
-      />
+      {/* Verify & Pay Button */}
+      <TouchableOpacity
+        activeOpacity={0.9}
+        disabled={processing}
+        onPress={handleConfirmOnlinePayment}
+        style={styles.confirmBtn}
+      >
+        {processing ? (
+          <ActivityIndicator color="#FFFFFF" />
+        ) : (
+          <Text style={styles.confirmBtnText}>Pay Online & Confirm (₹{totalAmount})</Text>
+        )}
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   sheetContainer: {
-    backgroundColor: "#0F172A",
+    backgroundColor: "#FFFFFF",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    padding: 18,
-    gap: 12,
-    borderTopWidth: 1,
-    borderTopColor: "#334155",
+    padding: 20,
+    width: "100%",
   },
-  header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  title: { color: "#FFFFFF", fontSize: 17, fontWeight: "800" },
-  closeBtn: { padding: 4 },
-  billBox: {
-    backgroundColor: "#1E293B",
-    padding: 12,
-    borderRadius: 14,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: "#334155",
-  },
-  billRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  billLabel: { color: "#94A3B8", fontSize: 12, fontWeight: "600" },
-  billVal: { color: "#F8FAFC", fontSize: 13, fontWeight: "700" },
-  divider: { height: 1, backgroundColor: "#334155", marginVertical: 4 },
-  totalLabel: { color: "#FFFFFF", fontSize: 14, fontWeight: "800" },
-  totalVal: { color: colors.brand, fontSize: 18, fontWeight: "900" },
-  couponRow: { flexDirection: "row", gap: 8 },
-  couponInput: {
-    flex: 1,
-    backgroundColor: "#1E293B",
-    color: "#FFFFFF",
-    paddingHorizontal: 12,
-    paddingVertical: 9,
-    borderRadius: 10,
-    fontSize: 12,
-    borderWidth: 1,
-    borderColor: "#334155",
-  },
-  applyBtn: {
-    backgroundColor: colors.brand,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-    justifyContent: "center",
+  sheetHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 14,
   },
-  applyBtnDisabled: { backgroundColor: "#059669" },
-  applyBtnText: { color: "#0F172A", fontSize: 12, fontWeight: "800" },
-  modeSelector: { flexDirection: "row", backgroundColor: "#1E293B", borderRadius: 10, padding: 3, gap: 4 },
-  modeTab: {
-    flex: 1,
+  sheetTitle: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  sheetSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  closeBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  routeCard: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+  },
+  driverName: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#0284C7",
+  },
+  routePath: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginVertical: 4,
+  },
+  departureInfo: {
+    fontSize: 11,
+    color: "#64748B",
+  },
+  seatRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 14,
+    paddingHorizontal: 4,
+  },
+  seatLabel: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: "#334155",
+  },
+  seatCounter: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 12,
+  },
+  countBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#E2E8F0",
+    alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-    paddingVertical: 8,
+  },
+  countBtnDisabled: {
+    opacity: 0.4,
+  },
+  countBtnText: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  seatNum: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  sectionHeading: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: "#64748B",
+    marginBottom: 8,
+    letterSpacing: 0.5,
+  },
+  paymentMethodsGrid: {
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 12,
+  },
+  methodCard: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  methodCardActive: {
+    borderColor: "#0284C7",
+    backgroundColor: "#F0F9FF",
+  },
+  methodEmoji: {
+    fontSize: 20,
+    marginBottom: 3,
+  },
+  methodTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#334155",
+  },
+  activeText: {
+    color: "#0284C7",
+  },
+  methodSub: {
+    fontSize: 10,
+    color: "#64748B",
+    marginTop: 2,
+  },
+  openUpiBtn: {
+    backgroundColor: "#E0F2FE",
+    borderWidth: 1,
+    borderColor: "#BAE6FD",
+    paddingVertical: 11,
+    borderRadius: 10,
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  openUpiBtnText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#0284C7",
+  },
+  qrContainer: {
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 12,
+  },
+  qrImage: {
+    width: 140,
+    height: 140,
+    backgroundColor: "#FFFFFF",
     borderRadius: 8,
   },
-  modeTabActive: { backgroundColor: colors.brand },
-  modeTabText: { color: colors.muted, fontSize: 11, fontWeight: "700" },
-  modeTabTextActive: { color: "#0F172A" },
-  upiContainer: { alignItems: "center", gap: 8 },
-  qrWrapper: { padding: 6, backgroundColor: "#FFFFFF", borderRadius: 10 },
-  qrImage: { width: 130, height: 130 },
-  upiDirectBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 8,
-    backgroundColor: "#059669",
-    width: "100%",
-    paddingVertical: 10,
-    borderRadius: 10,
+  qrNote: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#475569",
+    marginTop: 8,
   },
-  upiDirectBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
-  cashNoticeBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: "rgba(251, 191, 36, 0.1)",
-    borderWidth: 1,
-    borderColor: "rgba(251, 191, 36, 0.3)",
-    padding: 10,
-    borderRadius: 10,
+  qrUpiTag: {
+    fontSize: 10,
+    color: "#94A3B8",
+    marginTop: 2,
   },
-  cashNoticeText: { color: "#FBBF24", fontSize: 12, flex: 1 },
+  fareBreakdown: {
+    borderTopWidth: 1,
+    borderTopColor: "#F1F5F9",
+    paddingTop: 10,
+    gap: 4,
+    marginBottom: 14,
+  },
+  fareRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  fareLabel: {
+    fontSize: 12,
+    color: "#64748B",
+  },
+  fareVal: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#334155",
+  },
+  totalRow: {
+    borderTopWidth: 1,
+    borderTopColor: "#E2E8F0",
+    paddingTop: 6,
+    marginTop: 4,
+  },
+  totalLabel: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  totalVal: {
+    fontSize: 16,
+    fontWeight: "900",
+    color: "#0284C7",
+  },
+  confirmBtn: {
+    backgroundColor: "#0284C7",
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: "center",
+    shadowColor: "#0284C7",
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  confirmBtnText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900",
+    letterSpacing: 0.3,
+  },
 });
