@@ -1,7 +1,6 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import { Ride } from "@/src/api";
-import { Ionicons } from "@expo/vector-icons";
 
 interface RideCardProps {
   ride: Ride;
@@ -9,11 +8,8 @@ interface RideCardProps {
 }
 
 export function RideCard({ ride, onPress }: RideCardProps) {
-  if (!ride) {
-    return null;
-  }
+  if (!ride) return null;
 
-  // Amount & Fields fallback check
   const fare =
     (ride as any).price_per_seat ??
     (ride as any).price ??
@@ -50,7 +46,7 @@ export function RideCard({ ride, onPress }: RideCardProps) {
       <View style={styles.topRow}>
         <View style={styles.driverInfoWrap}>
           <View style={styles.avatarCircle}>
-            <Ionicons name="person" size={18} color="#0284C7" />
+            <Text style={styles.avatarText}>👤</Text>
           </View>
           <View style={{ flex: 1 }}>
             <View style={styles.nameRow}>
@@ -94,7 +90,7 @@ export function RideCard({ ride, onPress }: RideCardProps) {
       {/* Footer: Departure & Direct Action Button */}
       <View style={styles.bottomRow}>
         <View style={styles.timeWrap}>
-          <Ionicons name="time-outline" size={15} color="#64748B" />
+          <Text style={styles.clockIcon}>🕒</Text>
           <Text style={styles.timeText}>
             {(ride as any).departure_time || "Today in 15 mins"}
           </Text>
@@ -149,6 +145,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     borderWidth: 1,
     borderColor: "#BAE6FD",
+  },
+  avatarText: {
+    fontSize: 16,
   },
   nameRow: {
     flexDirection: "row",
@@ -239,6 +238,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
   },
+  clockIcon: {
+    fontSize: 12,
+  },
   timeText: {
     fontSize: 12,
     fontWeight: "700",
@@ -255,10 +257,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 10,
-    shadowColor: "#0284C7",
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 2,
   },
   bookBtnText: {
     color: "#FFFFFF",
