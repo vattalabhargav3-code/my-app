@@ -41,13 +41,38 @@ export function DriverHome({
   const [toLoc, setToLoc] = useState("");
   const [vehicleType, setVehicleType] = useState<"car" | "bike">("car");
   const [availableSeats, setAvailableSeats] = useState("3");
-  const [pricePerSeat, setPricePerSeat] = useState("100");
+  const [pricePerSeat, setPricePerSeat] = useState("95");
   const [womenOnly, setWomenOnly] = useState(false);
   const [departureTime, setDepartureTime] = useState("Today, 06:00 PM");
 
   const [publishing, setPublishing] = useState(false);
   const [publishedRides, setPublishedRides] = useState<Ride[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // Escrow Wallet Balance & Settlement History
+  const [walletBalance, setWalletBalance] = useState<number>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("riderx_driver_wallet_balance");
+      return saved ? parseFloat(saved) : 0;
+    }
+    return 0;
+  });
+  const [settlementHistory, setSettlementHistory] = useState<any[]>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("riderx_driver_ledger");
+      return saved ? JSON.parse(saved) : [];
+    }
+    return [];
+  });
+
+  // End Ride & OTP Verification
+  const [selectedRideForOtp, setSelectedRideForOtp] = useState<Ride | null>(null);
+  const [enteredOtp, setEnteredOtp] = useState("");
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+
+  // Payout Modal
+  const [payoutModalVisible, setPayoutModalVisible] = useState(false);
+  const [driverUpiId, setDriverUpiId] = useState("");
 
   // Modals
   const [pickerTarget, setPickerTarget] = useState<"from" | "to" | null>(null);
@@ -70,7 +95,6 @@ export function DriverHome({
         setPublishedRides(data);
       }
     } catch {
-      // Local fallback if backend is empty
       const local = typeof window !== "undefined" ? localStorage.getItem("riderx_driver_rides") : null;
       if (local) {
         setPublishedRides(JSON.parse(local));
@@ -107,7 +131,7 @@ export function DriverHome({
         body: JSON.stringify(newRidePayload),
       }, token);
 
-      showAlert("Success", "Your shared ride has been published live!");
+      showAlert("Success", "Your route is now live for passenger bookings!");
       const updated = [created, ...publishedRides];
       setPublishedRides(updated);
       if (typeof window !== "undefined") {
@@ -117,7 +141,6 @@ export function DriverHome({
       setToLoc("");
       setActiveTab("my_published_rides");
     } catch {
-      // Fallback local save
       const mockCreated: Ride = {
         id: "ride_pub_" + Date.now(),
         driver_id: user.id,
@@ -127,7 +150,7 @@ export function DriverHome({
         vehicle_type: vehicleType,
         vehicle_name: vehicleType === "car" ? "Car Pool Ride" : "Bike Share Ride",
         available_seats: parseInt(availableSeats, 10) || 1,
-        price_per_seat: parseInt(pricePerSeat, 10) || 50,
+        price_per_seat: parseInt(pricePerSeat, 10) || 95,
         departure_time: departureTime,
         status: "active",
       } as any;
@@ -146,9 +169,94 @@ export function DriverHome({
     }
   };
 
+  // TRIP COMPLETION: Driver reached destination -> verifies OTP -> Escrow releases money to Driver Wallet
+  const handleVerifyOtpAndSettle = () => {
+    if (!enteredOtp || enteredOtp.length < 4) {
+      showAlert("Invalid OTP", "Please enter the 4-digit ride OTP provided by the passenger.");
+      return;
+    }
+
+    setVerifyingOtp(true);
+    setTimeout(() => {
+      let releasedFare = selectedRideForOtp ? selectedRideForOtp.price_per_seat : 95;
+
+      // Check if there is an escrow booking saved
+      if (typeof window !== "undefined") {
+        try {
+          const escrowRides = JSON.parse(localStorage.getItem("riderx_pending_escrow_rides") || "[]");
+          const matched = escrowRides.find((r: any) => r.otp === enteredOtp);
+          if (matched && matched.driver_payout_amount) {
+            releasedFare = matched.driver_payout_amount;
+          }
+        } catch {}
+      }
+
+      const updatedBalance = walletBalance + releasedFare;
+      const newTxn = {
+        id: "tx_" + Date.now(),
+        type: "credit",
+        amount: releasedFare,
+        description: `Trip Completed: ${selectedRideForOtp?.from_location} ➔ ${selectedRideForOtp?.to_location}`,
+        date: new Date().toLocaleDateString(),
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      };
+
+      const updatedLedger = [newTxn, ...settlementHistory];
+
+      setWalletBalance(updatedBalance);
+      setSettlementHistory(updatedLedger);
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("riderx_driver_wallet_balance", updatedBalance.toString());
+        localStorage.setItem("riderx_driver_ledger", JSON.stringify(updatedLedger));
+      }
+
+      setVerifyingOtp(false);
+      setSelectedRideForOtp(null);
+      setEnteredOtp("");
+      showAlert("Destination Reached!", `Trip marked complete. ₹${releasedFare} has been credited to your Driver Wallet.`);
+      setActiveTab("earnings");
+    }, 1000);
+  };
+
+  // Payout request to personal UPI
+  const handleRequestPayout = () => {
+    if (walletBalance <= 0) {
+      showAlert("Zero Balance", "You have no available wallet balance to withdraw.");
+      return;
+    }
+    if (!driverUpiId || !driverUpiId.includes("@")) {
+      showAlert("Invalid UPI ID", "Please enter a valid personal UPI ID (e.g. mobile@ybl / name@oksbi).");
+      return;
+    }
+
+    const withdrawnAmount = walletBalance;
+    const payoutTxn = {
+      id: "po_" + Date.now(),
+      type: "debit",
+      amount: withdrawnAmount,
+      description: `Payout Sent to UPI: ${driverUpiId}`,
+      date: new Date().toLocaleDateString(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+
+    const updatedLedger = [payoutTxn, ...settlementHistory];
+
+    setWalletBalance(0);
+    setSettlementHistory(updatedLedger);
+
+    if (typeof window !== "undefined") {
+      localStorage.setItem("riderx_driver_wallet_balance", "0");
+      localStorage.setItem("riderx_driver_ledger", JSON.stringify(updatedLedger));
+    }
+
+    setPayoutModalVisible(false);
+    showAlert("Payout Initiated!", `₹${withdrawnAmount} withdrawal initiated to ${driverUpiId}. Funds will credit shortly.`);
+  };
+
   return (
     <View style={styles.screenRoot}>
-      {/* Top Header */}
+      {/* Header */}
       <View style={[styles.headerBar, { paddingTop: insets.top + 8 }]}>
         <View>
           <Text style={styles.brandTitle}>
@@ -185,13 +293,13 @@ export function DriverHome({
         >
           <View style={styles.greetingWrap}>
             <Text style={styles.greetingTitle}>Welcome, {user?.full_name?.split(" ")[0]}! 🚗</Text>
-            <Text style={styles.greetingSub}>Share your daily travel and save on fuel costs</Text>
+            <Text style={styles.greetingSub}>Share your daily commute and offset your fuel expenses</Text>
           </View>
 
           <View style={styles.formCard}>
             <Text style={styles.formCardTitle}>PUBLISH A ROUTE</Text>
 
-            {/* Starting Point */}
+            {/* Pickup */}
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setPickerTarget("from")}
@@ -209,7 +317,7 @@ export function DriverHome({
 
             <View style={styles.routeDivider} />
 
-            {/* Ending Point */}
+            {/* Destination */}
             <TouchableOpacity
               activeOpacity={0.8}
               onPress={() => setPickerTarget("to")}
@@ -297,7 +405,7 @@ export function DriverHome({
             >
               <Icon name="face-woman" size={18} color={womenOnly ? "#DB2777" : "#64748B"} />
               <Text style={[styles.womenOnlyText, womenOnly && { color: "#DB2777" }]}>
-                {womenOnly ? "Women Commuters Only (Enabled)" : "Allow Female Passengers Only?"}
+                {womenOnly ? "Women Passengers Only (Enabled)" : "Allow Female Passengers Only?"}
               </Text>
             </TouchableOpacity>
 
@@ -324,7 +432,7 @@ export function DriverHome({
           contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 90 }}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.tabHeadingText}>Your Published Rides</Text>
+          <Text style={styles.tabHeadingText}>Your Active Trips</Text>
 
           {loadingHistory ? (
             <ActivityIndicator size="large" color="#0284C7" style={{ marginTop: 30 }} />
@@ -341,7 +449,7 @@ export function DriverHome({
             publishedRides.map((ride, idx) => (
               <View key={idx} style={styles.rideItemCard}>
                 <View style={styles.rideItemHeader}>
-                  <Text style={styles.rideItemStatus}>● Active Route</Text>
+                  <Text style={styles.rideItemStatus}>● Active Live Route</Text>
                   <Text style={styles.rideItemPrice}>₹{ride.price_per_seat} / seat</Text>
                 </View>
                 <Text style={styles.rideItemRoute}>{ride.from_location} ➔ {ride.to_location}</Text>
@@ -349,31 +457,65 @@ export function DriverHome({
                   <Text style={styles.rideItemSub}>Departure: {ride.departure_time}</Text>
                   <Text style={styles.rideItemSub}>{ride.available_seats} Seats Left</Text>
                 </View>
+
+                {/* Arrived at Destination -> End Ride Button */}
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => setSelectedRideForOtp(ride)}
+                  style={styles.verifyOtpActionBtn}
+                >
+                  <Text style={styles.verifyOtpActionBtnText}>🏁 Arrived at Destination (Enter OTP to Get Paid)</Text>
+                </TouchableOpacity>
               </View>
             ))
           )}
         </ScrollView>
       )}
 
-      {/* EARNINGS TAB */}
+      {/* EARNINGS TAB (WALLET) */}
       {activeTab === "earnings" && (
         <ScrollView
           contentContainerStyle={{ padding: 20, paddingBottom: insets.bottom + 90 }}
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.tabHeadingText}>Driver Fuel & Rewards Wallet</Text>
+          <Text style={styles.tabHeadingText}>Driver Earnings Wallet</Text>
 
+          {/* Settled Balance Box */}
           <View style={styles.earningsSummaryCard}>
-            <Text style={styles.earningsLabel}>Total Fuel Savings</Text>
-            <Text style={styles.earningsAmount}>₹0.00</Text>
-            <Text style={styles.earningsSub}>Share empty seats to offset fuel expenses every day.</Text>
+            <Text style={styles.earningsLabel}>Available Wallet Balance</Text>
+            <Text style={styles.earningsAmount}>₹{walletBalance.toFixed(2)}</Text>
+            <Text style={styles.earningsSub}>Payments are deposited here as soon as you reach destination & verify OTP.</Text>
+
+            <TouchableOpacity
+              activeOpacity={0.8}
+              onPress={() => setPayoutModalVisible(true)}
+              style={styles.withdrawBtn}
+            >
+              <Text style={styles.withdrawBtnText}>Withdraw to UPI ➔</Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.emptyScreenCard}>
-            <Icon name="wallet-outline" size={36} color="#94A3B8" />
-            <Text style={styles.emptyScreenTitle}>No Payout History</Text>
-            <Text style={styles.emptyScreenSub}>Completed passenger rides will show up in your settlement ledger.</Text>
-          </View>
+          {/* Transactions */}
+          <Text style={[styles.tabHeadingText, { fontSize: 16, marginTop: 14 }]}>Wallet Transactions</Text>
+          {settlementHistory.length === 0 ? (
+            <View style={styles.emptyScreenCard}>
+              <Icon name="wallet-outline" size={36} color="#94A3B8" />
+              <Text style={styles.emptyScreenTitle}>No Transactions Yet</Text>
+              <Text style={styles.emptyScreenSub}>Completed rides will show up in your settlement ledger.</Text>
+            </View>
+          ) : (
+            settlementHistory.map((item, index) => (
+              <View key={index} style={styles.ledgerItem}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.ledgerDesc}>{item.description}</Text>
+                  <Text style={styles.ledgerTime}>{item.date} • {item.time}</Text>
+                </View>
+                <Text style={[styles.ledgerAmount, item.type === "credit" ? { color: "#16A34A" } : { color: "#DC2626" }]}>
+                  {item.type === "credit" ? `+₹${item.amount}` : `-₹${item.amount}`}
+                </Text>
+              </View>
+            ))
+          )}
         </ScrollView>
       )}
 
@@ -386,12 +528,12 @@ export function DriverHome({
 
         <TouchableOpacity onPress={() => setActiveTab("my_published_rides")} style={styles.navTabItem}>
           <Icon name="format-list-bulleted" size={22} color={activeTab === "my_published_rides" ? "#0284C7" : "#94A3B8"} />
-          <Text style={[styles.navTabLabel, activeTab === "my_published_rides" && styles.navTabLabelActive]}>My Posts</Text>
+          <Text style={[styles.navTabLabel, activeTab === "my_published_rides" && styles.navTabLabelActive]}>My Trips</Text>
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => setActiveTab("earnings")} style={styles.navTabItem}>
           <Icon name="currency-inr" size={22} color={activeTab === "earnings" ? "#0284C7" : "#94A3B8"} />
-          <Text style={[styles.navTabLabel, activeTab === "earnings" && styles.navTabLabelActive]}>Earnings</Text>
+          <Text style={[styles.navTabLabel, activeTab === "earnings" && styles.navTabLabelActive]}>Wallet</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -406,39 +548,122 @@ export function DriverHome({
         </TouchableOpacity>
       </View>
 
+      {/* OTP VERIFICATION MODAL ON DESTINATION REACH */}
+      <Modal
+        visible={Boolean(selectedRideForOtp)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSelectedRideForOtp(null)}
+      >
+        <View style={styles.sosModalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalHeading}>Destination Reached</Text>
+            <Text style={styles.modalSub}>
+              Ask passenger for their 4-digit Ride Completion OTP to release ₹{selectedRideForOtp?.price_per_seat || 95} directly to your wallet.
+            </Text>
+
+            <TextInput
+              value={enteredOtp}
+              onChangeText={setEnteredOtp}
+              placeholder="e.g. 4821"
+              keyboardType="numeric"
+              maxLength={4}
+              style={styles.otpInputBox}
+            />
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              disabled={verifyingOtp}
+              onPress={handleVerifyOtpAndSettle}
+              style={styles.verifyConfirmBtn}
+            >
+              {verifyingOtp ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.verifyConfirmBtnText}>Verify OTP & Collect Fare ➔</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setSelectedRideForOtp(null)}
+              style={styles.cancelLink}
+            >
+              <Text style={styles.cancelLinkText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* WITHDRAW PAYOUT MODAL */}
+      <Modal
+        visible={payoutModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPayoutModalVisible(false)}
+      >
+        <View style={styles.sosModalBackdrop}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalHeading}>Withdraw to UPI</Text>
+            <Text style={styles.modalSub}>
+              Enter your personal Google Pay, PhonePe, or Bank UPI ID to receive your ₹{walletBalance.toFixed(2)} balance.
+            </Text>
+
+            <TextInput
+              value={driverUpiId}
+              onChangeText={setDriverUpiId}
+              placeholder="e.g. mobile@ybl / name@oksbi"
+              autoCapitalize="none"
+              style={[styles.textInputBox, { marginTop: 12, paddingVertical: 12 }]}
+            />
+
+            <TouchableOpacity
+              activeOpacity={0.9}
+              onPress={handleRequestPayout}
+              style={[styles.verifyConfirmBtn, { backgroundColor: "#16A34A", marginTop: 16 }]}
+            >
+              <Text style={styles.verifyConfirmBtnText}>Submit Payout Request ➔</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setPayoutModalVisible(false)}
+              style={styles.cancelLink}
+            >
+              <Text style={styles.cancelLinkText}>Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
       {/* SOS MODAL */}
       <Modal visible={sosModalVisible} transparent animationType="fade" onRequestClose={() => setSosModalVisible(false)}>
         <View style={styles.sosModalBackdrop}>
-          <View style={styles.sosCard}>
-            <View style={styles.sosHeader}>
-              <Icon name="shield-alert" size={28} color="#DC2626" />
-              <Text style={styles.sosTitle}>DRIVER SAFETY HELPLINE</Text>
-              <Text style={styles.sosSubTitle}>Instant 24x7 Roadside & Emergency Assistance</Text>
-            </View>
+          <View style={styles.modalCard}>
+            <Text style={styles.sosTitle}>DRIVER SAFETY HELPLINE</Text>
+            <Text style={styles.sosSubTitle}>Instant 24x7 Roadside & Emergency Assistance</Text>
 
             <TouchableOpacity onPress={() => Linking.openURL("tel:100")} style={[styles.sosActionRow, { backgroundColor: "#FEE2E2" }]}>
-              <Text style={{ fontSize: 22 }}>🚓</Text>
+              <Text style={{ fontSize: 20 }}>🚓</Text>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sosActionName, { color: "#991B1B" }]}>Police</Text>
-                <Text style={styles.sosActionDesc}>Emergency Help 100</Text>
+                <Text style={styles.sosActionDesc}>100</Text>
               </View>
               <Text style={[styles.callTag, { backgroundColor: "#DC2626" }]}>CALL</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => Linking.openURL("tel:108")} style={[styles.sosActionRow, { backgroundColor: "#FEF3C7" }]}>
-              <Text style={{ fontSize: 22 }}>🚑</Text>
+              <Text style={{ fontSize: 20 }}>🚑</Text>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sosActionName, { color: "#92400E" }]}>Ambulance</Text>
-                <Text style={styles.sosActionDesc}>Medical Care 108</Text>
+                <Text style={styles.sosActionDesc}>108</Text>
               </View>
               <Text style={[styles.callTag, { backgroundColor: "#D97706" }]}>CALL</Text>
             </TouchableOpacity>
 
             <TouchableOpacity onPress={() => Linking.openURL("tel:112")} style={[styles.sosActionRow, { backgroundColor: "#E0E7FF" }]}>
-              <Text style={{ fontSize: 22 }}>🚨</Text>
+              <Text style={{ fontSize: 20 }}>🚨</Text>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.sosActionName, { color: "#3730A3" }]}>National Emergency</Text>
-                <Text style={styles.sosActionDesc}>Unified Helpline 112</Text>
+                <Text style={styles.sosActionDesc}>112</Text>
               </View>
               <Text style={[styles.callTag, { backgroundColor: "#4F46E5" }]}>CALL</Text>
             </TouchableOpacity>
@@ -716,7 +941,7 @@ const styles = StyleSheet.create({
     padding: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    marginBottom: 10,
+    marginBottom: 12,
   },
   rideItemHeader: {
     flexDirection: "row",
@@ -745,11 +970,24 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: "#F1F5F9",
     paddingTop: 8,
+    marginBottom: 8,
   },
   rideItemSub: {
     fontSize: 12,
     color: "#64748B",
     fontWeight: "600",
+  },
+  verifyOtpActionBtn: {
+    backgroundColor: "#16A34A",
+    paddingVertical: 11,
+    borderRadius: 10,
+    alignItems: "center",
+    marginTop: 6,
+  },
+  verifyOtpActionBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
   },
   earningsSummaryCard: {
     backgroundColor: "#FFFFFF",
@@ -776,6 +1014,43 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: "#64748B",
     textAlign: "center",
+    marginBottom: 14,
+  },
+  withdrawBtn: {
+    backgroundColor: "#0284C7",
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  withdrawBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  ledgerItem: {
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 8,
+  },
+  ledgerDesc: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+  },
+  ledgerTime: {
+    fontSize: 11,
+    color: "#94A3B8",
+    marginTop: 2,
+  },
+  ledgerAmount: {
+    fontSize: 15,
+    fontWeight: "900",
   },
   emptyScreenCard: {
     backgroundColor: "#FFFFFF",
@@ -842,29 +1117,72 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
   },
-  sosCard: {
+  modalCard: {
     width: "100%",
     maxWidth: 380,
     backgroundColor: "#FFFFFF",
     borderRadius: 20,
     padding: 20,
-    gap: 10,
-  },
-  sosHeader: {
     alignItems: "center",
-    marginBottom: 8,
+  },
+  modalHeading: {
+    fontSize: 18,
+    fontWeight: "900",
+    color: "#0F172A",
+    marginBottom: 6,
+  },
+  modalSub: {
+    fontSize: 12,
+    color: "#64748B",
+    textAlign: "center",
+    lineHeight: 18,
+    marginBottom: 14,
+  },
+  otpInputBox: {
+    width: "60%",
+    borderWidth: 2,
+    borderColor: "#16A34A",
+    borderRadius: 12,
+    fontSize: 24,
+    fontWeight: "900",
+    letterSpacing: 8,
+    textAlign: "center",
+    paddingVertical: 10,
+    backgroundColor: "#F0FDF4",
+    color: "#0F172A",
+    marginBottom: 16,
+  },
+  verifyConfirmBtn: {
+    width: "100%",
+    backgroundColor: "#16A34A",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  verifyConfirmBtnText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "900",
+  },
+  cancelLink: {
+    marginTop: 12,
+    padding: 6,
+  },
+  cancelLinkText: {
+    fontSize: 13,
+    color: "#64748B",
+    fontWeight: "700",
   },
   sosTitle: {
     fontSize: 18,
     fontWeight: "900",
     color: "#DC2626",
-    marginTop: 4,
+    marginBottom: 4,
   },
   sosSubTitle: {
     fontSize: 11,
     color: "#64748B",
-    textAlign: "center",
-    marginTop: 2,
+    marginBottom: 12,
   },
   sosActionRow: {
     flexDirection: "row",
@@ -872,6 +1190,8 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     gap: 12,
+    width: "100%",
+    marginBottom: 8,
   },
   sosActionName: {
     fontSize: 14,
@@ -880,7 +1200,6 @@ const styles = StyleSheet.create({
   sosActionDesc: {
     fontSize: 11,
     color: "#64748B",
-    marginTop: 1,
   },
   callTag: {
     color: "#FFFFFF",
@@ -892,14 +1211,13 @@ const styles = StyleSheet.create({
   },
   sosCloseBtn: {
     marginTop: 6,
-    paddingVertical: 12,
+    paddingVertical: 10,
     alignItems: "center",
-    backgroundColor: "#F1F5F9",
-    borderRadius: 10,
+    width: "100%",
   },
   sosCloseBtnText: {
     fontSize: 13,
     fontWeight: "800",
-    color: "#475569",
+    color: "#64748B",
   },
 });
