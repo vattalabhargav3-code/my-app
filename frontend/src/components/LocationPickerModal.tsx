@@ -19,6 +19,8 @@ interface LocationPickerProps {
   title?: string;
 }
 
+const MAPBOX_TOKEN = "pk.eyJ1IjoiYmhhcmdhdjE4MTkiLCJhIjoiY211bnJxOGJ6MDJnNjJ4cGNucWV3ZTB5ZyJ9.eeQZMTPajF3ggl5E1ovH0Q";
+
 const POPULAR_HUBS = [
   { name: "Hitec City", lat: 17.4435, lon: 78.3772 },
   { name: "Madhapur", lat: 17.4483, lon: 78.3915 },
@@ -40,27 +42,11 @@ export function LocationPickerModal({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [centerCoords, setCenterCoords] = useState({ lat: 17.4435, lon: 78.3772 }); // Default Hitec City, Hyderabad
+  const [centerCoords, setCenterCoords] = useState({ lat: 17.4435, lon: 78.3772 }); // Default Hitec City
   const [pickedAddress, setPickedAddress] = useState("Hitec City, Hyderabad");
   const [fetchingAddress, setFetchingAddress] = useState(false);
 
-  // Clean locality helper (Ward numbers & unnecessary state codes ni remove chesthundi)
-  const formatCleanName = (item: any) => {
-    const addr = item.address || {};
-    const mainArea =
-      addr.suburb ||
-      addr.neighbourhood ||
-      addr.residential ||
-      addr.commercial ||
-      addr.industrial ||
-      item.name ||
-      item.display_name.split(",")[0];
-
-    const city = addr.city || addr.town || addr.county || "Hyderabad";
-    return `${mainArea}, ${city}`;
-  };
-
-  // Search places via typing focused strictly on Hyderabad & Telugu states
+  // Mapbox Geocoding Autocomplete Search with Hyderabad Proximity
   const searchPlaces = async (text: string) => {
     setQuery(text);
     if (text.trim().length < 2) {
@@ -69,24 +55,26 @@ export function LocationPickerModal({
     }
     setLoading(true);
     try {
-      // viewbox coordinates limit priority to Hyderabad and surrounding corridors
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-          text.trim()
-        )}&format=json&addressdetails=1&limit=6&countrycodes=in&viewbox=78.15,17.15,78.68,17.62&bounded=0`,
-        {
-          headers: {
-            "Accept-Language": "en",
-          },
-        }
-      );
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+        text.trim()
+      )}.json?access_token=${MAPBOX_TOKEN}&country=in&proximity=78.38,17.44&types=neighborhood,locality,place,poi,address&limit=6`;
+
+      const res = await fetch(url);
       const data = await res.json();
-      if (Array.isArray(data)) {
-        const cleaned = data.map((item) => ({
-          ...item,
-          cleanName: formatCleanName(item),
-        }));
-        setResults(cleaned);
+
+      if (data && data.features) {
+        const formatted = data.features.map((item: any) => {
+          const areaName = item.text || item.place_name.split(",")[0];
+          const fullContext = item.place_name;
+          return {
+            id: item.id,
+            cleanName: areaName,
+            fullName: fullContext,
+            lat: item.center[1],
+            lon: item.center[0],
+          };
+        });
+        setResults(formatted);
       }
     } catch {
       setResults([]);
@@ -95,21 +83,18 @@ export function LocationPickerModal({
     }
   };
 
-  // Reverse geocode when coordinates change
+  // Reverse Geocoding when coordinates change
   const updateAddressFromCoords = async (lat: number, lon: number) => {
     setFetchingAddress(true);
     try {
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
-        {
-          headers: {
-            "Accept-Language": "en",
-          },
-        }
-      );
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lon},${lat}.json?access_token=${MAPBOX_TOKEN}&types=neighborhood,locality,place,poi&limit=1`;
+      const res = await fetch(url);
       const data = await res.json();
-      const clean = formatCleanName(data);
-      setPickedAddress(clean);
+      if (data && data.features && data.features.length > 0) {
+        setPickedAddress(data.features[0].place_name);
+      } else {
+        setPickedAddress(`${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+      }
     } catch {
       setPickedAddress(`${lat.toFixed(4)}, ${lon.toFixed(4)}`);
     } finally {
@@ -124,22 +109,19 @@ export function LocationPickerModal({
   }, [visible]);
 
   const handleSelectFromList = (item: any) => {
-    const lat = parseFloat(item.lat);
-    const lon = parseFloat(item.lon);
-    const displayName = item.cleanName || formatCleanName(item);
-
-    setCenterCoords({ lat, lon });
-    setPickedAddress(displayName);
+    setCenterCoords({ lat: item.lat, lon: item.lon });
+    setPickedAddress(item.cleanName);
     setQuery("");
     setResults([]);
-    onSelect(displayName, lat, lon);
+    onSelect(item.cleanName, item.lat, item.lon);
     onClose();
   };
 
   const handleSelectQuickHub = (hub: { name: string; lat: number; lon: number }) => {
+    const full = `${hub.name}, Hyderabad`;
     setCenterCoords({ lat: hub.lat, lon: hub.lon });
-    setPickedAddress(`${hub.name}, Hyderabad`);
-    onSelect(`${hub.name}, Hyderabad`, hub.lat, hub.lon);
+    setPickedAddress(full);
+    onSelect(full, hub.lat, hub.lon);
     onClose();
   };
 
@@ -161,7 +143,7 @@ export function LocationPickerModal({
             </TouchableOpacity>
           </View>
 
-          {/* Search Input */}
+          {/* Search Input Bar */}
           <View style={styles.searchBar}>
             <Icon name="magnify" size={20} color={colors.muted} />
             <TextInput
@@ -170,16 +152,23 @@ export function LocationPickerModal({
               placeholderTextColor={colors.muted}
               value={query}
               onChangeText={searchPlaces}
+              autoFocus
             />
             {loading && <ActivityIndicator size="small" color={colors.brand} />}
+            {query.length > 0 && !loading && (
+              <TouchableOpacity onPress={() => setQuery("")}>
+                <Icon name="close-circle" size={18} color="#94A3B8" />
+              </TouchableOpacity>
+            )}
           </View>
 
-          {/* Autocomplete Results Dropdown */}
+          {/* Autocomplete Results */}
           {results.length > 0 && (
             <View style={styles.resultsList}>
               <FlatList
                 data={results}
-                keyExtractor={(item, idx) => item.place_id ? item.place_id.toString() : idx.toString()}
+                keyExtractor={(item) => item.id}
+                keyboardShouldPersistTaps="handled"
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={styles.resultItem}
@@ -191,7 +180,7 @@ export function LocationPickerModal({
                         {item.cleanName}
                       </Text>
                       <Text style={styles.subResultText} numberOfLines={1}>
-                        {item.display_name}
+                        {item.fullName}
                       </Text>
                     </View>
                   </TouchableOpacity>
@@ -200,7 +189,7 @@ export function LocationPickerModal({
             </View>
           )}
 
-          {/* Popular Areas Quick Chips (Always accessible when not searching) */}
+          {/* Popular Hubs Quick Chips */}
           {results.length === 0 && (
             <View style={styles.quickHubWrap}>
               <Text style={styles.quickHubTitle}>FREQUENT HUBS & CORRIDORS</Text>
@@ -220,7 +209,7 @@ export function LocationPickerModal({
             </View>
           )}
 
-          {/* Interactive Live Map Frame */}
+          {/* Interactive Live Map Frame (Static preview centered on selection) */}
           <View style={styles.mapBox}>
             <iframe
               title="map"
