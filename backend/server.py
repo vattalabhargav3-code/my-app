@@ -19,6 +19,9 @@ from starlette.middleware.cors import CORSMiddleware
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
+logger = logging.getLogger("safarway")
+logging.basicConfig(level=logging.INFO)
+
 mongo_url = os.environ.get("MONGO_URL", "")
 db_name = os.environ.get("DB_NAME", "safarway")
 
@@ -27,7 +30,7 @@ db = None
 
 if mongo_url:
     try:
-        client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=3000)
+        client = AsyncIOMotorClient(mongo_url, serverSelectionTimeoutMS=5000)
         db = client[db_name]
     except Exception as e:
         logger.error(f"MongoDB client init failed: {e}")
@@ -37,13 +40,15 @@ if mongo_url:
 JWT_SECRET = os.getenv("JWT_SECRET", "safarway-local-development-secret")
 OTP_LENGTH = 6
 
-app = FastAPI(title="SafarWay API")
+app = FastAPI(title="RiderX / SafarWay API")
 
 app.add_middleware(
     CORSMiddleware,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_origins=[
-        "https://riderx-silk.vercel.app",
         "http://localhost:3000",
+        "http://localhost:8081",
+        "http://localhost:19006",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -51,7 +56,6 @@ app.add_middleware(
 )
 
 api_router = APIRouter(prefix="/api")
-logger = logging.getLogger("safarway")
 
 
 def now_iso() -> str:
@@ -80,7 +84,8 @@ async def current_user(authorization: Optional[str] = Header(default=None)) -> d
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(status_code=401, detail="Sign in to continue")
     try:
-        payload = jwt.decode(authorization[7:], JWT_SECRET, algorithms=["HS256"])
+        token_str = authorization.replace("Bearer ", "").strip()
+        payload = jwt.decode(token_str, JWT_SECRET, algorithms=["HS256"])
         user_id = payload.get("sub")
     except jwt.PyJWTError as exc:
         raise HTTPException(status_code=401, detail="Your session has expired") from exc
@@ -93,8 +98,10 @@ async def current_user(authorization: Optional[str] = Header(default=None)) -> d
         except Exception as db_err:
             logger.error(f"Database error in current_user: {db_err}")
 
-    return {"id": user_id, "phone": "+919999999999", "role": "passenger", "id_verified": True}
+    return {"id": user_id, "phone": "+918919326622", "full_name": "Rider Partner", "role": "passenger", "id_verified": True}
 
+
+# --- Request Models ---
 
 class PhoneRequest(BaseModel):
     phone: str
@@ -112,20 +119,36 @@ class IdVerificationRequest(BaseModel):
 
 
 class RideCreateRequest(BaseModel):
-    driver_dl: str = Field(min_length=4, max_length=32)
-    driver_rc: str = Field(min_length=4, max_length=32)
-    start_point: str = Field(min_length=2, max_length=100)
-    end_point: str = Field(min_length=2, max_length=100)
-    stops: str = Field(default="", max_length=200)
-    vehicle_type: str = Field(pattern="^(bike|car|cab)$")
-    available_seats: int = Field(ge=1, le=6)
-    seat_price: int = Field(ge=1, le=100000)
-    mode: str = Field(default="commercial", pattern="^(commercial|petrol_save)$")
+    from_location: str = Field(min_length=2, max_length=150)
+    to_location: str = Field(min_length=2, max_length=150)
+    vehicle_type: str = Field(default="car", pattern="^(bike|car|cab)$")
+    available_seats: int = Field(default=3, ge=1, le=8)
+    price_per_seat: int = Field(default=95, ge=1, le=10000)
+    women_only: Optional[bool] = False
+    departure_time: Optional[str] = "Today, Shortly"
+    driver_dl: Optional[str] = "DL_VERIFIED"
+    driver_rc: Optional[str] = "RC_VERIFIED"
 
 
-class RideBookingRequest(BaseModel):
-    seat: str = Field(min_length=2, max_length=40)
-    coupon: str = Field(default="", max_length=32)
+class BookingCreateRequest(BaseModel):
+    ride_id: str
+    seats_booked: int = Field(default=1, ge=1, le=6)
+    pickup_point: Optional[str] = ""
+    destination_point: Optional[str] = ""
+    fare_paid: int
+    total_price: int
+    otp: str = Field(min_length=4, max_length=6)
+    payment_mode: Optional[str] = "upi"
+
+
+class VerifyTripOtpRequest(BaseModel):
+    ride_id: str
+    otp: str = Field(min_length=4, max_length=6)
+
+
+class PayoutWithdrawRequest(BaseModel):
+    upi_id: str = Field(min_length=5, max_length=50)
+    amount: float = Field(gt=0)
 
 
 class SosRequest(BaseModel):
@@ -134,39 +157,30 @@ class SosRequest(BaseModel):
     ride_id: Optional[str] = None
 
 
-SAMPLE_RIDES = [
-    {
-        "id": "ride-ramesh",
-        "driver_name": "Ramesh K",
-        "vehicle": "Swift Dzire · Yellow plate",
-        "type": "cab",
-        "mode": "commercial",
-        "from": "hyderabad",
-        "to": "vijayawada",
-        "stops": "Suryapet",
-        "seats_left": 3,
-        "price": 500,
-        "rating": "4.8",
-    },
-    {
-        "id": "ride-suresh",
-        "driver_name": "Suresh M",
-        "vehicle": "Honda City · White plate sharing",
-        "type": "car",
-        "mode": "petrol_save",
-        "from": "hyderabad",
-        "to": "vijayawada",
-        "stops": "Suryapet · Nalgonda",
-        "seats_left": 2,
-        "price": 350,
-        "rating": "4.9",
-    },
-]
+# --- Helpers ---
 
+def serialize_ride(ride: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": str(ride.get("id")),
+        "driver_id": ride.get("driver_id"),
+        "driver_name": ride.get("driver_name", "Verified Partner"),
+        "vehicle_type": ride.get("vehicle_type", "car"),
+        "vehicle_name": ride.get("vehicle_name", "Commute Ride"),
+        "from_location": ride.get("from_location", ride.get("from", "")),
+        "to_location": ride.get("to_location", ride.get("to", "")),
+        "available_seats": ride.get("available_seats", ride.get("seats_left", 3)),
+        "price_per_seat": ride.get("price_per_seat", ride.get("price", 95)),
+        "women_only": ride.get("women_only", False),
+        "departure_time": ride.get("departure_time", "Today Shortly"),
+        "status": ride.get("status", "open"),
+    }
+
+
+# --- API Routes ---
 
 @api_router.get("/")
 async def root():
-    return {"message": "SafarWay API is ready"}
+    return {"message": "RiderX API is ready"}
 
 
 @api_router.get("/health")
@@ -215,7 +229,7 @@ async def request_otp(payload: PhoneRequest):
             }
             body = {
                 "route": "q",
-                "message": f"Your SafarWay verification code is: {code}",
+                "message": f"Your RiderX verification code is: {code}",
                 "language": "english",
                 "flash": 0,
                 "numbers": clean_phone,
@@ -228,8 +242,6 @@ async def request_otp(payload: PhoneRequest):
             )
             res_data = res.json()
             sms_sent = res_data.get("return", False)
-            if not sms_sent:
-                logger.error(f"Fast2SMS API Response: {res_data}")
         except Exception as sms_err:
             logger.error(f"Fast2SMS error: {sms_err}")
 
@@ -242,48 +254,46 @@ async def request_otp(payload: PhoneRequest):
 
 @api_router.post("/auth/verify-otp")
 async def verify_otp(payload: VerifyOtpRequest):
-    try:
-        phone = normalize_phone(payload.phone)
-        user_id = str(uuid.uuid4())
+    phone = normalize_phone(payload.phone)
+    user_id = str(uuid.uuid4())
 
-        if db is not None:
-            try:
-                challenge = await db.otp_challenges.find_one({"id": payload.challenge_id}, {"_id": 0})
-                if challenge:
-                    if datetime.fromisoformat(challenge["expires_at"]) < datetime.now(timezone.utc):
-                        raise HTTPException(status_code=400, detail="OTP expired. Request a new one")
-                    if hashlib.sha256(payload.code.encode()).hexdigest() != challenge["code_hash"]:
-                        raise HTTPException(status_code=400, detail="Incorrect OTP")
+    if db is not None:
+        try:
+            challenge = await db.otp_challenges.find_one({"id": payload.challenge_id}, {"_id": 0})
+            if challenge:
+                if datetime.fromisoformat(challenge["expires_at"]) < datetime.now(timezone.utc):
+                    raise HTTPException(status_code=400, detail="OTP expired. Request a new one")
+                if hashlib.sha256(payload.code.encode()).hexdigest() != challenge["code_hash"]:
+                    raise HTTPException(status_code=400, detail="Incorrect OTP")
 
-                user = await db.users.find_one({"phone": phone}, {"_id": 0})
-                if not user:
-                    user = {
-                        "id": user_id,
-                        "phone": phone,
-                        "role": "passenger",
-                        "id_verified": True,
-                        "created_at": now_iso(),
-                    }
-                    await db.users.insert_one(user.copy())
-                return {"access_token": create_token(user["id"]), "user": user}
-            except HTTPException:
-                raise
-            except Exception as db_err:
-                logger.error(f"Database error in verify: {db_err}")
+            user = await db.users.find_one({"phone": phone}, {"_id": 0})
+            if not user:
+                user = {
+                    "id": user_id,
+                    "phone": phone,
+                    "full_name": "Rider Partner",
+                    "role": "passenger",
+                    "id_verified": True,
+                    "wallet_balance": 0.0,
+                    "created_at": now_iso(),
+                }
+                await db.users.insert_one(user.copy())
+            return {"access_token": create_token(user["id"]), "user": user}
+        except HTTPException:
+            raise
+        except Exception as db_err:
+            logger.error(f"Database error in verify: {db_err}")
 
-        demo_user = {
-            "id": user_id,
-            "phone": phone,
-            "role": "passenger",
-            "id_verified": True,
-            "created_at": now_iso(),
-        }
-        return {"access_token": create_token(demo_user["id"]), "user": demo_user}
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Unhandled verify error: {e}")
-        raise HTTPException(status_code=400, detail=str(e))
+    demo_user = {
+        "id": user_id,
+        "phone": phone,
+        "full_name": "Rider Partner",
+        "role": "passenger",
+        "id_verified": True,
+        "wallet_balance": 0.0,
+        "created_at": now_iso(),
+    }
+    return {"access_token": create_token(demo_user["id"]), "user": demo_user}
 
 
 @api_router.get("/me")
@@ -304,54 +314,41 @@ async def verify_id(payload: IdVerificationRequest, user: dict[str, Any] = Depen
     return {"verified": True, "id_type": payload.id_type}
 
 
-def public_ride(ride: dict[str, Any]) -> dict[str, Any]:
-    return {
-        key: ride.get(key)
-        for key in [
-            "id", "driver_name", "vehicle", "type", "mode", "from", "to", "stops", "seats_left", "price", "rating"
-        ]
-    }
-
+# --- RIDES MANAGEMENT ---
 
 @api_router.get("/rides")
 async def list_rides(
     from_location: str = Query(default=""),
     to_location: str = Query(default=""),
-    mode: str = Query(default="all"),
-    vehicle_type: str = Query(default="all"),
     user: dict[str, Any] = Depends(current_user),
 ):
-    persisted = []
+    rides_list = []
     if db is not None:
         try:
-            persisted = await db.rides.find({"status": "open"}, {"_id": 0}).to_list(100)
+            query = {"status": "open"}
+            persisted = await db.rides.find(query, {"_id": 0}).sort("created_at", -1).to_list(100)
+            rides_list = [serialize_ride(r) for r in persisted]
         except Exception as db_err:
             logger.error(f"Database error in list_rides: {db_err}")
 
-    rides = SAMPLE_RIDES + [public_ride(ride) for ride in persisted]
-
     def matches(ride: dict[str, Any]) -> bool:
-        route_match = not from_location or from_location.strip().lower() in ride["from"].lower()
-        destination_match = not to_location or to_location.strip().lower() in ride["to"].lower()
-        return (
-            route_match
-            and destination_match
-            and (mode == "all" or ride["mode"] == mode)
-            and (vehicle_type == "all" or ride["type"] == vehicle_type)
-        )
+        route_match = not from_location or from_location.strip().lower() in ride["from_location"].lower()
+        destination_match = not to_location or to_location.strip().lower() in ride["to_location"].lower()
+        return route_match and destination_match
 
-    return [ride for ride in rides if matches(ride)]
+    return [r for r in rides_list if matches(r)]
 
 
-@api_router.get("/rides/mine")
-async def my_rides(user: dict[str, Any] = Depends(current_user)):
+@api_router.get("/rides/my-published")
+async def my_published_rides(user: dict[str, Any] = Depends(current_user)):
     rides = []
     if db is not None:
         try:
-            rides = await db.rides.find({"driver_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(100)
+            results = await db.rides.find({"driver_id": user["id"]}, {"_id": 0}).sort("created_at", -1).to_list(50)
+            rides = [serialize_ride(r) for r in results]
         except Exception as db_err:
-            logger.error(f"Database error in my_rides: {db_err}")
-    return [public_ride(ride) for ride in rides]
+            logger.error(f"Database error in my_published_rides: {db_err}")
+    return rides
 
 
 @api_router.post("/rides")
@@ -359,19 +356,16 @@ async def create_ride(payload: RideCreateRequest, user: dict[str, Any] = Depends
     ride = {
         "id": str(uuid.uuid4()),
         "driver_id": user["id"],
-        "driver_name": "You · Driver",
-        "vehicle": f"{payload.vehicle_type.upper()} · {payload.start_point} to {payload.end_point}",
-        "type": payload.vehicle_type,
-        "mode": payload.mode,
-        "from": payload.start_point,
-        "to": payload.end_point,
-        "stops": payload.stops,
-        "seats_left": payload.available_seats,
-        "price": payload.seat_price,
-        "rating": "New",
+        "driver_name": user.get("full_name") or "Verified Driver",
+        "vehicle_type": payload.vehicle_type,
+        "vehicle_name": f"{payload.vehicle_type.capitalize()} Pool",
+        "from_location": payload.from_location,
+        "to_location": payload.to_location,
+        "available_seats": payload.available_seats,
+        "price_per_seat": payload.price_per_seat,
+        "women_only": payload.women_only,
+        "departure_time": payload.departure_time,
         "status": "open",
-        "driver_dl_last4": payload.driver_dl[-4:],
-        "driver_rc_last4": payload.driver_rc[-4:],
         "created_at": now_iso(),
     }
     if db is not None:
@@ -379,57 +373,150 @@ async def create_ride(payload: RideCreateRequest, user: dict[str, Any] = Depends
             await db.rides.insert_one(ride.copy())
         except Exception as db_err:
             logger.error(f"Database error in create_ride: {db_err}")
-    return public_ride(ride)
+    return serialize_ride(ride)
 
 
-@api_router.post("/rides/{ride_id}/book")
-async def book_ride(ride_id: str, payload: RideBookingRequest, user: dict[str, Any] = Depends(current_user)):
-    ride = next((item for item in SAMPLE_RIDES if item["id"] == ride_id), None)
-    if not ride and db is not None:
+# --- BOOKING & ESCROW PAYMENT ---
+
+@api_router.post("/bookings")
+async def create_booking(payload: BookingCreateRequest, user: dict[str, Any] = Depends(current_user)):
+    ride = None
+    if db is not None:
         try:
-            ride = await db.rides.find_one({"id": ride_id}, {"_id": 0})
+            ride = await db.rides.find_one({"id": payload.ride_id}, {"_id": 0})
         except Exception as db_err:
             logger.error(f"Database error fetching ride: {db_err}")
 
-    if not ride or ride.get("seats_left", 0) < 1:
-        raise HTTPException(status_code=404, detail="Ride is no longer available")
+    if not ride:
+        raise HTTPException(status_code=404, detail="Ride not found or expired")
 
-    discount = 50 if payload.coupon.strip().upper() == "WEEKLY50" else 0
+    if ride.get("available_seats", 0) < payload.seats_booked:
+        raise HTTPException(status_code=400, detail="Requested seats are no longer available")
+
     booking = {
-        "id": str(uuid.uuid4()),
-        "ride_id": ride_id,
+        "id": "bk_" + str(uuid.uuid4())[:8],
+        "ride_id": payload.ride_id,
+        "driver_id": ride.get("driver_id"),
         "passenger_id": user["id"],
-        "seat": payload.seat,
-        "base_fare": ride["price"],
-        "discount": min(discount, ride["price"]),
-        "total": max(0, ride["price"] - discount),
-        "boarding_otp": f"{secrets.randbelow(9000) + 1000}",
+        "passenger_name": user.get("full_name") or "Passenger",
+        "pickup_point": payload.pickup_point or ride.get("from_location"),
+        "destination_point": payload.destination_point or ride.get("to_location"),
+        "seats_booked": payload.seats_booked,
+        "fare_paid": payload.fare_paid,
+        "total_price": payload.total_price,
+        "otp": payload.otp,
+        "payment_status": "paid_in_escrow",
         "status": "confirmed",
-        "ride": public_ride(ride),
         "created_at": now_iso(),
     }
+
     if db is not None:
         try:
             await db.bookings.insert_one(booking.copy())
-            if ride_id not in {item["id"] for item in SAMPLE_RIDES}:
-                await db.rides.update_one({"id": ride_id, "seats_left": {"$gt": 0}}, {"$inc": {"seats_left": -1}})
+            await db.rides.update_one(
+                {"id": payload.ride_id},
+                {"$inc": {"available_seats": -payload.seats_booked}}
+            )
         except Exception as db_err:
-            logger.error(f"Database error in booking: {db_err}")
-    return {key: value for key, value in booking.items() if key != "passenger_id"}
+            logger.error(f"Database error saving booking: {db_err}")
+
+    return {key: val for key, val in booking.items() if key != "_id"}
 
 
-@api_router.get("/bookings/active")
-async def active_booking(user: dict[str, Any] = Depends(current_user)):
+# --- TRIP COMPLETION & DRIVER WALLET SETTLEMENT ---
+
+@api_router.post("/rides/complete-trip")
+async def complete_trip_with_otp(payload: VerifyTripOtpRequest, user: dict[str, Any] = Depends(current_user)):
     if db is None:
-        return None
-    try:
-        return await db.bookings.find_one(
-            {"passenger_id": user["id"], "status": "confirmed"}, {"_id": 0}, sort=[("created_at", -1)]
-        )
-    except Exception as db_err:
-        logger.error(f"Database error in active_booking: {db_err}")
-        return None
+        return {"success": True, "message": "Trip marked complete", "amount_credited": 95}
 
+    try:
+        booking = await db.bookings.find_one(
+            {"ride_id": payload.ride_id, "otp": payload.otp, "status": "confirmed"},
+            {"_id": 0}
+        )
+        if not booking:
+            raise HTTPException(status_code=400, detail="Invalid 4-digit ride OTP. Verification failed.")
+
+        fare_to_credit = booking.get("fare_paid", 95)
+
+        # 1. Update Booking Status
+        await db.bookings.update_one(
+            {"id": booking["id"]},
+            {"$set": {"status": "completed", "payment_status": "settled_to_driver", "completed_at": now_iso()}}
+        )
+
+        # 2. Update Ride Status
+        await db.rides.update_one(
+            {"id": payload.ride_id},
+            {"$set": {"status": "completed"}}
+        )
+
+        # 3. Credit Driver Wallet
+        await db.users.update_one(
+            {"id": user["id"]},
+            {"$inc": {"wallet_balance": fare_to_credit}}
+        )
+
+        # 4. Insert Ledger Record
+        await db.wallet_ledgers.insert_one({
+            "id": "tx_" + str(uuid.uuid4())[:8],
+            "user_id": user["id"],
+            "type": "credit",
+            "amount": fare_to_credit,
+            "description": f"Trip Completed: {booking.get('pickup_point')} to {booking.get('destination_point')}",
+            "created_at": now_iso(),
+        })
+
+        return {
+            "success": True,
+            "message": "OTP Verified! Fare credited to your wallet.",
+            "amount_credited": fare_to_credit
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error completing trip: {e}")
+        raise HTTPException(status_code=500, detail="Trip completion failed")
+
+
+# --- DRIVER PAYOUT WITHDRAWAL ---
+
+@api_router.post("/wallet/withdraw")
+async def withdraw_payout(payload: PayoutWithdrawRequest, user: dict[str, Any] = Depends(current_user)):
+    if db is not None:
+        try:
+            curr = await db.users.find_one({"id": user["id"]}, {"_id": 0})
+            curr_balance = curr.get("wallet_balance", 0.0) if curr else 0.0
+
+            if curr_balance < payload.amount:
+                raise HTTPException(status_code=400, detail="Insufficient wallet balance")
+
+            await db.users.update_one(
+                {"id": user["id"]},
+                {"$inc": {"wallet_balance": -payload.amount}}
+            )
+
+            await db.wallet_ledgers.insert_one({
+                "id": "po_" + str(uuid.uuid4())[:8],
+                "user_id": user["id"],
+                "type": "debit",
+                "amount": payload.amount,
+                "description": f"Payout Initiated to UPI: {payload.upi_id}",
+                "created_at": now_iso(),
+            })
+
+            return {"success": True, "message": f"₹{payload.amount} payout initiated to {payload.upi_id}"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"Payout failed: {e}")
+            raise HTTPException(status_code=500, detail="Payout withdrawal failed")
+
+    return {"success": True, "message": f"₹{payload.amount} payout initiated to {payload.upi_id}"}
+
+
+# --- SOS EMERGENCY ---
 
 @api_router.post("/rides/{ride_id}/sos")
 async def send_sos(ride_id: str, payload: SosRequest, user: dict[str, Any] = Depends(current_user)):
