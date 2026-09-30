@@ -19,6 +19,18 @@ interface LocationPickerProps {
   title?: string;
 }
 
+const POPULAR_HUBS = [
+  { name: "Hitec City", lat: 17.4435, lon: 78.3772 },
+  { name: "Madhapur", lat: 17.4483, lon: 78.3915 },
+  { name: "Gachibowli", lat: 17.4401, lon: 78.3489 },
+  { name: "Kondapur", lat: 17.4699, lon: 78.3578 },
+  { name: "Kukatpally", lat: 17.4947, lon: 78.3996 },
+  { name: "Jubilee Hills", lat: 17.4319, lon: 78.4073 },
+  { name: "Secunderabad", lat: 17.4399, lon: 78.4983 },
+  { name: "LB Nagar", lat: 17.3457, lon: 78.5522 },
+  { name: "Ameerpet", lat: 17.4375, lon: 78.4482 },
+];
+
 export function LocationPickerModal({
   visible,
   onClose,
@@ -28,26 +40,54 @@ export function LocationPickerModal({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  const [centerCoords, setCenterCoords] = useState({ lat: 17.385, lon: 78.4867 }); // Hyderabad default
-  const [pickedAddress, setPickedAddress] = useState("");
+  const [centerCoords, setCenterCoords] = useState({ lat: 17.4435, lon: 78.3772 }); // Default Hitec City, Hyderabad
+  const [pickedAddress, setPickedAddress] = useState("Hitec City, Hyderabad");
   const [fetchingAddress, setFetchingAddress] = useState(false);
 
-  // Search places via typing
+  // Clean locality helper (Ward numbers & unnecessary state codes ni remove chesthundi)
+  const formatCleanName = (item: any) => {
+    const addr = item.address || {};
+    const mainArea =
+      addr.suburb ||
+      addr.neighbourhood ||
+      addr.residential ||
+      addr.commercial ||
+      addr.industrial ||
+      item.name ||
+      item.display_name.split(",")[0];
+
+    const city = addr.city || addr.town || addr.county || "Hyderabad";
+    return `${mainArea}, ${city}`;
+  };
+
+  // Search places via typing focused strictly on Hyderabad & Telugu states
   const searchPlaces = async (text: string) => {
     setQuery(text);
-    if (text.length < 3) {
+    if (text.trim().length < 2) {
       setResults([]);
       return;
     }
     setLoading(true);
     try {
+      // viewbox coordinates limit priority to Hyderabad and surrounding corridors
       const res = await fetch(
         `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
-          text
-        )}&format=json&addressdetails=1&limit=5&countrycodes=in`
+          text.trim()
+        )}&format=json&addressdetails=1&limit=6&countrycodes=in&viewbox=78.15,17.15,78.68,17.62&bounded=0`,
+        {
+          headers: {
+            "Accept-Language": "en",
+          },
+        }
       );
       const data = await res.json();
-      setResults(data);
+      if (Array.isArray(data)) {
+        const cleaned = data.map((item) => ({
+          ...item,
+          cleanName: formatCleanName(item),
+        }));
+        setResults(cleaned);
+      }
     } catch {
       setResults([]);
     } finally {
@@ -55,21 +95,21 @@ export function LocationPickerModal({
     }
   };
 
-  // Reverse geocode when map center changes
+  // Reverse geocode when coordinates change
   const updateAddressFromCoords = async (lat: number, lon: number) => {
     setFetchingAddress(true);
     try {
       const res = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
+        `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1`,
+        {
+          headers: {
+            "Accept-Language": "en",
+          },
+        }
       );
       const data = await res.json();
-      const name =
-        data.address?.suburb ||
-        data.address?.neighbourhood ||
-        data.address?.city ||
-        data.address?.town ||
-        data.display_name;
-      setPickedAddress(name);
+      const clean = formatCleanName(data);
+      setPickedAddress(clean);
     } catch {
       setPickedAddress(`${lat.toFixed(4)}, ${lon.toFixed(4)}`);
     } finally {
@@ -86,8 +126,20 @@ export function LocationPickerModal({
   const handleSelectFromList = (item: any) => {
     const lat = parseFloat(item.lat);
     const lon = parseFloat(item.lon);
-    const name = item.display_name.split(",")[0] + ", " + (item.address?.city || item.address?.state || "");
-    onSelect(name, lat, lon);
+    const displayName = item.cleanName || formatCleanName(item);
+
+    setCenterCoords({ lat, lon });
+    setPickedAddress(displayName);
+    setQuery("");
+    setResults([]);
+    onSelect(displayName, lat, lon);
+    onClose();
+  };
+
+  const handleSelectQuickHub = (hub: { name: string; lat: number; lon: number }) => {
+    setCenterCoords({ lat: hub.lat, lon: hub.lon });
+    setPickedAddress(`${hub.name}, Hyderabad`);
+    onSelect(`${hub.name}, Hyderabad`, hub.lat, hub.lon);
     onClose();
   };
 
@@ -114,7 +166,7 @@ export function LocationPickerModal({
             <Icon name="magnify" size={20} color={colors.muted} />
             <TextInput
               style={styles.input}
-              placeholder="Search area, landmark or town..."
+              placeholder="Search area (e.g. Hitec City, Madhapur, LB Nagar)..."
               placeholderTextColor={colors.muted}
               value={query}
               onChangeText={searchPlaces}
@@ -122,32 +174,57 @@ export function LocationPickerModal({
             {loading && <ActivityIndicator size="small" color={colors.brand} />}
           </View>
 
-          {/* Autocomplete Results */}
+          {/* Autocomplete Results Dropdown */}
           {results.length > 0 && (
             <View style={styles.resultsList}>
               <FlatList
                 data={results}
-                keyExtractor={(item) => item.place_id.toString()}
+                keyExtractor={(item, idx) => item.place_id ? item.place_id.toString() : idx.toString()}
                 renderItem={({ item }) => (
                   <TouchableOpacity
                     style={styles.resultItem}
                     onPress={() => handleSelectFromList(item)}
                   >
                     <Icon name="map-marker-outline" size={18} color={colors.brand} />
-                    <Text style={styles.resultText} numberOfLines={1}>
-                      {item.display_name}
-                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.resultText} numberOfLines={1}>
+                        {item.cleanName}
+                      </Text>
+                      <Text style={styles.subResultText} numberOfLines={1}>
+                        {item.display_name}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
                 )}
               />
             </View>
           )}
 
-          {/* Interactive Drag Map Frame */}
+          {/* Popular Areas Quick Chips (Always accessible when not searching) */}
+          {results.length === 0 && (
+            <View style={styles.quickHubWrap}>
+              <Text style={styles.quickHubTitle}>FREQUENT HUBS & CORRIDORS</Text>
+              <View style={styles.hubChipsContainer}>
+                {POPULAR_HUBS.map((hub) => (
+                  <TouchableOpacity
+                    key={hub.name}
+                    onPress={() => handleSelectQuickHub(hub)}
+                    style={styles.hubChip}
+                    activeOpacity={0.8}
+                  >
+                    <Icon name="map-marker" size={12} color="#0284C7" />
+                    <Text style={styles.hubChipText}>{hub.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Interactive Live Map Frame */}
           <View style={styles.mapBox}>
             <iframe
               title="map"
-              src={`https://www.openstreetmap.org/export/embed.html?bbox=${centerCoords.lon - 0.02}%2C${centerCoords.lat - 0.02}%2C${centerCoords.lon + 0.02}%2C${centerCoords.lat + 0.02}&layer=mapnik&marker=${centerCoords.lat}%2C${centerCoords.lon}`}
+              src={`https://www.openstreetmap.org/export/embed.html?bbox=${centerCoords.lon - 0.015}%2C${centerCoords.lat - 0.015}%2C${centerCoords.lon + 0.015}%2C${centerCoords.lat + 0.015}&layer=mapnik&marker=${centerCoords.lat}%2C${centerCoords.lon}`}
               style={{ width: "100%", height: "100%", border: "none", borderRadius: 12 }}
             />
             <View style={styles.centerPinWrap} pointerEvents="none">
@@ -159,8 +236,8 @@ export function LocationPickerModal({
           <View style={styles.footer}>
             <View style={{ flex: 1 }}>
               <Text style={styles.selectedLabel}>Selected Location:</Text>
-              <Text style={styles.selectedAddress} numberOfLines={2}>
-                {fetchingAddress ? "Detecting area name..." : pickedAddress || "Move map or search"}
+              <Text style={styles.selectedAddress} numberOfLines={1}>
+                {fetchingAddress ? "Detecting area name..." : pickedAddress || "Choose locality"}
               </Text>
             </View>
             <TouchableOpacity
@@ -168,7 +245,7 @@ export function LocationPickerModal({
               disabled={fetchingAddress || !pickedAddress}
               style={[styles.confirmBtn, (!pickedAddress || fetchingAddress) && { opacity: 0.6 }]}
             >
-              <Text style={styles.confirmBtnText}>Confirm</Text>
+              <Text style={styles.confirmBtnText}>Confirm Location ➔</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -184,9 +261,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     padding: 16,
-    maxHeight: "85%",
-    minHeight: 480,
-    gap: 12,
+    maxHeight: "88%",
+    minHeight: 520,
+    gap: 10,
   },
   header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   title: { color: "#FFFFFF", fontSize: 17, fontWeight: "700" },
@@ -204,7 +281,7 @@ const styles = StyleSheet.create({
   resultsList: {
     backgroundColor: "#1E293B",
     borderRadius: 12,
-    maxHeight: 160,
+    maxHeight: 180,
     overflow: "hidden",
   },
   resultItem: {
@@ -215,9 +292,41 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.5,
     borderBottomColor: "#334155",
   },
-  resultText: { color: "#F8FAFC", fontSize: 13, flex: 1 },
+  resultText: { color: "#FFFFFF", fontSize: 14, fontWeight: "700" },
+  subResultText: { color: "#94A3B8", fontSize: 11, marginTop: 2 },
+  quickHubWrap: {
+    paddingVertical: 4,
+  },
+  quickHubTitle: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#64748B",
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  hubChipsContainer: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  hubChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#1E293B",
+    borderWidth: 1,
+    borderColor: "#334155",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  hubChipText: {
+    color: "#E2E8F0",
+    fontSize: 11,
+    fontWeight: "700",
+  },
   mapBox: {
-    height: 240,
+    height: 200,
     borderRadius: 12,
     overflow: "hidden",
     position: "relative",
@@ -233,16 +342,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingTop: 8,
+    paddingTop: 6,
     gap: 12,
   },
   selectedLabel: { color: colors.muted, fontSize: 11, fontWeight: "600" },
-  selectedAddress: { color: "#FFFFFF", fontSize: 14, fontWeight: "700", marginTop: 2 },
+  selectedAddress: { color: "#38BDF8", fontSize: 14, fontWeight: "800", marginTop: 2 },
   confirmBtn: {
     backgroundColor: colors.brand,
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
     borderRadius: 12,
   },
-  confirmBtnText: { color: "#0F172A", fontWeight: "800", fontSize: 14 },
+  confirmBtnText: { color: "#0F172A", fontWeight: "800", fontSize: 13 },
 });
