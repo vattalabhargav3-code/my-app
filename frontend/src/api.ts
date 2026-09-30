@@ -4,37 +4,49 @@ import { storage } from "./utils/storage";
 const API_BASE = "https://backend-alpha-gray.vercel.app";
 export const SESSION_KEY = "safarway.access-token";
 
-export type User = { id: string; phone: string; id_verified: boolean };
+export type User = {
+  id: string;
+  phone: string;
+  full_name?: string;
+  role?: string;
+  id_verified: boolean;
+};
 
 export type Ride = {
   id: string;
+  driver_id?: string;
   driver_name: string;
-  vehicle: string;
-  type: string;
-  mode: string;
-  from: string;
-  to: string;
-  stops?: string;
-  seats_left: number;
-  price: number;
-  rating: string;
+  vehicle_type?: string;
+  vehicle_name?: string;
+  from_location: string;
+  to_location: string;
+  available_seats: number;
+  price_per_seat: number;
+  women_only?: boolean;
   departure_time?: string;
+  status?: string;
 };
 
 export type Booking = {
   id: string;
-  total: number;
-  discount: number;
-  boarding_otp: string;
-  seat: string;
-  ride: Ride;
+  ride_id: string;
+  passenger_id: string;
+  passenger_name: string;
+  pickup_point: string;
+  destination_point: string;
+  seats_booked: number;
+  fare_paid: number;
+  total_price: number;
+  status: string;
+  otp: string;
+  payment_status: string;
+  created_at?: string;
 };
 
-// Safe గా plain string లేదా JSON token ను లాగే ఫంక్షన్
+// Safe ga token extract chese function
 async function getCleanToken(explicitToken?: string): Promise<string | null> {
   let raw: any = explicitToken || null;
 
-  // 1. Direct Web localStorage Check
   if (!raw && typeof window !== "undefined" && window.localStorage) {
     raw =
       window.localStorage.getItem(SESSION_KEY) ||
@@ -43,7 +55,6 @@ async function getCleanToken(explicitToken?: string): Promise<string | null> {
       window.localStorage.getItem("access_token");
   }
 
-  // 2. Fallback to storage helper
   if (!raw) {
     try {
       raw =
@@ -60,7 +71,6 @@ async function getCleanToken(explicitToken?: string): Promise<string | null> {
   let tokenStr = typeof raw === "string" ? raw : JSON.stringify(raw);
   tokenStr = tokenStr.trim().replace(/^"(.*)"$/, "$1");
 
-  // Unexpected JSON unwrap
   if (tokenStr.startsWith("{") && tokenStr.endsWith("}")) {
     try {
       const parsed = JSON.parse(tokenStr);
@@ -84,7 +94,6 @@ export async function api<T = any>(path: string, options: RequestInit = {}, toke
     headers["Authorization"] = `Bearer ${savedToken}`;
   }
 
-  // 404 రాకుండా /api ప్రిఫిక్స్ ఖచ్చితంగా ఉండేలా సెట్ చేయడం
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
   const targetUrl = cleanPath.startsWith("/api")
     ? `${API_BASE}${cleanPath}`
@@ -104,13 +113,4 @@ export async function api<T = any>(path: string, options: RequestInit = {}, toke
 
 export function errorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
-}
-
-export async function saveRideToMongo(rideData: any) {
-  const res = await fetch("/api/save", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(rideData),
-  });
-  return await res.json();
 }
