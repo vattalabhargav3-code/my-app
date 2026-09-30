@@ -1,256 +1,309 @@
-import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Ride } from "@/src/api";
-import { Icon } from "@/src/components/ui";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  FlatList,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { RideCard } from "@/src/components/RideCard";
+import { LocationPickerModal } from "@/src/components/LocationPickerModal";
 
-interface RideCardProps {
-  ride: Ride;
-  onPress: () => void;
-}
+// డమ్మీ రైడ్స్ డేటా (స్క్రీన్ వెంటనే లోడ్ అవ్వడానికి)
+const INITIAL_RIDES = [
+  {
+    id: "1",
+    driver_name: "Suresh Kumar",
+    vehicle_name: "SWIFT DZIRE",
+    vehicle_type: "car",
+    from_location: "LB Nagar Ring Road",
+    to_location: "Hitec City Cyber Towers",
+    price_per_seat: 120,
+    available_seats: 3,
+    departure_time: "Today, 08:30 AM",
+  },
+  {
+    id: "2",
+    driver_name: "Ramesh Reddy",
+    vehicle_name: "HONDA CITY",
+    vehicle_type: "car",
+    from_location: "Kukatpally Housing Board",
+    to_location: "Gachibowli DLF",
+    price_per_seat: 95,
+    available_seats: 2,
+    departure_time: "Today, 09:00 AM",
+  },
+  {
+    id: "3",
+    driver_name: "Venkatesh",
+    vehicle_name: "ERTIGA XL",
+    vehicle_type: "car",
+    from_location: "Secunderabad Station",
+    to_location: "Madhapur Metro",
+    price_per_seat: 110,
+    available_seats: 4,
+    departure_time: "Today, 09:15 AM",
+  },
+];
 
-export function RideCard({ ride, onPress }: RideCardProps) {
-  // Amount & Fields fallback check
-  const fare =
-    (ride as any).price_per_seat ??
-    (ride as any).price ??
-    (ride as any).seat_price ??
-    95;
+export default function PassengerHome({ navigation }: any) {
+  const [pickup, setPickup] = useState("LB Nagar, Hyderabad");
+  const [drop, setDrop] = useState("Hitec City, Hyderabad");
+  const [modalType, setModalType] = useState<"pickup" | "drop" | null>(null);
+  const [rides, setRides] = useState(INITIAL_RIDES);
+  const [loading, setLoading] = useState(false);
 
-  const seatsLeft =
-    (ride as any).available_seats ??
-    (ride as any).seats_left ??
-    3;
+  const handleSelectLocation = (address: string, lat: number, lon: number) => {
+    if (modalType === "pickup") {
+      setPickup(address);
+    } else if (modalType === "drop") {
+      setDrop(address);
+    }
+  };
 
-  const pickupPoint =
-    (ride as any).from_location ||
-    (ride as any).from ||
-    "Pickup Point";
-
-  const dropPoint =
-    (ride as any).to_location ||
-    (ride as any).to ||
-    "Destination Point";
-
-  const vehicleName =
-    (ride as any).vehicle_name ||
-    `${((ride as any).vehicle_type || (ride as any).type || "car").toUpperCase()} POOL`;
+  const handleSearchRides = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+    }, 600);
+  };
 
   return (
-    <View style={styles.cardContainer}>
-      {/* Header: Driver Info & Price */}
-      <View style={styles.topRow}>
-        <View style={styles.driverInfoWrap}>
-          <View style={styles.avatarCircle}>
-            <Icon name="account" size={20} color="#0284C7" />
-          </View>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
           <View>
-            <View style={styles.nameRow}>
-              <Text style={styles.driverName}>
-                {ride.driver_name || "Verified Partner"}
-              </Text>
-              <View style={styles.verifiedBadge}>
-                <Text style={styles.verifiedBadgeText}>Verified</Text>
-              </View>
-            </View>
-            <Text style={styles.vehicleText}>{vehicleName}</Text>
+            <Text style={styles.headerSubtitle}>Ready for your commute?</Text>
+            <Text style={styles.headerTitle}>Find a Ride Pool</Text>
+          </View>
+          <View style={styles.profileBadge}>
+            <Text style={styles.profileBadgeText}>👤</Text>
           </View>
         </View>
 
-        {/* Fare Highlight */}
-        <View style={styles.priceContainer}>
-          <Text style={styles.priceValue}>₹{fare}</Text>
-          <Text style={styles.perSeatLabel}>per seat</Text>
-        </View>
-      </View>
+        {/* Search Card */}
+        <View style={styles.searchCard}>
+          <TouchableOpacity
+            style={styles.locationInputRow}
+            onPress={() => setModalType("pickup")}
+          >
+            <View style={styles.greenDot} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>PICKUP LOCATION</Text>
+              <Text style={styles.inputText} numberOfLines={1}>
+                {pickup}
+              </Text>
+            </View>
+            <Text style={styles.editIcon}>✏️</Text>
+          </TouchableOpacity>
 
-      {/* Route Section */}
-      <View style={styles.routeBox}>
-        <View style={styles.locationItem}>
-          <View style={styles.greenDot} />
-          <Text style={styles.locationText} numberOfLines={1}>
-            {pickupPoint}
-          </Text>
-        </View>
-        <View style={styles.routeLine} />
-        <View style={styles.locationItem}>
-          <View style={styles.redDot} />
-          <Text style={styles.locationText} numberOfLines={1}>
-            {dropPoint}
-          </Text>
-        </View>
-      </View>
+          <View style={styles.dividerLine} />
 
-      {/* Footer: Departure & Direct Action Button */}
-      <View style={styles.bottomRow}>
-        <View style={styles.timeWrap}>
-          <Icon name="clock-outline" size={15} color="#64748B" />
-          <Text style={styles.timeText}>
-            {ride.departure_time || "Today in 15 mins"}
-          </Text>
-          <Text style={styles.seatsBadge}>• {seatsLeft} seats left</Text>
+          <TouchableOpacity
+            style={styles.locationInputRow}
+            onPress={() => setModalType("drop")}
+          >
+            <View style={styles.redDot} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.inputLabel}>DROP DESTINATION</Text>
+              <Text style={styles.inputText} numberOfLines={1}>
+                {drop}
+              </Text>
+            </View>
+            <Text style={styles.editIcon}>✏️</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={handleSearchRides}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.searchButtonText}>Search Available Rides ➔</Text>
+          </TouchableOpacity>
         </View>
 
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={onPress}
-          style={styles.bookBtn}
-        >
-          <Text style={styles.bookBtnText}>Book (₹{fare}) ➔</Text>
-        </TouchableOpacity>
+        {/* Available Rides Header */}
+        <View style={styles.ridesHeaderRow}>
+          <Text style={styles.sectionTitle}>Available Rides</Text>
+          <Text style={styles.poolCountBadge}>{rides.length} Pools active</Text>
+        </View>
+
+        {/* Rides List */}
+        {loading ? (
+          <View style={styles.loaderWrap}>
+            <ActivityIndicator size="large" color="#0284C7" />
+            <Text style={styles.loaderText}>Searching nearby cars...</Text>
+          </View>
+        ) : (
+          <FlatList
+            data={rides}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <RideCard
+                ride={item as any}
+                onPress={() => {
+                  if (navigation && navigation.navigate) {
+                    navigation.navigate("RideDetails", { ride: item });
+                  } else {
+                    alert(`Booking seat with ${item.driver_name}`);
+                  }
+                }}
+              />
+            )}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+
+        {/* Location Picker Modal */}
+        <LocationPickerModal
+          visible={modalType !== null}
+          title={modalType === "pickup" ? "Select Pickup Point" : "Select Drop Point"}
+          onClose={() => setModalType(null)}
+          onSelect={handleSelectLocation}
+        />
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  cardContainer: {
-    backgroundColor: "#FFFFFF", // స్పష్టమైన వైట్ బ్యాక్‌గ్రౌండ్ (నలుపు పోతుంది)
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 12,
-  },
-  driverInfoWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+  safeArea: {
     flex: 1,
-  },
-  avatarCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: "#F0F9FF",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#BAE6FD",
-  },
-  nameRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-  },
-  driverName: {
-    fontSize: 15,
-    fontWeight: "800",
-    color: "#0F172A",
-  },
-  verifiedBadge: {
-    backgroundColor: "#F0FDF4",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-  },
-  verifiedBadgeText: {
-    fontSize: 10,
-    fontWeight: "800",
-    color: "#16A34A",
-  },
-  vehicleText: {
-    fontSize: 11,
-    color: "#64748B",
-    marginTop: 2,
-    fontWeight: "600",
-  },
-  priceContainer: {
-    alignItems: "flex-end",
-  },
-  priceValue: {
-    fontSize: 22,
-    fontWeight: "900",
-    color: "#16A34A", // స్పష్టమైన ఆకుపచ్చ రంగులో ధర
-  },
-  perSeatLabel: {
-    fontSize: 10,
-    color: "#94A3B8",
-    fontWeight: "700",
-  },
-  routeBox: {
     backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#F1F5F9",
   },
-  locationItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+  container: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
-  greenDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#10B981",
-  },
-  redDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: "#EF4444",
-  },
-  routeLine: {
-    width: 2,
-    height: 12,
-    backgroundColor: "#CBD5E1",
-    marginLeft: 3,
-    marginVertical: 2,
-  },
-  locationText: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#1E293B",
-  },
-  bottomRow: {
+  header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
+    marginBottom: 16,
   },
-  timeWrap: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  timeText: {
+  headerSubtitle: {
     fontSize: 12,
     fontWeight: "700",
     color: "#64748B",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
   },
-  seatsBadge: {
-    fontSize: 11,
+  headerTitle: {
+    fontSize: 22,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  profileBadge: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: "#E2E8F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  profileBadgeText: {
+    fontSize: 18,
+  },
+  searchCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    shadowColor: "#0F172A",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3,
+  },
+  locationInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    paddingVertical: 6,
+  },
+  greenDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#10B981",
+  },
+  redDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#EF4444",
+  },
+  inputLabel: {
+    fontSize: 10,
+    fontWeight: "800",
+    color: "#94A3B8",
+    marginBottom: 2,
+  },
+  inputText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#1E293B",
+  },
+  editIcon: {
+    fontSize: 14,
+    opacity: 0.6,
+  },
+  dividerLine: {
+    height: 1,
+    backgroundColor: "#F1F5F9",
+    marginVertical: 10,
+    marginLeft: 22,
+  },
+  searchButton: {
+    backgroundColor: "#FFC000",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 14,
+  },
+  searchButtonText: {
+    fontSize: 14,
+    fontWeight: "900",
+    color: "#0F172A",
+  },
+  ridesHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+  poolCountBadge: {
+    fontSize: 12,
     fontWeight: "700",
     color: "#0284C7",
-    marginLeft: 4,
   },
-  bookBtn: {
-    backgroundColor: "#0284C7",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    shadowColor: "#0284C7",
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 2,
+  listContent: {
+    paddingBottom: 24,
   },
-  bookBtnText: {
-    color: "#FFFFFF",
+  loaderWrap: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 40,
+  },
+  loaderText: {
+    marginTop: 10,
     fontSize: 13,
-    fontWeight: "800",
+    color: "#64748B",
+    fontWeight: "600",
   },
 });
