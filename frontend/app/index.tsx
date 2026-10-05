@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { api, SESSION_KEY, User } from "@/src/api";
-import { AuthScreen } from "@/src/screens/AuthScreen";
-import { PassengerHome } from "@/src/screens/PassengerHome";
+
+// ✅ ఇక్కడ { } తీసేసి సరైన Imports ఇచ్చాం:
+import AuthScreen from "@/src/screens/AuthScreen";
+import PassengerHome from "@/src/screens/PassengerHome";
+
 import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 import { storage } from "@/src/utils/storage";
