@@ -1,9 +1,8 @@
 import React from "react";
 import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import { Ride } from "@/src/api";
 
-interface RideCardProps {
-  ride: Ride;
+export interface RideCardProps {
+  ride: any;
   onPress: () => void;
 }
 
@@ -11,34 +10,34 @@ export function RideCard({ ride, onPress }: RideCardProps) {
   if (!ride) return null;
 
   const fare =
-    (ride as any).price_per_seat ??
-    (ride as any).price ??
-    (ride as any).seat_price ??
+    ride.price_per_seat ??
+    ride.price ??
+    ride.seat_price ??
     95;
 
   const seatsLeft =
-    (ride as any).available_seats ??
-    (ride as any).seats_left ??
+    ride.available_seats ??
+    ride.seats_left ??
     3;
 
   const pickupPoint =
-    (ride as any).from_location ||
-    (ride as any).from ||
+    ride.from_location ||
+    ride.from ||
     "Pickup Point";
 
   const dropPoint =
-    (ride as any).to_location ||
-    (ride as any).to ||
+    ride.to_location ||
+    ride.to ||
     "Destination Point";
 
   const driverName =
-    (ride as any).driver_name ||
-    (ride as any).driver ||
+    ride.driver_name ||
+    ride.driver ||
     "Verified Partner";
 
   const vehicleName =
-    (ride as any).vehicle_name ||
-    `${((ride as any).vehicle_type || (ride as any).type || "car").toUpperCase()} POOL`;
+    ride.vehicle_name ||
+    `${(ride.vehicle_type || ride.type || "car").toUpperCase()} POOL`;
 
   return (
     <View style={styles.cardContainer}>
@@ -88,7 +87,7 @@ export function RideCard({ ride, onPress }: RideCardProps) {
         <View style={styles.timeWrap}>
           <Text style={styles.clockIcon}>🕒</Text>
           <Text style={styles.timeText}>
-            {(ride as any).departure_time || "Today in 15 mins"}
+            {ride.departure_time || "Today in 15 mins"}
           </Text>
           <Text style={styles.seatsBadge}>• {seatsLeft} seats left</Text>
         </View>
@@ -105,7 +104,6 @@ export function RideCard({ ride, onPress }: RideCardProps) {
   );
 }
 
-// ✅ ఈ లైన్ యాడ్ చేశాం:
 export default RideCard;
 
 const styles = StyleSheet.create({
