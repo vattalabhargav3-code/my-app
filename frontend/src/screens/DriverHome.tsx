@@ -11,838 +11,420 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import RideCard from "@/src/components/RideCard";
-import LocationPickerModal from "@/src/components/LocationPickerModal";
 import InteractiveMap from "@/src/components/InteractiveMap";
+import LocationPickerModal from "@/src/components/LocationPickerModal";
 
-// Language Dictionary
-const TRANSLATIONS: any = {
-  English: {
-    home: "Home",
-    myRides: "My Rides",
-    offers: "Offers",
-    profile: "Profile",
-    searchTitle: "Find a Ride Pool",
-    pickupLabel: "PICKUP LOCATION",
-    dropLabel: "DROP DESTINATION",
-    searchBtn: "Search Carpools ➔",
-    livePools: "Available Rides",
-    sosHeader: "Emergency & Safety Hub",
-    settingsTitle: "App Settings & Language",
-  },
-  Telugu: {
-    home: "హోమ్",
-    myRides: "నా రైడ్స్",
-    offers: "ఆఫర్లు",
-    profile: "ప్రొఫైల్",
-    searchTitle: "కార్‌పూల్ రైడ్ వెతకండి",
-    pickupLabel: "పికప్ లొకేషన్",
-    dropLabel: "డ్రాప్ లొకేషన్",
-    searchBtn: "రైడ్స్ వెతకండి ➔",
-    livePools: "అందుబాటులో ఉన్న రైడ్లు",
-    sosHeader: "అత్యవసర రక్షణ కేంద్రం",
-    settingsTitle: "సెట్టింగ్స్ & భాష",
-  },
-  Hindi: {
-    home: "होम",
-    myRides: "मेरी राइड्स",
-    offers: "ऑफ़र्स",
-    profile: "प्रोफ़ाइल",
-    searchTitle: "राइड पूल खोजें",
-    pickupLabel: "पिकअप स्थान",
-    dropLabel: "ड्रॉप स्थान",
-    searchBtn: "राइड्स खोजें ➔",
-    livePools: "उपलब्ध राइड्स",
-    sosHeader: "आपातकालीन और सुरक्षा केंद्र",
-    settingsTitle: "सेटिंग्स और भाषा",
-  },
-  Tenglish: {
-    home: "Home",
-    myRides: "Naa Rides",
-    offers: "Offers",
-    profile: "Profile",
-    searchTitle: "Ride Pool Vethakandi",
-    pickupLabel: "PICKUP POINT",
-    dropLabel: "DROP POINT",
-    searchBtn: "Pools Choodandi ➔",
-    livePools: "Live Rides",
-    sosHeader: "Emergency & Safety",
-    settingsTitle: "Settings & Language",
-  },
-};
+export default function DriverHome({ navigation }: any) {
+  // Navigation Tabs for Driver Portal
+  const [driverTab, setDriverTab] = useState<"POST" | "MY_RIDES" | "EARNINGS" | "PROFILE">("POST");
 
-export default function PassengerHome({ navigation }: any) {
-  // Onboarding / Profile States
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState("");
-  const [userEmail, setUserEmail] = useState("");
-  const [employeeId, setEmployeeId] = useState("");
-  const [userPhone, setUserPhone] = useState("8919326622");
-  const [selectedLanguage, setSelectedLanguage] = useState("Tenglish");
+  // Driver Identity & Vehicle Info
+  const [driverName, setDriverName] = useState("Bhargav (Driver)");
+  const [driverPhone, setDriverPhone] = useState("8919326622");
+  const [vehicleName, setVehicleName] = useState("Swift Dzire (White)");
+  const [vehicleNumber, setVehicleNumber] = useState("TS09AB1234");
 
-  // App Navigation & Modals
-  const [currentTab, setCurrentTab] = useState<"HOME" | "RIDES" | "OFFERS" | "PROFILE">("HOME");
-  const [showEditProfile, setShowEditProfile] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showEmergencyHub, setShowEmergencyHub] = useState(false);
-  const [showReferModal, setShowReferModal] = useState(false);
-
-  // Map & Route States
-  const [coords, setCoords] = useState({ lat: 17.4435, lon: 78.3772 });
-  const [pickup, setPickup] = useState("Hitec City, Hyderabad");
-  const [drop, setDrop] = useState("LB Nagar, Hyderabad");
+  // Map & Route Coordinates
+  const [coords, setCoords] = useState({ lat: 17.3457, lon: 78.5522 }); // LB Nagar default
+  const [pickup, setPickup] = useState("LB Nagar Ring Road, Hyderabad");
+  const [drop, setDrop] = useState("Hitec City Cyber Towers, Hyderabad");
   const [modalType, setModalType] = useState<"pickup" | "drop" | null>(null);
 
-  // Rides & Live Booking
-  const [rides, setRides] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedRideForBooking, setSelectedRideForBooking] = useState<any>(null);
-  const [activeBookedRide, setActiveBookedRide] = useState<any>(null);
-  const [isRideStarted, setIsRideStarted] = useState(false);
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  // Ride Pricing & Capacity Details
+  const [availableSeats, setAvailableSeats] = useState("3");
+  const [pricePerSeat, setPricePerSeat] = useState("100");
+  const [departureTime, setDepartureTime] = useState("Today in 15 mins");
+  const [femaleOnly, setFemaleOnly] = useState(false);
 
-  const t = TRANSLATIONS[selectedLanguage] || TRANSLATIONS.English;
+  // Published Rides State
+  const [myPublishedRides, setMyPublishedRides] = useState<any[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Local Storage Sync
-  useEffect(() => {
+  // Load Driver's Rides
+  const loadDriverRides = () => {
     try {
-      const savedUser = localStorage.getItem("PASSENGER_USER_PROFILE");
-      if (savedUser) {
-        const parsed = JSON.parse(savedUser);
-        setUserName(parsed.name || "");
-        setUserEmail(parsed.email || "");
-        setEmployeeId(parsed.employeeId || "");
-        setUserPhone(parsed.phone || "8919326622");
-        setSelectedLanguage(parsed.language || "Tenglish");
-        setIsLoggedIn(true);
+      const stored = localStorage.getItem("SHARED_CARPOOL_RIDES");
+      if (stored) {
+        const allRides = JSON.parse(stored);
+        setMyPublishedRides(allRides);
       }
     } catch {}
+  };
 
-    const syncRides = () => {
-      try {
-        const stored = localStorage.getItem("SHARED_CARPOOL_RIDES");
-        if (stored) {
-          setRides(JSON.parse(stored));
-        }
-      } catch {}
-    };
-
-    syncRides();
-    const interval = setInterval(syncRides, 2000);
+  useEffect(() => {
+    loadDriverRides();
+    const interval = setInterval(loadDriverRides, 3000);
     return () => clearInterval(interval);
   }, []);
 
-  // Save Profile Details
-  const handleSaveProfile = (skipId: boolean = false) => {
-    if (!userName.trim() || !userEmail.trim()) {
-      alert("Name mariyu Email ID enter cheyandi");
+  // Publish Ride Function (Direct sync to Passenger app)
+  const handlePublishRide = () => {
+    if (!pickup.trim() || !drop.trim() || !pricePerSeat.trim()) {
+      alert("Dhayachesi Pickup, Drop mariyu Seat Price enter cheyandi");
       return;
     }
 
-    const profileData = {
-      name: userName.trim(),
-      email: userEmail.trim(),
-      phone: userPhone.trim(),
-      employeeId: skipId ? "Not Provided" : employeeId.trim(),
-      language: selectedLanguage,
+    setIsSubmitting(true);
+
+    const newRide = {
+      id: "ride_" + Date.now(),
+      driver_name: driverName,
+      phone: driverPhone,
+      vehicle_name: vehicleName,
+      vehicle_number: vehicleNumber,
+      from_location: pickup,
+      to_location: drop,
+      coords: coords,
+      price_per_seat: Number(pricePerSeat),
+      available_seats: Number(availableSeats),
+      departure_time: departureTime,
+      female_only: femaleOnly,
+      status: "ACTIVE",
+      created_at: new Date().toISOString(),
     };
 
     try {
-      localStorage.setItem("PASSENGER_USER_PROFILE", JSON.stringify(profileData));
+      const stored = localStorage.getItem("SHARED_CARPOOL_RIDES");
+      const currentList = stored ? JSON.parse(stored) : [];
+      const updatedList = [newRide, ...currentList];
+      localStorage.setItem("SHARED_CARPOOL_RIDES", JSON.stringify(updatedList));
+      setMyPublishedRides(updatedList);
     } catch {}
 
-    setIsLoggedIn(true);
-    setShowEditProfile(false);
-  };
-
-  // Confirm Booking (Strictly Online Payment Only)
-  const handleConfirmOnlineBooking = () => {
-    setPaymentSuccess(true);
     setTimeout(() => {
-      setPaymentSuccess(false);
-      const bookingData = {
-        bookingId: "BK-" + Math.floor(100000 + Math.random() * 900000),
-        ride: selectedRideForBooking,
-        driverNumber: selectedRideForBooking.phone || "8919326622",
-        driverLocation: selectedRideForBooking.from_location,
-        driverCoords: coords,
-        farePaid: appliedCoupon
-          ? Math.round(selectedRideForBooking.price_per_seat * 0.8)
-          : selectedRideForBooking.price_per_seat,
-        status: "CONFIRMED",
-      };
-      setActiveBookedRide(bookingData);
-      setSelectedRideForBooking(null);
-      setCurrentTab("RIDES");
-      alert("Payment Successful! Ride booked via UPI.");
-    }, 1000);
+      setIsSubmitting(false);
+      alert("🎉 Ride published successfully! Passenger App lo live ga kanipisthundi.");
+      setDriverTab("MY_RIDES");
+    }, 600);
   };
 
-  // Share Live Journey on WhatsApp
-  const shareLiveJourney = () => {
-    const text = `🚨 LIVE RIDE TRACKING: Nenu ${pickup} nundi ${drop} varaku Carpool lo unnanu. Booking ID: ${activeBookedRide?.bookingId}. Driver Phone: ${activeBookedRide?.driverNumber}. Live location: https://maps.google.com/?q=${coords.lat},${coords.lon}`;
-    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
+  // Delete / Cancel Published Ride
+  const handleCancelRide = (rideId: string) => {
+    try {
+      const updated = myPublishedRides.filter((r) => r.id !== rideId);
+      localStorage.setItem("SHARED_CARPOOL_RIDES", JSON.stringify(updated));
+      setMyPublishedRides(updated);
+      alert("Ride cancelled successfully.");
+    } catch {}
   };
 
-  // Call Helper
-  const dialEmergency = (number: string) => {
-    Linking.openURL(`tel:${number}`).catch(() => alert(`Calling ${number}...`));
-  };
-
-  // ---------------- 1. LOGIN / ONBOARDING SCREEN ----------------
-  if (!isLoggedIn) {
-    return (
-      <SafeAreaView style={styles.loginSafeArea}>
-        <ScrollView contentContainerStyle={styles.loginContainer}>
-          <Text style={styles.loginHeaderTitle}>Welcome to RidePool 👋</Text>
-          <Text style={styles.loginSub}>Daily office commutes made safe & affordable</Text>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.fieldTitle}>What should we call you? :)</Text>
-            <TextInput
-              style={styles.loginInput}
-              placeholder="e.g. Bhargav"
-              placeholderTextColor="#94A3B8"
-              value={userName}
-              onChangeText={setUserName}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <Text style={styles.fieldTitle}>Email ID (Login)</Text>
-            <TextInput
-              style={styles.loginInput}
-              placeholder="vattalabhargav3@gmail.com"
-              placeholderTextColor="#94A3B8"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={userEmail}
-              onChangeText={setUserEmail}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <View style={styles.optionalRow}>
-              <Text style={styles.fieldTitle}>
-                Work / College ID Card <Text style={styles.optionalTag}>(optional)</Text>
-              </Text>
-              <TouchableOpacity onPress={() => handleSaveProfile(true)}>
-                <Text style={styles.skipBtnText}>Skip ➔</Text>
-              </TouchableOpacity>
-            </View>
-
-            <TextInput
-              style={styles.loginInput}
-              placeholder="e.g. EMP8919 or College Roll ID"
-              placeholderTextColor="#94A3B8"
-              value={employeeId}
-              onChangeText={setEmployeeId}
-            />
-            <Text style={styles.idHelperText}>
-              ID card verify cheskunte Corporate Commuter Badge vasthundi.
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.startCommuteBtn}
-            onPress={() => handleSaveProfile(false)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.startCommuteBtnText}>Start Commute ➔</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
-  // ---------------- 2. MAIN PASSENGER DASHBOARD ----------------
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         {/* Top Header */}
-        <View style={styles.header}>
+        <View style={styles.topHeader}>
           <View>
-            <Text style={styles.headerSub}>PASSENGER POOL</Text>
-            <Text style={styles.headerTitle}>Hi, {userName || "Commuter"} 👋</Text>
+            <Text style={styles.portalBadge}>DRIVER PARTNER PORTAL</Text>
+            <Text style={styles.portalTitle}>Car & Bike Pool Dashboard</Text>
           </View>
 
-          <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
-            <TouchableOpacity
-              style={styles.headerSosBtn}
-              onPress={() => setShowEmergencyHub(true)}
-            >
-              <Text style={styles.headerSosText}>🚨 SOS</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.openDriverBtn}
-              onPress={() => {
-                if (navigation && navigation.navigate) {
-                  navigation.navigate("DriverHome");
-                } else {
-                  window.location.href = "/driver";
-                }
-              }}
-            >
-              <Text style={styles.openDriverText}>🚗 Driver App ➔</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Switch to Passenger Mode Button */}
+          <TouchableOpacity
+            style={styles.switchPassengerBtn}
+            onPress={() => {
+              if (navigation && navigation.navigate) {
+                navigation.navigate("PassengerHome");
+              } else {
+                window.location.href = "/";
+              }
+            }}
+          >
+            <Text style={styles.switchPassengerText}>🚶 Switch Passenger ➔</Text>
+          </TouchableOpacity>
         </View>
 
-        {/* ---------------- PASSENGER SCREENS ---------------- */}
+        {/* ---------------- DRIVER MAIN SCREENS ---------------- */}
         <View style={{ flex: 1 }}>
-          {/* TAB 1: HOME (Rapido Half-Screen Map + Search Kinda) */}
-          {currentTab === "HOME" && (
-            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-              <InteractiveMap
-                lat={coords.lat}
-                lon={coords.lon}
-                height={260}
-                onLocationChange={(newLat, newLon) => setCoords({ lat: newLat, lon: newLon })}
-              />
+          {/* TAB 1: POST A RIDE (Interactive Map + Form) */}
+          {driverTab === "POST" && (
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollForm}>
+              {/* 1. Rapido Style Drag & Zoom Map */}
+              <View style={styles.mapCardWrap}>
+                <InteractiveMap
+                  lat={coords.lat}
+                  lon={coords.lon}
+                  height={220}
+                  onLocationChange={(newLat, newLon) => setCoords({ lat: newLat, lon: newLon })}
+                />
+                <View style={styles.mapHintBadge}>
+                  <Text style={styles.mapHintText}>📍 Pickup point adjust cheyadaniki map drag cheyandi</Text>
+                </View>
+              </View>
 
-              <View style={styles.searchUnderMapCard}>
+              {/* 2. Route Inputs */}
+              <View style={styles.formContainer}>
+                <Text style={styles.formHeading}>Publish New Route</Text>
+
                 <TouchableOpacity
-                  style={styles.inputLocationRow}
+                  style={styles.routeInputBox}
                   onPress={() => setModalType("pickup")}
                 >
-                  <View style={styles.greenCircle} />
+                  <View style={styles.greenDot} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.inputTag}>{t.pickupLabel}</Text>
-                    <Text style={styles.inputText} numberOfLines={1}>{pickup}</Text>
+                    <Text style={styles.inputLabel}>YOUR START POINT (PICKUP)</Text>
+                    <Text style={styles.inputValue} numberOfLines={1}>{pickup}</Text>
                   </View>
-                  <Text style={styles.editSign}>✏️</Text>
+                  <Text style={styles.editIcon}>✏️</Text>
                 </TouchableOpacity>
 
-                <View style={styles.inputDivider} />
+                <View style={styles.routeDivider} />
 
                 <TouchableOpacity
-                  style={styles.inputLocationRow}
+                  style={styles.routeInputBox}
                   onPress={() => setModalType("drop")}
                 >
-                  <View style={styles.redCircle} />
+                  <View style={styles.redDot} />
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.inputTag}>{t.dropLabel}</Text>
-                    <Text style={styles.inputText} numberOfLines={1}>{drop}</Text>
+                    <Text style={styles.inputLabel}>FINAL DESTINATION (DROP)</Text>
+                    <Text style={styles.inputValue} numberOfLines={1}>{drop}</Text>
                   </View>
-                  <Text style={styles.editSign}>✏️</Text>
+                  <Text style={styles.editIcon}>✏️</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={styles.searchRidesBtn}
-                  onPress={() => {
-                    setLoading(true);
-                    setTimeout(() => setLoading(false), 400);
-                  }}
-                >
-                  <Text style={styles.searchRidesBtnText}>{t.searchBtn}</Text>
-                </TouchableOpacity>
-              </View>
-
-              <View style={styles.ridesHeaderRow}>
-                <Text style={styles.ridesSectionTitle}>{t.livePools}</Text>
-                <Text style={styles.ridesCountBadge}>
-                  {rides.length > 0 ? `${rides.length} Pools Live` : "Waiting for Drivers"}
-                </Text>
-              </View>
-
-              {rides.length === 0 ? (
-                <View style={styles.noRidesCard}>
-                  <Text style={styles.noRidesTitle}>No live rides published yet</Text>
-                  <Text style={styles.noRidesSub}>
-                    Driver App lo ride create cheyagane ventane ikkadiki live sync avthundi.
-                  </Text>
-                </View>
-              ) : (
-                rides.map((item) => {
-                  const finalFare = appliedCoupon
-                    ? Math.round(item.price_per_seat * 0.8)
-                    : item.price_per_seat;
-                  return (
-                    <View key={item.id} style={{ marginHorizontal: 16 }}>
-                      <RideCard
-                        ride={{ ...item, price_per_seat: finalFare }}
-                        onPress={() => setSelectedRideForBooking({ ...item, price_per_seat: finalFare })}
-                      />
-                    </View>
-                  );
-                })
-              )}
-              <View style={{ height: 30 }} />
-            </ScrollView>
-          )}
-
-          {/* TAB 2: MY RIDES (Live Tracking, Booking ID & Driver Info) */}
-          {currentTab === "RIDES" && (
-            <ScrollView contentContainerStyle={{ padding: 16 }}>
-              <Text style={styles.tabBigTitle}>My Confirmed Journey</Text>
-
-              {activeBookedRide ? (
-                <View style={styles.bookingConfirmedCard}>
-                  <View style={styles.bookingBadgeRow}>
-                    <View style={styles.confirmedBadge}>
-                      <Text style={styles.confirmedBadgeText}>✓ CONFIRMED (ONLINE PAID)</Text>
-                    </View>
-                    <Text style={styles.bookingIdText}>ID: {activeBookedRide.bookingId}</Text>
-                  </View>
-
-                  <Text style={styles.journeyRouteText}>
-                    {activeBookedRide.ride.from_location} ➔ {activeBookedRide.ride.to_location}
-                  </Text>
-
-                  {/* Driver Details Card */}
-                  <View style={styles.driverInfoCard}>
-                    <View style={styles.driverAvatar}>
-                      <Text style={{ fontSize: 22 }}>👤</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.driverName}>{activeBookedRide.ride.driver_name}</Text>
-                      <Text style={styles.driverVehicle}>
-                        {activeBookedRide.ride.vehicle_name} • {activeBookedRide.ride.vehicle_number || "TS09FA1234"}
-                      </Text>
-                      <Text style={styles.driverPhone}>📞 {activeBookedRide.driverNumber}</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.callDriverBtn}
-                      onPress={() => dialEmergency(activeBookedRide.driverNumber)}
-                    >
-                      <Text style={styles.callDriverText}>Call Driver</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Live Journey Map Tracker */}
-                  <View style={styles.liveMapWrap}>
-                    <InteractiveMap
-                      lat={coords.lat}
-                      lon={coords.lon}
-                      height={200}
+                {/* 3. Vehicle & Seats Details */}
+                <View style={styles.rowInputs}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>VEHICLE MODEL</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={vehicleName}
+                      onChangeText={setVehicleName}
+                      placeholder="e.g. Swift Dzire"
                     />
-                    <View style={styles.driverTrackingOverlay}>
-                      <Text style={styles.driverTrackingText}>
-                        🚗 Driver is {isRideStarted ? "En Route (On Trip)" : "5 mins away from pickup"}
-                      </Text>
-                    </View>
                   </View>
-
-                  {/* Journey Action Buttons */}
-                  <View style={{ gap: 10, marginTop: 14 }}>
-                    <TouchableOpacity
-                      style={styles.whatsappShareBtn}
-                      onPress={shareLiveJourney}
-                    >
-                      <Text style={styles.whatsappShareText}>
-                        📲 Share Live Journey to WhatsApp (Emergency)
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.startRideBtn, isRideStarted && { backgroundColor: "#16A34A" }]}
-                      onPress={() => {
-                        setIsRideStarted(!isRideStarted);
-                        alert(isRideStarted ? "Ride Completed!" : "Ride Started! Live tracking active.");
-                      }}
-                    >
-                      <Text style={styles.startRideBtnText}>
-                        {isRideStarted ? "✓ End Journey" : "▶ Start Journey Tracking"}
-                      </Text>
-                    </TouchableOpacity>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>VEHICLE NUMBER</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      value={vehicleNumber}
+                      onChangeText={setVehicleNumber}
+                      placeholder="TS09AB1234"
+                    />
                   </View>
                 </View>
-              ) : (
-                <View style={styles.noRidesCard}>
-                  <Text style={styles.noRidesTitle}>No active ride booking</Text>
-                  <Text style={styles.noRidesSub}>
-                    Book a pool from Home tab with instant online payment to track live driver status.
-                  </Text>
-                </View>
-              )}
-            </ScrollView>
-          )}
 
-          {/* TAB 3: OFFERS */}
-          {currentTab === "OFFERS" && (
-            <ScrollView contentContainerStyle={styles.offersScroll}>
-              <Text style={styles.tabBigTitle}>Exclusive Offers & Promos</Text>
-              <Text style={styles.tabSubDesc}>Apply promo discounts directly to your daily rides</Text>
-
-              <View style={styles.offerCard}>
-                <View style={styles.offerBadge}>
-                  <Text style={styles.offerBadgeText}>FLAT 20% OFF</Text>
+                <View style={styles.rowInputs}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>SEATS OFFERED</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      keyboardType="numeric"
+                      value={availableSeats}
+                      onChangeText={setAvailableSeats}
+                      placeholder="3"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.inputLabel}>PRICE PER SEAT (₹)</Text>
+                    <TextInput
+                      style={styles.textInput}
+                      keyboardType="numeric"
+                      value={pricePerSeat}
+                      onChangeText={setPricePerSeat}
+                      placeholder="95"
+                    />
+                  </View>
                 </View>
-                <Text style={styles.offerCode}>CODE: FIRSTPOOL</Text>
-                <Text style={styles.offerDesc}>Get 20% off on your office commute pools.</Text>
+
+                {/* 4. Departure Time */}
+                <Text style={styles.inputLabel}>DEPARTURE TIME</Text>
+                <TextInput
+                  style={styles.textInput}
+                  value={departureTime}
+                  onChangeText={setDepartureTime}
+                  placeholder="e.g. Today, 08:30 AM or In 15 mins"
+                />
+
+                {/* 5. Women Safety / Female-Only Toggle */}
                 <TouchableOpacity
-                  style={[styles.applyOfferBtn, appliedCoupon === "FIRSTPOOL" && styles.appliedBtn]}
-                  onPress={() => {
-                    if (appliedCoupon === "FIRSTPOOL") {
-                      setAppliedCoupon(null);
-                      alert("Coupon removed");
-                    } else {
-                      setAppliedCoupon("FIRSTPOOL");
-                      alert("Coupon FIRSTPOOL applied! 20% OFF Active.");
-                    }
-                  }}
+                  style={[styles.femaleOnlyBtn, femaleOnly && styles.femaleOnlyBtnActive]}
+                  onPress={() => setFemaleOnly(!femaleOnly)}
+                  activeOpacity={0.8}
                 >
-                  <Text style={styles.applyOfferText}>
-                    {appliedCoupon === "FIRSTPOOL" ? "✓ APPLIED" : "APPLY COUPON"}
-                  </Text>
+                  <Text style={styles.femaleOnlyIcon}>🌸</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.femaleOnlyTitle}>
+                      {femaleOnly ? "Female-Only Pool: ACTIVE" : "Female-Only Pool (Optional)"}
+                    </Text>
+                    <Text style={styles.femaleOnlySub}>
+                      Enable chesukunte కేవలం verified mahila passengerlaku mathrame ee ride kanipisthundi.
+                    </Text>
+                  </View>
+                  <View style={[styles.toggleCheckbox, femaleOnly && styles.toggleCheckboxActive]}>
+                    {femaleOnly && <Text style={styles.checkmark}>✓</Text>}
+                  </View>
+                </TouchableOpacity>
+
+                {/* 6. Publish Action Button */}
+                <TouchableOpacity
+                  style={styles.publishBtn}
+                  onPress={handlePublishRide}
+                  disabled={isSubmitting}
+                  activeOpacity={0.85}
+                >
+                  {isSubmitting ? (
+                    <ActivityIndicator color="#0F172A" />
+                  ) : (
+                    <Text style={styles.publishBtnText}>Publish Ride to Passenger App ➔</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             </ScrollView>
           )}
 
-          {/* TAB 4: PROFILE */}
-          {currentTab === "PROFILE" && (
-            <ScrollView contentContainerStyle={styles.profileContent}>
-              <View style={styles.profileAvatar}>
+          {/* TAB 2: MY ACTIVE RIDES (Manage Live Rides) */}
+          {driverTab === "MY_RIDES" && (
+            <ScrollView contentContainerStyle={styles.manageScroll}>
+              <Text style={styles.tabHeading}>My Active Ride Pools</Text>
+              <Text style={styles.tabSubheading}>
+                Meeru publish chesina rides mariyu live passengers ikkada kanipistharu.
+              </Text>
+
+              {myPublishedRides.length === 0 ? (
+                <View style={styles.emptyCard}>
+                  <Text style={styles.emptyTitle}>Active rides emi levu</Text>
+                  <Text style={styles.emptySub}>
+                    "Post Ride" tab ki velli mee journey details enter chesi publish cheyandi.
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.postNowBtn}
+                    onPress={() => setDriverTab("POST")}
+                  >
+                    <Text style={styles.postNowBtnText}>+ Post a Ride Now</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                myPublishedRides.map((ride) => (
+                  <View key={ride.id} style={styles.activeRideCard}>
+                    <View style={styles.activeCardHeader}>
+                      <View style={styles.activeBadge}>
+                        <Text style={styles.activeBadgeText}>LIVE ON PASSENGER APP</Text>
+                      </View>
+                      <Text style={styles.activeFareText}>₹{ride.price_per_seat} / seat</Text>
+                    </View>
+
+                    <Text style={styles.routeHeadingText}>
+                      {ride.from_location} ➔ {ride.to_location}
+                    </Text>
+
+                    <View style={styles.rideDetailPillRow}>
+                      <Text style={styles.detailPill}>🚗 {ride.vehicle_name}</Text>
+                      <Text style={styles.detailPill}>👥 {ride.available_seats} Seats left</Text>
+                      <Text style={styles.detailPill}>🕒 {ride.departure_time}</Text>
+                      {ride.female_only && <Text style={[styles.detailPill, { color: "#DB2777" }]}>🌸 Women-Only</Text>}
+                    </View>
+
+                    <View style={styles.rideActionsRow}>
+                      <TouchableOpacity
+                        style={styles.startTripBtn}
+                        onPress={() => alert(`Trip started for ${ride.to_location}! Passenger tracking on live map.`)}
+                      >
+                        <Text style={styles.startTripBtnText}>▶ Start Trip</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={styles.cancelRideBtn}
+                        onPress={() => handleCancelRide(ride.id)}
+                      >
+                        <Text style={styles.cancelRideBtnText}>✕ Cancel Ride</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          )}
+
+          {/* TAB 3: EARNINGS & PAYOUTS */}
+          {driverTab === "EARNINGS" && (
+            <ScrollView contentContainerStyle={styles.earningsContainer}>
+              <Text style={styles.tabHeading}>Driver Earnings</Text>
+
+              <View style={styles.balanceCard}>
+                <Text style={styles.balanceLabel}>TOTAL REVENUE (ONLINE PAYMENTS)</Text>
+                <Text style={styles.balanceAmount}>₹1,450.00</Text>
+                <Text style={styles.balanceSub}>Direct settlement via UPI ID: vattalabhargav3@okhdfcbank</Text>
+
+                <TouchableOpacity
+                  style={styles.withdrawBtn}
+                  onPress={() => alert("Withdrawal request submitted! Amount will be credited to UPI within 15 mins.")}
+                >
+                  <Text style={styles.withdrawBtnText}>⚡ Instant UPI Payout</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.statsGrid}>
+                <View style={styles.statBox}>
+                  <Text style={styles.statNum}>12</Text>
+                  <Text style={styles.statLabel}>Trips Completed</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statNum}>28</Text>
+                  <Text style={styles.statLabel}>Passengers Pooled</Text>
+                </View>
+                <View style={styles.statBox}>
+                  <Text style={styles.statNum}>4.9 ★</Text>
+                  <Text style={styles.statLabel}>Driver Rating</Text>
+                </View>
+              </View>
+            </ScrollView>
+          )}
+
+          {/* TAB 4: DRIVER PROFILE */}
+          {driverTab === "PROFILE" && (
+            <ScrollView contentContainerStyle={styles.profileContainer}>
+              <View style={styles.avatarWrap}>
                 <Text style={{ fontSize: 36 }}>👤</Text>
               </View>
-              <Text style={styles.profileName}>{userName || "Bhargav Vattala"}</Text>
-              <Text style={styles.profileEmail}>{userEmail}</Text>
-              <Text style={styles.profileTag}>
-                {employeeId && employeeId !== "Not Provided"
-                  ? `Corporate ID: ${employeeId}`
-                  : "Verified Commuter"}
-              </Text>
-
-              {/* Profile Menu Actions */}
-              <View style={styles.profileActionsList}>
-                <TouchableOpacity
-                  style={styles.profileActionItem}
-                  onPress={() => setShowEmergencyHub(true)}
-                >
-                  <Text style={styles.actionIcon}>🚨</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.actionTitle}>Emergency SOS & SHE Teams</Text>
-                    <Text style={styles.actionSub}>24x7 Women Safety & Police helpline</Text>
-                  </View>
-                  <Text style={styles.actionArrow}>➔</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.profileActionItem}
-                  onPress={() => setShowSettings(true)}
-                >
-                  <Text style={styles.actionIcon}>⚙️</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.actionTitle}>Settings & Language</Text>
-                    <Text style={styles.actionSub}>Telugu, English, Hindi, Tenglish</Text>
-                  </View>
-                  <Text style={styles.actionArrow}>➔</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.profileActionItem}
-                  onPress={() => setShowReferModal(true)}
-                >
-                  <Text style={styles.actionIcon}>🎁</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.actionTitle}>Refer a Friend</Text>
-                    <Text style={styles.actionSub}>Earn ₹100 pool credits for each referral</Text>
-                  </View>
-                  <Text style={styles.actionArrow}>➔</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.profileActionItem}
-                  onPress={() => setShowEditProfile(true)}
-                >
-                  <Text style={styles.actionIcon}>✏️</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.actionTitle}>Edit Profile</Text>
-                    <Text style={styles.actionSub}>Change name, email & work ID</Text>
-                  </View>
-                  <Text style={styles.actionArrow}>➔</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.profileActionItem, { borderBottomWidth: 0 }]}
-                  onPress={() => dialEmergency("18002008919")}
-                >
-                  <Text style={styles.actionIcon}>🎧</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.actionTitle}>Customer Care Support</Text>
-                    <Text style={styles.actionSub}>Toll-free 1800-200-8919</Text>
-                  </View>
-                  <Text style={styles.actionArrow}>➔</Text>
-                </TouchableOpacity>
+              <Text style={styles.profileDriverName}>{driverName}</Text>
+              <Text style={styles.profileDriverPhone}>📞 {driverPhone}</Text>
+              <View style={styles.verifiedDriverBadge}>
+                <Text style={styles.verifiedDriverText}>✓ VERIFIED DRIVER PARTNER</Text>
               </View>
 
-              {/* Logout Button */}
+              <View style={styles.profileInfoCard}>
+                <Text style={styles.profileSecTitle}>Registered Vehicle</Text>
+                <Text style={styles.profileSecValue}>{vehicleName}</Text>
+                <Text style={styles.profileSecSub}>Plate No: {vehicleNumber} • Commercial/Private Carpool Permit</Text>
+              </View>
+
               <TouchableOpacity
-                style={styles.logoutBtn}
-                onPress={() => {
-                  try {
-                    localStorage.removeItem("PASSENGER_USER_PROFILE");
-                  } catch {}
-                  setIsLoggedIn(false);
-                }}
+                style={styles.emergencySosBtn}
+                onPress={() => Linking.openURL("tel:112")}
               >
-                <Text style={styles.logoutBtnText}>🚪 Logout Account</Text>
+                <Text style={styles.emergencySosText}>🚨 Police Helpline (112 / 100)</Text>
               </TouchableOpacity>
             </ScrollView>
           )}
         </View>
 
-        {/* ---------------- 4 BOTTOM TABS ---------------- */}
-        <View style={styles.bottomBar}>
-          <TouchableOpacity style={styles.tabBtn} onPress={() => setCurrentTab("HOME")}>
-            <Text style={[styles.tabIcon, currentTab === "HOME" && styles.tabActiveText]}>🏠</Text>
-            <Text style={[styles.tabLabel, currentTab === "HOME" && styles.tabActiveText]}>{t.home}</Text>
+        {/* ---------------- 4 BOTTOM TABS FOR DRIVER APP ---------------- */}
+        <View style={styles.driverBottomBar}>
+          <TouchableOpacity style={styles.tabBtn} onPress={() => setDriverTab("POST")}>
+            <Text style={[styles.tabIcon, driverTab === "POST" && styles.tabActiveText]}>➕</Text>
+            <Text style={[styles.tabLabel, driverTab === "POST" && styles.tabActiveText]}>Post Ride</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.tabBtn} onPress={() => setCurrentTab("RIDES")}>
-            <Text style={[styles.tabIcon, currentTab === "RIDES" && styles.tabActiveText]}>🚗</Text>
-            <Text style={[styles.tabLabel, currentTab === "RIDES" && styles.tabActiveText]}>{t.myRides}</Text>
+          <TouchableOpacity style={styles.tabBtn} onPress={() => setDriverTab("MY_RIDES")}>
+            <Text style={[styles.tabIcon, driverTab === "MY_RIDES" && styles.tabActiveText]}>🚗</Text>
+            <Text style={[styles.tabLabel, driverTab === "MY_RIDES" && styles.tabActiveText]}>My Rides</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.tabBtn} onPress={() => setCurrentTab("OFFERS")}>
-            <Text style={[styles.tabIcon, currentTab === "OFFERS" && styles.tabActiveText]}>🎁</Text>
-            <Text style={[styles.tabLabel, currentTab === "OFFERS" && styles.tabActiveText]}>{t.offers}</Text>
+          <TouchableOpacity style={styles.tabBtn} onPress={() => setDriverTab("EARNINGS")}>
+            <Text style={[styles.tabIcon, driverTab === "EARNINGS" && styles.tabActiveText]}>💰</Text>
+            <Text style={[styles.tabLabel, driverTab === "EARNINGS" && styles.tabActiveText]}>Earnings</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.tabBtn} onPress={() => setCurrentTab("PROFILE")}>
-            <Text style={[styles.tabIcon, currentTab === "PROFILE" && styles.tabActiveText]}>👤</Text>
-            <Text style={[styles.tabLabel, currentTab === "PROFILE" && styles.tabActiveText]}>{t.profile}</Text>
+          <TouchableOpacity style={styles.tabBtn} onPress={() => setDriverTab("PROFILE")}>
+            <Text style={[styles.tabIcon, driverTab === "PROFILE" && styles.tabActiveText]}>👤</Text>
+            <Text style={[styles.tabLabel, driverTab === "PROFILE" && styles.tabActiveText]}>Profile</Text>
           </TouchableOpacity>
         </View>
-
-        {/* ---------------- 3. EMERGENCY SOS & SHE TEAMS MODAL ---------------- */}
-        <Modal visible={showEmergencyHub} transparent animationType="slide">
-          <View style={styles.modalBackdrop}>
-            <View style={styles.emergencyModalCard}>
-              <Text style={styles.emergencyModalTitle}>🚨 Emergency Safety & SHE Teams</Text>
-              <Text style={styles.emergencyModalSub}>
-                Instant police dispatch, live location relay & women emergency helplines
-              </Text>
-
-              <TouchableOpacity
-                style={styles.sheTeamBtn}
-                onPress={() => dialEmergency("1091")}
-              >
-                <Text style={styles.sosPhoneIcon}>🌸</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.sheTeamTitle}>SHE Teams Helpline</Text>
-                  <Text style={styles.sheTeamSub}>Dial 1091 (Telangana Women Protection)</Text>
-                </View>
-                <Text style={styles.callTag}>CALL NOW</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.policeSosBtn}
-                onPress={() => dialEmergency("112")}
-              >
-                <Text style={styles.sosPhoneIcon}>🚔</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.policeTitle}>Police Emergency (All India)</Text>
-                  <Text style={styles.policeSub}>Dial 112 / 100</Text>
-                </View>
-                <Text style={styles.callTag}>CALL NOW</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.customerCareBtn}
-                onPress={() => dialEmergency("18002008919")}
-              >
-                <Text style={styles.sosPhoneIcon}>🎧</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.supportTitle}>RidePool 24x7 Customer Care</Text>
-                  <Text style={styles.supportSub}>Toll-free 1800-200-8919</Text>
-                </View>
-                <Text style={styles.callTag}>CALL</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.closeSheetBtn}
-                onPress={() => setShowEmergencyHub(false)}
-              >
-                <Text style={styles.closeSheetText}>Close Safety Hub</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        {/* ---------------- 4. SETTINGS & LANGUAGE MODAL ---------------- */}
-        <Modal visible={showSettings} transparent animationType="slide">
-          <View style={styles.modalBackdrop}>
-            <View style={styles.paymentModalCard}>
-              <Text style={styles.modalHeading}>App Settings & Language</Text>
-              <Text style={styles.modalSub}>Select your preferred app language:</Text>
-
-              <View style={{ gap: 10, marginVertical: 14 }}>
-                {[
-                  { id: "Tenglish", label: "Telugu + English (Tenglish)" },
-                  { id: "Telugu", label: "తెలుగు (Telugu)" },
-                  { id: "English", label: "English" },
-                  { id: "Hindi", label: "हिन्दी (Hindi)" },
-                ].map((item) => (
-                  <TouchableOpacity
-                    key={item.id}
-                    style={[
-                      styles.langItem,
-                      selectedLanguage === item.id && styles.langItemActive,
-                    ]}
-                    onPress={() => {
-                      setSelectedLanguage(item.id);
-                      handleSaveProfile(false);
-                    }}
-                  >
-                    <Text
-                      style={[
-                        styles.langText,
-                        selectedLanguage === item.id && styles.langTextActive,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                    {selectedLanguage === item.id && <Text style={{ color: "#0284C7" }}>✓</Text>}
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <TouchableOpacity
-                style={styles.closeSheetBtn}
-                onPress={() => setShowSettings(false)}
-              >
-                <Text style={styles.closeSheetText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        {/* ---------------- 5. REFER A FRIEND MODAL ---------------- */}
-        <Modal visible={showReferModal} transparent animationType="slide">
-          <View style={styles.modalBackdrop}>
-            <View style={styles.paymentModalCard}>
-              <Text style={styles.modalHeading}>🎁 Refer Friends, Earn Credits</Text>
-              <Text style={styles.modalSub}>
-                Give your friends 20% off on their first commute and earn ₹100 pool credits!
-              </Text>
-
-              <View style={styles.referBox}>
-                <Text style={styles.referLabel}>YOUR REFERRAL CODE</Text>
-                <Text style={styles.referCode}>BHARGAVPOOL100</Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.whatsappShareBtn}
-                onPress={() => {
-                  const shareText = `Hey! Join RidePool carpooling app with my code BHARGAVPOOL100 and get 20% off on your office rides: https://ridepool.in`;
-                  Linking.openURL(`https://wa.me/?text=${encodeURIComponent(shareText)}`);
-                }}
-              >
-                <Text style={styles.whatsappShareText}>Share Code on WhatsApp</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.closeSheetBtn}
-                onPress={() => setShowReferModal(false)}
-              >
-                <Text style={styles.closeSheetText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        {/* ---------------- 6. EDIT PROFILE MODAL ---------------- */}
-        <Modal visible={showEditProfile} transparent animationType="slide">
-          <View style={styles.modalBackdrop}>
-            <View style={styles.paymentModalCard}>
-              <Text style={styles.modalHeading}>Edit Profile Details</Text>
-
-              <Text style={styles.inputTag}>NAME</Text>
-              <TextInput
-                style={styles.loginInput}
-                value={userName}
-                onChangeText={setUserName}
-              />
-
-              <Text style={[styles.inputTag, { marginTop: 10 }]}>EMAIL ID</Text>
-              <TextInput
-                style={styles.loginInput}
-                value={userEmail}
-                onChangeText={setUserEmail}
-              />
-
-              <Text style={[styles.inputTag, { marginTop: 10 }]}>COLLEGE / WORK ID</Text>
-              <TextInput
-                style={styles.loginInput}
-                value={employeeId}
-                onChangeText={setEmployeeId}
-              />
-
-              <TouchableOpacity
-                style={[styles.startCommuteBtn, { marginTop: 18 }]}
-                onPress={() => handleSaveProfile(false)}
-              >
-                <Text style={styles.startCommuteBtnText}>Save Changes</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.closeSheetBtn}
-                onPress={() => setShowEditProfile(false)}
-              >
-                <Text style={styles.closeSheetText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        {/* ---------------- 7. ONLINE PAYMENT CHECKOUT MODAL (STRICTLY NO CASH) ---------------- */}
-        <Modal visible={selectedRideForBooking !== null} transparent animationType="slide">
-          <View style={styles.modalBackdrop}>
-            <View style={styles.paymentModalCard}>
-              <Text style={styles.modalHeading}>Confirm Seat & Online Payment</Text>
-              <Text style={styles.modalSub}>
-                Driver: {selectedRideForBooking?.driver_name} ({selectedRideForBooking?.vehicle_name})
-              </Text>
-
-              <View style={styles.noCashNotice}>
-                <Text style={styles.noCashText}>
-                  🛡️ 100% Cashless Commute: Only Online Payments are accepted to ensure verified booking safety.
-                </Text>
-              </View>
-
-              <View style={styles.fareBox}>
-                <Text style={styles.fareLabel}>Payable Total (1 Seat)</Text>
-                <Text style={styles.fareValue}>
-                  ₹
-                  {appliedCoupon
-                    ? Math.round(selectedRideForBooking?.price_per_seat * 0.8)
-                    : selectedRideForBooking?.price_per_seat}
-                </Text>
-              </View>
-
-              <TouchableOpacity style={styles.upiCard} onPress={handleConfirmOnlineBooking}>
-                <Text style={{ fontSize: 22 }}>⚡</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.upiName}>Pay via Instant UPI (GPay / PhonePe / Paytm)</Text>
-                  <Text style={styles.upiVpa}>vattalabhargav3@okhdfcbank</Text>
-                </View>
-                <Text style={styles.payArrow}>➔</Text>
-              </TouchableOpacity>
-
-              {paymentSuccess && (
-                <View style={styles.successTag}>
-                  <Text style={styles.successTagText}>✓ Online Payment Approved! Pass Generating...</Text>
-                </View>
-              )}
-
-              <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setSelectedRideForBooking(null)}
-              >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
 
         {/* Location Picker Modal */}
         <LocationPickerModal
           visible={modalType !== null}
-          title={modalType === "pickup" ? "Select Pickup Location" : "Select Drop Location"}
+          title={modalType === "pickup" ? "Select Start Location" : "Select Destination"}
           onClose={() => setModalType(null)}
           onSelect={(name, lat, lon) => {
             if (modalType === "pickup") {
@@ -860,122 +442,116 @@ export default function PassengerHome({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  // Login Styles
-  loginSafeArea: { flex: 1, backgroundColor: "#FFFFFF" },
-  loginContainer: { padding: 24, paddingTop: 36 },
-  loginHeaderTitle: { fontSize: 24, fontWeight: "900", color: "#0F172A" },
-  loginSub: { fontSize: 13, color: "#64748B", marginTop: 4, marginBottom: 24 },
-  formGroup: { marginBottom: 18 },
-  fieldTitle: { fontSize: 13, fontWeight: "800", color: "#1E293B", marginBottom: 6 },
-  optionalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
-  optionalTag: { fontSize: 11, color: "#64748B", fontWeight: "600" },
-  skipBtnText: { fontSize: 13, fontWeight: "800", color: "#0284C7" },
-  loginInput: {
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: "#0F172A",
-    fontWeight: "700",
-  },
-  idHelperText: { fontSize: 11, color: "#94A3B8", marginTop: 5 },
-  startCommuteBtn: {
-    backgroundColor: "#E11D48",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  startCommuteBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "900" },
-
-  // Dashboard Styles
   safeArea: { flex: 1, backgroundColor: "#F8FAFC" },
   container: { flex: 1 },
-  header: {
+  topHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
     backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderColor: "#E2E8F0",
   },
-  headerSub: { fontSize: 8, fontWeight: "800", color: "#64748B", letterSpacing: 0.5 },
-  headerTitle: { fontSize: 16, fontWeight: "900", color: "#0F172A" },
-  headerSosBtn: {
-    backgroundColor: "#FEE2E2",
+  portalBadge: { fontSize: 9, fontWeight: "900", color: "#D97706", letterSpacing: 0.5 },
+  portalTitle: { fontSize: 16, fontWeight: "900", color: "#0F172A", marginTop: 2 },
+  switchPassengerBtn: {
+    backgroundColor: "#EFF6FF",
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#FCA5A5",
-  },
-  headerSosText: { color: "#DC2626", fontSize: 11, fontWeight: "900" },
-  openDriverBtn: {
-    backgroundColor: "#FEF3C7",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#F59E0B",
-  },
-  openDriverText: { fontSize: 11, fontWeight: "800", color: "#B45309" },
-  searchUnderMapCard: {
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 16,
-    marginTop: -20,
-    borderRadius: 16,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
-    zIndex: 20,
-  },
-  inputLocationRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
-  greenCircle: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#10B981" },
-  redCircle: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#EF4444" },
-  inputTag: { fontSize: 8, fontWeight: "800", color: "#94A3B8" },
-  inputText: { fontSize: 13, fontWeight: "700", color: "#1E293B" },
-  editSign: { fontSize: 12, opacity: 0.6 },
-  inputDivider: { height: 1, backgroundColor: "#F1F5F9", marginVertical: 8, marginLeft: 18 },
-  searchRidesBtn: {
-    backgroundColor: "#FFC000",
     borderRadius: 12,
-    paddingVertical: 12,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  searchRidesBtnText: { fontSize: 13, fontWeight: "900", color: "#0F172A" },
-  ridesHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  ridesSectionTitle: { fontSize: 15, fontWeight: "800", color: "#0F172A" },
-  ridesCountBadge: { fontSize: 11, fontWeight: "700", color: "#0284C7" },
-  noRidesCard: {
-    backgroundColor: "#FFFFFF",
-    marginHorizontal: 16,
-    padding: 24,
-    borderRadius: 14,
-    alignItems: "center",
     borderWidth: 1,
+    borderColor: "#BFDBFE",
+  },
+  switchPassengerText: { fontSize: 11, fontWeight: "800", color: "#1D4ED8" },
+  scrollForm: { paddingBottom: 24 },
+  mapCardWrap: {
+    position: "relative",
+    borderBottomWidth: 1,
     borderColor: "#E2E8F0",
   },
-  noRidesTitle: { fontSize: 14, fontWeight: "800", color: "#334155" },
-  noRidesSub: { fontSize: 11, color: "#94A3B8", textAlign: "center", marginTop: 4 },
-  bottomBar: {
+  mapHintBadge: {
+    position: "absolute",
+    bottom: 10,
+    alignSelf: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.85)",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 14,
+  },
+  mapHintText: { color: "#FFFFFF", fontSize: 10, fontWeight: "700" },
+  formContainer: {
+    backgroundColor: "#FFFFFF",
+    margin: 16,
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    elevation: 2,
+  },
+  formHeading: { fontSize: 17, fontWeight: "900", color: "#0F172A", marginBottom: 12 },
+  routeInputBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 6,
+  },
+  greenDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#10B981" },
+  redDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#EF4444" },
+  inputLabel: { fontSize: 8, fontWeight: "800", color: "#94A3B8" },
+  inputValue: { fontSize: 13, fontWeight: "700", color: "#1E293B" },
+  editIcon: { fontSize: 12, opacity: 0.6 },
+  routeDivider: { height: 1, backgroundColor: "#F1F5F9", marginVertical: 8, marginLeft: 18 },
+  rowInputs: { flexDirection: "row", gap: 10, marginTop: 10 },
+  textInput: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#0F172A",
+    marginTop: 4,
+  },
+  femaleOnlyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FDF2F8",
+    borderWidth: 1,
+    borderColor: "#FBCFE8",
+    padding: 12,
+    borderRadius: 12,
+    marginTop: 14,
+    gap: 10,
+  },
+  femaleOnlyBtnActive: { backgroundColor: "#FCE7F3", borderColor: "#DB2777" },
+  femaleOnlyIcon: { fontSize: 20 },
+  femaleOnlyTitle: { fontSize: 12, fontWeight: "900", color: "#BE185D" },
+  femaleOnlySub: { fontSize: 10, color: "#9D174D", marginTop: 2 },
+  toggleCheckbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    borderColor: "#F472B6",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  toggleCheckboxActive: { backgroundColor: "#DB2777", borderColor: "#DB2777" },
+  checkmark: { color: "#FFFFFF", fontSize: 11, fontWeight: "bold" },
+  publishBtn: {
+    backgroundColor: "#FFC000",
+    borderRadius: 14,
+    paddingVertical: 14,
+    alignItems: "center",
+    marginTop: 18,
+    elevation: 2,
+  },
+  publishBtnText: { fontSize: 14, fontWeight: "900", color: "#0F172A" },
+  driverBottomBar: {
     flexDirection: "row",
     justifyContent: "space-around",
     backgroundColor: "#FFFFFF",
@@ -986,74 +562,95 @@ const styles = StyleSheet.create({
   tabBtn: { alignItems: "center" },
   tabIcon: { fontSize: 18, color: "#64748B" },
   tabLabel: { fontSize: 10, fontWeight: "700", color: "#64748B", marginTop: 2 },
-  tabActiveText: { color: "#0284C7" },
-  tabBigTitle: { fontSize: 18, fontWeight: "900", color: "#0F172A", marginBottom: 6 },
-  tabSubDesc: { fontSize: 12, color: "#64748B", marginBottom: 16 },
-
-  // Booking Confirmed Card
-  bookingConfirmedCard: {
+  tabActiveText: { color: "#D97706" },
+  manageScroll: { padding: 16 },
+  tabHeading: { fontSize: 18, fontWeight: "900", color: "#0F172A" },
+  tabSubheading: { fontSize: 12, color: "#64748B", marginTop: 2, marginBottom: 16 },
+  emptyCard: {
     backgroundColor: "#FFFFFF",
+    padding: 24,
     borderRadius: 16,
-    padding: 16,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-  },
-  bookingBadgeRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  confirmedBadge: { backgroundColor: "#DCFCE7", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  confirmedBadgeText: { color: "#16A34A", fontSize: 10, fontWeight: "900" },
-  bookingIdText: { fontSize: 12, fontWeight: "800", color: "#64748B" },
-  journeyRouteText: { fontSize: 15, fontWeight: "900", color: "#0F172A", marginBottom: 12 },
-  driverInfoCard: {
-    flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
+    marginTop: 20,
+  },
+  emptyTitle: { fontSize: 15, fontWeight: "800", color: "#334155" },
+  emptySub: { fontSize: 12, color: "#94A3B8", textAlign: "center", marginTop: 6, marginBottom: 16 },
+  postNowBtn: { backgroundColor: "#FFC000", paddingHorizontal: 16, paddingVertical: 10, borderRadius: 10 },
+  postNowBtnText: { fontSize: 13, fontWeight: "900", color: "#0F172A" },
+  activeRideCard: {
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 14,
+  },
+  activeCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
+  activeBadge: { backgroundColor: "#DCFCE7", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  activeBadgeText: { color: "#16A34A", fontSize: 10, fontWeight: "900" },
+  activeFareText: { fontSize: 16, fontWeight: "900", color: "#16A34A" },
+  routeHeadingText: { fontSize: 14, fontWeight: "800", color: "#0F172A", marginBottom: 10 },
+  rideDetailPillRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: 14 },
+  detailPill: {
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#475569",
+  },
+  rideActionsRow: { flexDirection: "row", gap: 10 },
+  startTripBtn: {
+    flex: 1,
+    backgroundColor: "#0F172A",
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  startTripBtnText: { color: "#FFFFFF", fontSize: 12, fontWeight: "800" },
+  cancelRideBtn: {
+    backgroundColor: "#FEE2E2",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  cancelRideBtnText: { color: "#DC2626", fontSize: 12, fontWeight: "800" },
+  earningsContainer: { padding: 16 },
+  balanceCard: {
+    backgroundColor: "#0F172A",
+    borderRadius: 16,
+    padding: 20,
+    marginTop: 10,
+    marginBottom: 16,
+  },
+  balanceLabel: { fontSize: 10, fontWeight: "800", color: "#94A3B8", letterSpacing: 0.5 },
+  balanceAmount: { fontSize: 28, fontWeight: "900", color: "#10B981", marginVertical: 6 },
+  balanceSub: { fontSize: 11, color: "#CBD5E1", marginBottom: 16 },
+  withdrawBtn: {
+    backgroundColor: "#10B981",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  withdrawBtnText: { fontSize: 13, fontWeight: "900", color: "#FFFFFF" },
+  statsGrid: { flexDirection: "row", gap: 10 },
+  statBox: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
     padding: 12,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    marginBottom: 12,
-    gap: 10,
-  },
-  driverAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#E2E8F0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  driverName: { fontSize: 14, fontWeight: "800", color: "#0F172A" },
-  driverVehicle: { fontSize: 11, color: "#64748B", marginTop: 2 },
-  driverPhone: { fontSize: 11, color: "#0284C7", fontWeight: "700", marginTop: 2 },
-  callDriverBtn: { backgroundColor: "#0284C7", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  callDriverText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
-  liveMapWrap: { borderRadius: 14, overflow: "hidden", position: "relative" },
-  driverTrackingOverlay: {
-    position: "absolute",
-    bottom: 10,
-    left: 10,
-    right: 10,
-    backgroundColor: "rgba(15, 23, 42, 0.85)",
-    padding: 8,
-    borderRadius: 8,
     alignItems: "center",
   },
-  driverTrackingText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
-  whatsappShareBtn: {
-    backgroundColor: "#DCFCE7",
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#86EFAC",
-  },
-  whatsappShareText: { color: "#16A34A", fontSize: 12, fontWeight: "800" },
-  startRideBtn: { backgroundColor: "#0F172A", paddingVertical: 12, borderRadius: 10, alignItems: "center" },
-  startRideBtnText: { color: "#FFFFFF", fontSize: 12, fontWeight: "800" },
-
-  // Profile Styles
-  profileContent: { padding: 20, alignItems: "center" },
-  profileAvatar: {
+  statNum: { fontSize: 16, fontWeight: "900", color: "#0F172A" },
+  statLabel: { fontSize: 10, color: "#64748B", marginTop: 2, textAlign: "center" },
+  profileContainer: { padding: 24, alignItems: "center" },
+  avatarWrap: {
     width: 72,
     height: 72,
     borderRadius: 36,
@@ -1062,12 +659,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginBottom: 8,
   },
-  profileName: { fontSize: 18, fontWeight: "900", color: "#0F172A" },
-  profileEmail: { fontSize: 12, color: "#64748B", marginTop: 2 },
-  profileTag: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#16A34A",
+  profileDriverName: { fontSize: 18, fontWeight: "900", color: "#0F172A" },
+  profileDriverPhone: { fontSize: 13, fontWeight: "700", color: "#64748B", marginTop: 2 },
+  verifiedDriverBadge: {
     backgroundColor: "#DCFCE7",
     paddingHorizontal: 10,
     paddingVertical: 4,
@@ -1075,178 +669,27 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 20,
   },
-  profileActionsList: {
-    width: "100%",
+  verifiedDriverText: { fontSize: 10, fontWeight: "900", color: "#16A34A" },
+  profileInfoCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
+    width: "100%",
+    padding: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    overflow: "hidden",
+    marginBottom: 16,
   },
-  profileActionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    gap: 12,
-    borderBottomWidth: 1,
-    borderColor: "#F1F5F9",
-  },
-  actionIcon: { fontSize: 18 },
-  actionTitle: { fontSize: 13, fontWeight: "800", color: "#0F172A" },
-  actionSub: { fontSize: 11, color: "#64748B", marginTop: 2 },
-  actionArrow: { fontSize: 14, color: "#94A3B8" },
-  logoutBtn: { marginTop: 20, padding: 12 },
-  logoutBtnText: { color: "#EF4444", fontSize: 13, fontWeight: "800" },
-
-  // Modals & Emergency Sheet
-  modalBackdrop: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.6)", justifyContent: "flex-end" },
-  emergencyModalCard: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 },
-  emergencyModalTitle: { fontSize: 17, fontWeight: "900", color: "#DC2626" },
-  emergencyModalSub: { fontSize: 12, color: "#64748B", marginTop: 2, marginBottom: 16 },
-  sheTeamBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FDF2F8",
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#FBCFE8",
-    gap: 12,
-    marginBottom: 10,
-  },
-  sheTeamTitle: { fontSize: 13, fontWeight: "900", color: "#BE185D" },
-  sheTeamSub: { fontSize: 11, color: "#9D174D" },
-  policeSosBtn: {
-    flexDirection: "row",
-    alignItems: "center",
+  profileSecTitle: { fontSize: 11, fontWeight: "800", color: "#94A3B8" },
+  profileSecValue: { fontSize: 15, fontWeight: "800", color: "#0F172A", marginTop: 2 },
+  profileSecSub: { fontSize: 11, color: "#64748B", marginTop: 4 },
+  emergencySosBtn: {
     backgroundColor: "#FEE2E2",
-    padding: 14,
-    borderRadius: 14,
+    width: "100%",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
     borderWidth: 1,
     borderColor: "#FCA5A5",
-    gap: 12,
-    marginBottom: 10,
   },
-  policeTitle: { fontSize: 13, fontWeight: "900", color: "#B91C1C" },
-  policeSub: { fontSize: 11, color: "#991B1B" },
-  customerCareBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F0F9FF",
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#BAE6FD",
-    gap: 12,
-    marginBottom: 10,
-  },
-  supportTitle: { fontSize: 13, fontWeight: "900", color: "#0369A1" },
-  supportSub: { fontSize: 11, color: "#0284C7" },
-  callTag: {
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#0F172A",
-  },
-  sosPhoneIcon: { fontSize: 24 },
-  closeSheetBtn: { marginTop: 10, alignItems: "center", paddingVertical: 10 },
-  closeSheetText: { fontSize: 13, fontWeight: "800", color: "#64748B" },
-
-  // Settings & Lang
-  paymentModalCard: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 },
-  modalHeading: { fontSize: 16, fontWeight: "900", color: "#0F172A" },
-  modalSub: { fontSize: 12, color: "#64748B", marginTop: 2 },
-  langItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  langItemActive: { borderColor: "#0284C7", backgroundColor: "#F0F9FF" },
-  langText: { fontSize: 13, fontWeight: "700", color: "#334155" },
-  langTextActive: { color: "#0284C7", fontWeight: "900" },
-
-  // Refer Box
-  referBox: {
-    backgroundColor: "#FEF3C7",
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginVertical: 14,
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-  },
-  referLabel: { fontSize: 10, fontWeight: "800", color: "#B45309" },
-  referCode: { fontSize: 20, fontWeight: "900", color: "#78350F", marginTop: 4 },
-
-  // Online Payment Card (Strictly No Cash)
-  noCashNotice: {
-    backgroundColor: "#EFF6FF",
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: "#BFDBFE",
-  },
-  noCashText: { fontSize: 11, color: "#1D4ED8", fontWeight: "700" },
-  fareBox: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: "#F8FAFC",
-    padding: 12,
-    borderRadius: 12,
-    marginVertical: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  fareLabel: { fontSize: 12, fontWeight: "700", color: "#475569" },
-  fareValue: { fontSize: 18, fontWeight: "900", color: "#16A34A" },
-  upiCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F0FDF4",
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
-    gap: 10,
-  },
-  upiName: { fontSize: 12, fontWeight: "800", color: "#14532D" },
-  upiVpa: { fontSize: 10, color: "#16A34A" },
-  payArrow: { fontSize: 14, fontWeight: "bold", color: "#15803D" },
-  successTag: { backgroundColor: "#DCFCE7", padding: 10, borderRadius: 8, marginTop: 10, alignItems: "center" },
-  successTagText: { color: "#16A34A", fontSize: 11, fontWeight: "800" },
-  cancelBtn: { marginTop: 14, alignItems: "center", paddingVertical: 8 },
-  cancelBtnText: { fontSize: 13, fontWeight: "700", color: "#64748B" },
-
-  // Offers Tab
-  offersScroll: { padding: 16 },
-  offerCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  offerBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "#0284C7",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginBottom: 8,
-  },
-  offerBadgeText: { color: "#FFFFFF", fontSize: 10, fontWeight: "900" },
-  offerCode: { fontSize: 14, fontWeight: "900", color: "#0F172A" },
-  offerDesc: { fontSize: 11, color: "#64748B", marginTop: 4, marginBottom: 12 },
-  applyOfferBtn: { backgroundColor: "#F1F5F9", paddingVertical: 10, borderRadius: 8, alignItems: "center" },
-  appliedBtn: { backgroundColor: "#DCFCE7" },
-  applyOfferText: { fontSize: 11, fontWeight: "800", color: "#0F172A" },
+  emergencySosText: { color: "#DC2626", fontSize: 13, fontWeight: "900" },
 });
