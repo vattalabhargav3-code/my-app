@@ -105,6 +105,9 @@ export function RideCard({ ride, onPress }: RideCardProps) {
   );
 }
 
+// ✅ ఈ లైన్ యాడ్ చేశాం:
+export default RideCard;
+
 const styles = StyleSheet.create({
   cardContainer: {
     backgroundColor: "#FFFFFF",
