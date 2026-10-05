@@ -175,6 +175,9 @@ export function LocationPickerModal({
   );
 }
 
+// ✅ ఈ లైన్ కంపల్సరీ ఉండాలి:
+export default LocationPickerModal;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
