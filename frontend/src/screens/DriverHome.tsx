@@ -19,7 +19,7 @@ const DRIVER_TRANSLATIONS: any = {
     publishHeading: "Route Setup",
     fromLabel: "STARTING POINT (PICKUP)",
     toLabel: "END POINT (DROP)",
-    useLiveLocation: "📍 Use My Current Live Location",
+    useLiveLocation: "📍 Current Live GPS",
     carModel: "CAR MODEL",
     seats: "SEATS OFFERED",
     seatPrice: "PRICE PER SEAT (₹)",
@@ -28,11 +28,11 @@ const DRIVER_TRANSLATIONS: any = {
     whitePlateSub: "Private carpool & fuel cost sharing (Legal)",
     yellowPlateTitle: "Commercial Express / Pro Pool",
     yellowPlateSub: "Commercial taxi permit fast routes",
-    publishBtn: "Publish Ride to Live Pool ➔",
+    publishBtn: "Deploy Ride to Live Pool ➔",
     waitingText: "Looking for nearby passengers...",
     onlineStatus: "YOU ARE ONLINE",
     cancelRide: "Cancel Ride / Go Offline",
-    backToHome: "← Back to Home / Edit Ride",
+    backToHome: "← Back to Home / Edit Route",
     editProfile: "Edit Driver Profile ✏️",
     menuCreatePool: "Ride Post Dashboard",
     menuRentCar: "Request a Cab (Rent Idle Cars)",
@@ -41,9 +41,6 @@ const DRIVER_TRANSLATIONS: any = {
     menuRefer: "Refer & Earn ₹200 + ₹200 🎁",
     menuLang: "Language & Settings",
     menuLogout: "Logout Driver Account",
-    vibeHeading: "RIDE VIBE PREFERENCE",
-    vibeMusic: "Music & Shared Aux",
-    vibeQuiet: "Quiet Commute (Silent)",
     activeRideBannerText: "Active Ride Online: Looking for Passengers",
     viewRadarAction: "View Radar ➔",
     newRequestBadge: "⚡ NEW PASSENGER REQUEST",
@@ -64,7 +61,8 @@ const DRIVER_TRANSLATIONS: any = {
     ownerName: "OWNER NAME",
     emailId: "EMAIL ID",
     carModelYear: "CAR MODEL & YEAR",
-    rcNumber: "RC NUMBER",
+    rcNumber: "RC NUMBER (MANDATORY)",
+    dlNumber: "DRIVING LICENCE (MANDATORY)",
     parkingLocation: "PARKING LOCATION (HYDERABAD)",
     dailyRentPrice: "24 HOURS RENTAL RATE (₹)",
     hostSubmitBtn: "List Idle Car ➔",
@@ -82,13 +80,14 @@ const DRIVER_TRANSLATIONS: any = {
     sosTitle: "🚨 Emergency SOS & Police Dispatch",
     policeText: "Police Emergency (112 / 100)",
     sheTeamsText: "SHE Teams (1091)",
+    completeKycNotice: "⚠️ RC & Driving Licence required in Profile to deploy rides!",
   },
   Telugu: {
     dashboardTitle: "డ్రైవర్ కన్సోల్",
     publishHeading: "రైడ్ పోస్ట్ వివరాలు",
     fromLabel: "స్టార్టింగ్ పాయింట్ (పికప్)",
     toLabel: "ఎండ్ పాయింట్ (డ్రాప్)",
-    useLiveLocation: "📍 నా ప్రస్తుత లైవ్ లొకేషన్ వాడండి",
+    useLiveLocation: "📍 ప్రస్తుత లైవ్ లొకేషన్",
     carModel: "కార్ మోడల్",
     seats: "అందుబాటులో ఉన్న సీట్లు",
     seatPrice: "సీటు అమౌంట్ (₹)",
@@ -97,7 +96,7 @@ const DRIVER_TRANSLATIONS: any = {
     whitePlateSub: "ప్రైవేట్ కార్‌పూల్ & లీగల్ ఇంధన వ్యయం పంచుకోవడం",
     yellowPlateTitle: "Commercial Express / Pro Pool",
     yellowPlateSub: "కమర్షియల్ టాక్సీ పర్మిట్ ఫాస్ట్ రూట్స్",
-    publishBtn: "రైడ్ పబ్లిష్ చేయండి ➔",
+    publishBtn: "రైడ్ డిప్లాయ్ చేయండి ➔",
     waitingText: "ప్యాసింజర్ల కోసం వెతుకుతోంది...",
     onlineStatus: "మీరు ఆన్‌లైన్‌లో ఉన్నారు",
     cancelRide: "రైడ్ రద్దు చేయండి / ఆఫ్‌లైన్ వెళ్ళండి",
@@ -110,9 +109,6 @@ const DRIVER_TRANSLATIONS: any = {
     menuRefer: "రెఫర్ & విన్ ₹200 + ₹200 🎁",
     menuLang: "భాష & సెట్టింగ్స్",
     menuLogout: "లాగౌట్ అవ్వండి",
-    vibeHeading: "రైడ్ వైబ్ సెలెక్షన్",
-    vibeMusic: "మ్యూజిక్ & వైబ్",
-    vibeQuiet: "సైలెంట్ కమ్యూట్",
     activeRideBannerText: "రైడ్ ఆన్‌లైన్‌లో ఉంది: ప్యాసింజర్స్ కోసం చూస్తోంది",
     viewRadarAction: "రాడార్ ఓపెన్ చేయండి ➔",
     newRequestBadge: "⚡ కొత్త ప్యాసింజర్ రిక్వెస్ట్",
@@ -133,7 +129,8 @@ const DRIVER_TRANSLATIONS: any = {
     ownerName: "ఓనర్ పేరు",
     emailId: "ఈమెయిల్ ఐడీ",
     carModelYear: "కార్ మోడల్ & ఇయర్",
-    rcNumber: "RC నంబర్",
+    rcNumber: "RC నంబర్ (తప్పనిసరి)",
+    dlNumber: "డ్రైవింగ్ లైసెన్స్ (తప్పనిసరి)",
     parkingLocation: "పార్కింగ్ లొకేషన్ (హైదరాబాద్)",
     dailyRentPrice: "24 గంటల అద్దె ధర (₹)",
     hostSubmitBtn: "కారును లిస్ట్ చేయండి ➔",
@@ -151,13 +148,14 @@ const DRIVER_TRANSLATIONS: any = {
     sosTitle: "🚨 ఎమర్జెన్సీ రక్షణ కేంద్రం",
     policeText: "పోలీస్ ఎమర్జెన్సీ (112 / 100)",
     sheTeamsText: "SHE Teams (1091)",
+    completeKycNotice: "⚠️ రైడ్ డిప్లాయ్ చేయడానికి Profile లో RC మరియు DL వివరాలు తప్పనిసరి!",
   },
   Tenglish: {
     dashboardTitle: "DRIVER CONSOLE",
     publishHeading: "Ride Post Setup",
     fromLabel: "STARTING POINT (PICKUP)",
     toLabel: "END POINT (DROP)",
-    useLiveLocation: "📍 Naa Current Live Location Use Cheyandi",
+    useLiveLocation: "📍 Live GPS Location",
     carModel: "CAR MODEL",
     seats: "SEATS OFFERED",
     seatPrice: "SEAT AMOUNT (₹)",
@@ -166,11 +164,11 @@ const DRIVER_TRANSLATIONS: any = {
     whitePlateSub: "Private carpool & fuel sharing (Legal)",
     yellowPlateTitle: "Commercial Express / Pro Pool",
     yellowPlateSub: "Commercial taxi permit fast routes",
-    publishBtn: "Ride Publish Cheyandi ➔",
+    publishBtn: "Deploy Ride to Live Pool ➔",
     waitingText: "Passengers kosam search chesthondi...",
     onlineStatus: "MEERU ONLINE LO UNNARU",
     cancelRide: "Ride Cancel / Go Offline",
-    backToHome: "← Back to Home / Edit Ride",
+    backToHome: "← Back to Home / Edit Route",
     editProfile: "Edit Driver Profile ✏️",
     menuCreatePool: "Ride Post Dashboard",
     menuRentCar: "Request a Cab (Rent Idle Cars)",
@@ -179,9 +177,6 @@ const DRIVER_TRANSLATIONS: any = {
     menuRefer: "Refer Driver (₹200 + ₹200) 🎁",
     menuLang: "Language & Settings",
     menuLogout: "Logout Account",
-    vibeHeading: "RIDE VIBE PREFERENCE",
-    vibeMusic: "Music & Shared Aux",
-    vibeQuiet: "Quiet Commute (Silent)",
     activeRideBannerText: "Active Ride Online: Passengers kosam waiting",
     viewRadarAction: "Radar Choodandi ➔",
     newRequestBadge: "⚡ NEW PASSENGER REQUEST",
@@ -202,7 +197,8 @@ const DRIVER_TRANSLATIONS: any = {
     ownerName: "OWNER NAME",
     emailId: "EMAIL ID",
     carModelYear: "CAR MODEL & YEAR",
-    rcNumber: "RC NUMBER",
+    rcNumber: "RC NUMBER (MANDATORY)",
+    dlNumber: "DRIVING LICENCE (MANDATORY)",
     parkingLocation: "PARKING LOCATION (HYDERABAD)",
     dailyRentPrice: "24 HOURS RENTAL RATE (₹)",
     hostSubmitBtn: "List Idle Car ➔",
@@ -220,13 +216,14 @@ const DRIVER_TRANSLATIONS: any = {
     sosTitle: "🚨 Emergency Safety & SOS",
     policeText: "Police Emergency (112 / 100)",
     sheTeamsText: "SHE Teams (1091)",
+    completeKycNotice: "⚠️️ Ride deploy cheyadaniki Profile lo RC mariyu DL mandatory ga ivvali!",
   },
   Hindi: {
     dashboardTitle: "ड्राइवर कंसोल",
     publishHeading: "रूट सेटअप",
     fromLabel: "पिकअप स्थान",
     toLabel: "ड्रॉप स्थान",
-    useLiveLocation: "📍 मेरी वर्तमान लाइव लोकेशन उपयोग करें",
+    useLiveLocation: "📍 वर्तमान लाइव लोकेशन",
     carModel: "कार मॉडल",
     seats: "उपलब्ध सीटें",
     seatPrice: "प्रति सीट किराया (₹)",
@@ -235,7 +232,7 @@ const DRIVER_TRANSLATIONS: any = {
     whitePlateSub: "प्राइवेट कारपूल व लीगल ईंधन शेयरिंग",
     yellowPlateTitle: "Commercial Express / Pro Pool",
     yellowPlateSub: "कमर्शियल टैक्सी परमिट फास्ट रूट्स",
-    publishBtn: "राइड पब्लिश करें ➔",
+    publishBtn: "राइड डिप्लॉय करें ➔",
     waitingText: "यात्रियों की तलाश जारी है...",
     onlineStatus: "आप ऑनलाइन हैं",
     cancelRide: "राइड रद्द करें / ऑफलाइन जाएं",
@@ -248,9 +245,6 @@ const DRIVER_TRANSLATIONS: any = {
     menuRefer: "रेफर करें और ₹200 + ₹200 पाएं 🎁",
     menuLang: "भाषा और सेटिंग्स",
     menuLogout: "लॉगआउट करें",
-    vibeHeading: "राइड वाइब प्राथमिकता",
-    vibeMusic: "म्यूजिक और शेयर ऑक्स",
-    vibeQuiet: "शांत कम्यूट (साइलेंट)",
     activeRideBannerText: "राइड ऑनलाइन है: यात्री खोजे जा रहे हैं",
     viewRadarAction: "रडार खोलें ➔",
     newRequestBadge: "⚡ नया यात्री अनुरोध",
@@ -271,7 +265,8 @@ const DRIVER_TRANSLATIONS: any = {
     ownerName: "मालिक का नाम",
     emailId: "ईमेल आईडी",
     carModelYear: "कार मॉडल और वर्ष",
-    rcNumber: "आरसी नंबर",
+    rcNumber: "आरसी नंबर (अनिवार्य)",
+    dlNumber: "ड्राइविंग लाइसेंस (अनिवार्य)",
     parkingLocation: "पार्किंग स्थान (हैदराबाद)",
     dailyRentPrice: "24 घंटे का किराया (₹)",
     hostSubmitBtn: "कार लिस्ट करें ➔",
@@ -289,18 +284,30 @@ const DRIVER_TRANSLATIONS: any = {
     sosTitle: "🚨 आपातकालीन सुरक्षा केंद्र",
     policeText: "पुलिस आपातकाल (112 / 100)",
     sheTeamsText: "शी टीम्स (1091)",
+    completeKycNotice: "⚠️ राइड डिप्लॉय करने के लिए प्रोफ़ाइल में RC और ड्राइविंग लाइसेंस अनिवार्य है!",
   },
 };
 
-const QUICK_HYDERABAD_HUBS = [
-  "Hitec City Cyber Towers",
-  "Gachibowli DLF",
-  "Madhapur Metro Station",
-  "LB Nagar Ring Road",
-  "Kukatpally KPHB",
-  "Secunderabad Station",
-  "Financial District",
-  "Banjara Hills Road No 12",
+// Search database for locations across Hyderabad
+const HYDERABAD_HUBS_DATABASE = [
+  "Hitec City Cyber Towers, Hyderabad",
+  "Gachibowli DLF Cybercity, Hyderabad",
+  "Madhapur Metro Station, Hyderabad",
+  "LB Nagar Ring Road, Hyderabad",
+  "Kukatpally Housing Board (KPHB), Hyderabad",
+  "Secunderabad Railway Station, Hyderabad",
+  "Financial District, Nanakramguda, Hyderabad",
+  "Banjara Hills Road No 12, Hyderabad",
+  "Jubilee Hills Check Post, Hyderabad",
+  "Miyapur Metro Station, Hyderabad",
+  "Dilsukhnagar Bus Depot, Hyderabad",
+  "Ameerpet Metro Junction, Hyderabad",
+  "Begumpet Airport Road, Hyderabad",
+  "Uppal Ring Road, Hyderabad",
+  "Shamshabad RGIA Airport, Hyderabad",
+  "Mehdipatnam Rythu Bazar, Hyderabad",
+  "Charminar, Old City, Hyderabad",
+  "Kondapur RTO Office, Hyderabad",
 ];
 
 const INITIAL_IDLE_CARS = [
@@ -337,12 +344,15 @@ const INITIAL_IDLE_CARS = [
 ];
 
 export function DriverHome({ navigation }: any) {
+  // Simple Onboarding: ONLY Name & Email needed to open app
   const [isVerified, setIsVerified] = useState(false);
-  const [driverName, setDriverName] = useState("Bhargav");
+  const [driverName, setDriverName] = useState("");
+  const [driverEmail, setDriverEmail] = useState("");
+
+  // Detailed Mandatory Profile Verification States
   const [driverPhone, setDriverPhone] = useState("8919326622");
-  const [driverEmail, setDriverEmail] = useState("vattalabhargav3@gmail.com");
-  const [rcNumber, setRcNumber] = useState("TS09FA1234");
-  const [dlNumber, setDlNumber] = useState("DL-0920190012345");
+  const [rcNumber, setRcNumber] = useState(""); // empty initially until added in profile
+  const [dlNumber, setDlNumber] = useState(""); // empty initially until added in profile
   const [carModel, setCarModel] = useState("Swift Dzire");
 
   const [selectedLang, setSelectedLang] = useState("English");
@@ -354,15 +364,18 @@ export function DriverHome({ navigation }: any) {
   const [showSosModal, setShowSosModal] = useState(false);
   const [showLangModal, setShowLangModal] = useState(false);
 
-  // Route & Live GPS
-  const [startPoint, setStartPoint] = useState("LB Nagar, Hyderabad");
-  const [endPoint, setEndPoint] = useState("Hitec City Cyber Towers");
+  // Live Pickup Search & Suggestion states
+  const [startPoint, setStartPoint] = useState("");
+  const [startSuggestions, setStartSuggestions] = useState<string[]>([]);
   const [isFetchingGps, setIsFetchingGps] = useState(false);
+
+  // Live Drop Search & Suggestion states
+  const [endPoint, setEndPoint] = useState("");
+  const [endSuggestions, setEndSuggestions] = useState<string[]>([]);
 
   const [seatsCount, setSeatsCount] = useState("3");
   const [pricePerSeat, setPricePerSeat] = useState("110");
   const [plateType, setPlateType] = useState<"WHITE" | "YELLOW">("WHITE");
-  const [rideVibe, setRideVibe] = useState<"MUSIC" | "SILENT">("MUSIC");
   const [activeRideData, setActiveRideData] = useState<any>(null);
 
   const [weeklyRidesCount, setWeeklyRidesCount] = useState(4);
@@ -378,7 +391,7 @@ export function DriverHome({ navigation }: any) {
   const [hostLocation, setHostLocation] = useState("");
   const [hostDailyPrice, setHostDailyPrice] = useState("1100");
 
-  const referralCode = `BHARGAV${driverPhone.slice(-4)}`;
+  const referralCode = `BHARGAV${(driverPhone || "8919").slice(-4)}`;
   const [referralInput, setReferralInput] = useState("");
 
   useEffect(() => {
@@ -388,10 +401,10 @@ export function DriverHome({ navigation }: any) {
         if (saved) {
           const p = JSON.parse(saved);
           setDriverName(p.name || "Bhargav");
-          setDriverPhone(p.phone || "8919326622");
           setDriverEmail(p.email || "vattalabhargav3@gmail.com");
-          setRcNumber(p.rc || "TS09FA1234");
-          setDlNumber(p.dl || "DL-0920190012345");
+          setDriverPhone(p.phone || "8919326622");
+          setRcNumber(p.rc || "");
+          setDlNumber(p.dl || "");
           setCarModel(p.carModel || "Swift Dzire");
           if (p.lang) setSelectedLang(p.lang);
           setIsVerified(true);
@@ -400,7 +413,7 @@ export function DriverHome({ navigation }: any) {
     } catch {}
   }, []);
 
-  // Fetch Live GPS Current Location for Pickup
+  // Live Geolocation
   const fetchCurrentLocation = () => {
     if (typeof window !== "undefined" && navigator.geolocation) {
       setIsFetchingGps(true);
@@ -408,33 +421,61 @@ export function DriverHome({ navigation }: any) {
         (position) => {
           const { latitude, longitude } = position.coords;
           setStartPoint(`Live GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} (Current Location)`);
+          setStartSuggestions([]);
           setIsFetchingGps(false);
-          alert("📍 Live GPS Location fetched successfully!");
+          alert("📍 Live Location detected successfully!");
         },
-        (error) => {
+        () => {
           setIsFetchingGps(false);
-          alert("GPS permission denied or unavailable. Please type your location manually.");
+          alert("GPS Permission denied. Type location to search suggestions.");
         },
-        { enableHighAccuracy: true, timeout: 10000 }
+        { enableHighAccuracy: true, timeout: 8000 }
       );
     } else {
-      alert("Geolocation is not supported on this device.");
+      alert("Geolocation not supported on this browser.");
     }
   };
 
-  const handleVerifyDriver = () => {
-    if (!driverName.trim() || !driverEmail.trim() || !rcNumber.trim() || !dlNumber.trim()) {
-      alert("Please enter Name, Email, RC and DL details.");
+  // Live Search filter for Pickup
+  const handleStartPointChange = (text: string) => {
+    setStartPoint(text);
+    if (text.trim().length > 1) {
+      const filtered = HYDERABAD_HUBS_DATABASE.filter((item) =>
+        item.toLowerCase().includes(text.toLowerCase())
+      );
+      setStartSuggestions(filtered);
+    } else {
+      setStartSuggestions([]);
+    }
+  };
+
+  // Live Search filter for Drop
+  const handleEndPointChange = (text: string) => {
+    setEndPoint(text);
+    if (text.trim().length > 1) {
+      const filtered = HYDERABAD_HUBS_DATABASE.filter((item) =>
+        item.toLowerCase().includes(text.toLowerCase())
+      );
+      setEndSuggestions(filtered);
+    } else {
+      setEndSuggestions([]);
+    }
+  };
+
+  // Simple Onboarding: ONLY Name & Email required
+  const handleSimpleOnboarding = () => {
+    if (!driverName.trim() || !driverEmail.trim()) {
+      alert("Please enter Name and Email Address to continue.");
       return;
     }
 
     const profile = {
       name: driverName.trim(),
-      phone: driverPhone.trim(),
       email: driverEmail.trim(),
-      rc: rcNumber.trim(),
-      dl: dlNumber.trim(),
-      carModel: carModel.trim(),
+      phone: driverPhone,
+      rc: rcNumber,
+      dl: dlNumber,
+      carModel: carModel,
       lang: selectedLang,
     };
 
@@ -447,7 +488,13 @@ export function DriverHome({ navigation }: any) {
     setIsVerified(true);
   };
 
+  // Profile Edit: Save RC, DL, etc.
   const handleSaveProfile = () => {
+    if (!rcNumber.trim() || !dlNumber.trim()) {
+      alert("RC Number and Driving Licence (DL) are mandatory to deploy rides!");
+      return;
+    }
+
     const profile = {
       name: driverName.trim(),
       phone: driverPhone.trim(),
@@ -465,12 +512,19 @@ export function DriverHome({ navigation }: any) {
     } catch {}
 
     setShowEditProfileModal(false);
-    alert("Profile details updated successfully!");
+    alert("Profile verified & saved successfully! You can now deploy rides.");
   };
 
+  // Ride Deployment: MANDATORY check for RC and DL
   const handlePublishPoolRide = () => {
-    if (!startPoint || !endPoint || !pricePerSeat) {
-      alert("Please enter Pickup, Drop, and Seat Price.");
+    if (!rcNumber.trim() || !dlNumber.trim()) {
+      alert("⚠️ Ride Deployment Blocked!\n\nPlease open 'Edit Profile' and enter your RC Number and Driving Licence (DL) first.");
+      setShowEditProfileModal(true);
+      return;
+    }
+
+    if (!startPoint.trim() || !endPoint.trim() || !pricePerSeat.trim()) {
+      alert("Please enter Pickup location, Drop location, and Seat price.");
       return;
     }
 
@@ -483,7 +537,6 @@ export function DriverHome({ navigation }: any) {
       available_seats: Number(seatsCount),
       price_per_seat: Number(pricePerSeat),
       plate_type: plateType,
-      ride_vibe: rideVibe,
       category_tag: plateType === "WHITE" ? "Green Saver" : "Commercial Express",
       departure_time: "Today in 15 mins",
       status: "ONLINE_SEARCHING",
@@ -529,12 +582,12 @@ export function DriverHome({ navigation }: any) {
       return;
     }
 
-    alert(`🎉 Referral applied! Once your 1st ride is complete, ₹200 will be credited to both of your wallets!`);
+    alert(`🎉 Referral applied! When your 1st ride is complete, ₹200 each will be unlocked!`);
     setReferralInput("");
   };
 
   const shareReferralWhatsApp = () => {
-    const text = `Join RidePool Driver Network! Use my referral code ${referralCode} and when you complete your 1st ride, both of us get ₹200: https://my-app-frontend-blue.vercel.app/driver`;
+    const text = `Join RidePool Driver Network! Use my referral code ${referralCode} and upon your 1st completed ride, both get ₹200 bonus: https://my-app-frontend-blue.vercel.app/driver`;
     Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
   };
 
@@ -564,21 +617,21 @@ export function DriverHome({ navigation }: any) {
     Linking.openURL(`tel:${num}`).catch(() => alert(`Calling ${num}...`));
   };
 
-  // 1. Onboarding Screen
+  // 1. SIMPLE ONBOARDING (NAME & EMAIL ONLY)
   if (!isVerified) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <ScrollView contentContainerStyle={styles.onboardContainer}>
           <View style={styles.onboardHeader}>
-            <Text style={styles.badgeOrange}>DRIVER PARTNER REGISTRATION</Text>
-            <Text style={styles.onboardTitle}>Driver Verification & Login</Text>
+            <Text style={styles.badgeOrange}>DRIVER PARTNER FAST ACCESS</Text>
+            <Text style={styles.onboardTitle}>Driver Login & Onboarding</Text>
             <Text style={styles.onboardSub}>
-              Enter your details to publish rides or rent idle vehicles.
+              Enter your Name and Email Address to directly open the console. (RC & Driving Licence can be added later in Profile Edit).
             </Text>
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.inputTag}>DRIVER NAME</Text>
+            <Text style={styles.inputTag}>FULL NAME</Text>
             <TextInput
               style={styles.inputBox}
               placeholder="e.g. Bhargav Vattala"
@@ -586,51 +639,18 @@ export function DriverHome({ navigation }: any) {
               onChangeText={setDriverName}
             />
 
-            <Text style={styles.inputTag}>PHONE NUMBER</Text>
-            <TextInput
-              style={styles.inputBox}
-              placeholder="8919326622"
-              keyboardType="phone-pad"
-              value={driverPhone}
-              onChangeText={setDriverPhone}
-            />
-
             <Text style={styles.inputTag}>EMAIL ID</Text>
             <TextInput
               style={styles.inputBox}
-              placeholder="vattalabhargav3@gmail.com"
+              placeholder="e.g. vattalabhargav3@gmail.com"
               keyboardType="email-address"
               autoCapitalize="none"
               value={driverEmail}
               onChangeText={setDriverEmail}
             />
 
-            <Text style={styles.inputTag}>CAR MODEL</Text>
-            <TextInput
-              style={styles.inputBox}
-              placeholder="Swift Dzire"
-              value={carModel}
-              onChangeText={setCarModel}
-            />
-
-            <Text style={styles.inputTag}>VEHICLE RC NUMBER</Text>
-            <TextInput
-              style={styles.inputBox}
-              placeholder="e.g. TS09FA1234"
-              value={rcNumber}
-              onChangeText={setRcNumber}
-            />
-
-            <Text style={styles.inputTag}>DRIVING LICENCE NUMBER</Text>
-            <TextInput
-              style={styles.inputBox}
-              placeholder="e.g. DL-0920190012345"
-              value={dlNumber}
-              onChangeText={setDlNumber}
-            />
-
-            <TouchableOpacity style={styles.submitBtn} onPress={handleVerifyDriver}>
-              <Text style={styles.submitBtnText}>Verify & Login ➔</Text>
+            <TouchableOpacity style={styles.submitBtn} onPress={handleSimpleOnboarding}>
+              <Text style={styles.submitBtnText}>Open Driver Console ➔</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -638,11 +658,11 @@ export function DriverHome({ navigation }: any) {
     );
   }
 
-  // 2. Main Driver Dashboard
+  // 2. MAIN DRIVER DASHBOARD
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* Header */}
+        {/* Top Header */}
         <View style={styles.topHeader}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
             <TouchableOpacity style={styles.menuIconBtn} onPress={() => setShowDrawerMenu(true)}>
@@ -668,9 +688,20 @@ export function DriverHome({ navigation }: any) {
           </View>
         </View>
 
-        {/* ---------------- VIEW 1: CREATE RIDE POOL WITH LIVE GPS ---------------- */}
+        {/* ---------------- VIEW 1: CREATE RIDE POOL WITH DYNAMIC SEARCH & LIVE GPS ---------------- */}
         {currentView === "CREATE_POOL" && (
-          <ScrollView contentContainerStyle={styles.scrollArea}>
+          <ScrollView contentContainerStyle={styles.scrollArea} keyboardShouldPersistTaps="handled">
+            {/* Kyc Reminder Banner if RC / DL is missing */}
+            {(!rcNumber.trim() || !dlNumber.trim()) && (
+              <TouchableOpacity
+                style={styles.kycWarningBanner}
+                onPress={() => setShowEditProfileModal(true)}
+              >
+                <Text style={styles.kycWarningText}>{t.completeKycNotice}</Text>
+                <Text style={styles.kycActionText}>+ Add in Profile</Text>
+              </TouchableOpacity>
+            )}
+
             {activeRideData && (
               <TouchableOpacity
                 style={styles.activeRideBanner}
@@ -687,7 +718,7 @@ export function DriverHome({ navigation }: any) {
             <View style={styles.card}>
               <Text style={styles.cardTitle}>{t.publishHeading}</Text>
 
-              {/* Pickup Input + Live GPS Trigger Button */}
+              {/* Pickup Header + Live GPS Button */}
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                 <Text style={styles.inputTag}>{t.fromLabel}</Text>
                 <TouchableOpacity
@@ -703,37 +734,63 @@ export function DriverHome({ navigation }: any) {
                 </TouchableOpacity>
               </View>
 
+              {/* Pickup Search Input */}
               <TextInput
                 style={styles.inputBox}
                 value={startPoint}
-                onChangeText={setStartPoint}
-                placeholder="Enter pickup point"
+                onChangeText={handleStartPointChange}
+                placeholder="Search or enter pickup location..."
               />
 
-              {/* Destination Drop Input */}
-              <Text style={styles.inputTag}>{t.toLabel}</Text>
+              {/* Pickup Live Dropdown Suggestions */}
+              {startSuggestions.length > 0 && (
+                <View style={styles.suggestionsBox}>
+                  {startSuggestions.map((item, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.suggestionItem}
+                      onPress={() => {
+                        setStartPoint(item);
+                        setStartSuggestions([]);
+                      }}
+                    >
+                      <Text style={{ fontSize: 12 }}>📍</Text>
+                      <Text style={styles.suggestionText}>{item}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
+
+              {/* Drop Search Input */}
+              <Text style={[styles.inputTag, { marginTop: 12 }]}>{t.toLabel}</Text>
               <TextInput
                 style={styles.inputBox}
                 value={endPoint}
-                onChangeText={setEndPoint}
-                placeholder="Enter drop destination"
+                onChangeText={handleEndPointChange}
+                placeholder="Search destination (e.g. Hitec City, Gachibowli)..."
               />
 
-              {/* Quick Destination Selectors */}
-              <View style={styles.quickHubWrap}>
-                {QUICK_HYDERABAD_HUBS.map((hub) => (
-                  <TouchableOpacity
-                    key={hub}
-                    style={styles.quickHubChip}
-                    onPress={() => setEndPoint(hub)}
-                  >
-                    <Text style={styles.quickHubText}>{hub}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
+              {/* Drop Live Dropdown Suggestions */}
+              {endSuggestions.length > 0 && (
+                <View style={styles.suggestionsBox}>
+                  {endSuggestions.map((item, idx) => (
+                    <TouchableOpacity
+                      key={idx}
+                      style={styles.suggestionItem}
+                      onPress={() => {
+                        setEndPoint(item);
+                        setEndSuggestions([]);
+                      }}
+                    >
+                      <Text style={{ fontSize: 12 }}>🏁</Text>
+                      <Text style={styles.suggestionText}>{item}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
 
               {/* Car & Seats */}
-              <View style={styles.row}>
+              <View style={[styles.row, { marginTop: 8 }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputTag}>{t.carModel}</Text>
                   <TextInput style={styles.inputBox} value={carModel} onChangeText={setCarModel} />
@@ -744,29 +801,9 @@ export function DriverHome({ navigation }: any) {
                 </View>
               </View>
 
-              {/* Seat Price */}
+              {/* Price Per Seat */}
               <Text style={styles.inputTag}>{t.seatPrice}</Text>
               <TextInput style={styles.inputBox} keyboardType="numeric" value={pricePerSeat} onChangeText={setPricePerSeat} />
-
-              {/* Vibe Selection */}
-              <Text style={[styles.inputTag, { marginTop: 14 }]}>{t.vibeHeading}</Text>
-              <View style={{ flexDirection: "row", gap: 10 }}>
-                <TouchableOpacity
-                  style={[styles.vibeCard, rideVibe === "MUSIC" && styles.vibeCardActive]}
-                  onPress={() => setRideVibe("MUSIC")}
-                >
-                  <Text style={{ fontSize: 16 }}>🎵</Text>
-                  <Text style={[styles.vibeTitle, rideVibe === "MUSIC" && styles.vibeTitleActive]}>{t.vibeMusic}</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.vibeCard, rideVibe === "SILENT" && styles.vibeCardActive]}
-                  onPress={() => setRideVibe("SILENT")}
-                >
-                  <Text style={{ fontSize: 16 }}>🤫</Text>
-                  <Text style={[styles.vibeTitle, rideVibe === "SILENT" && styles.vibeTitleActive]}>{t.vibeQuiet}</Text>
-                </TouchableOpacity>
-              </View>
 
               {/* Plate Selection */}
               <Text style={[styles.inputTag, { marginTop: 14 }]}>{t.plateType}</Text>
@@ -800,6 +837,7 @@ export function DriverHome({ navigation }: any) {
                 </TouchableOpacity>
               </View>
 
+              {/* Publish / Deploy Button */}
               <TouchableOpacity style={styles.submitBtn} onPress={handlePublishPoolRide}>
                 <Text style={styles.submitBtnText}>{t.publishBtn}</Text>
               </TouchableOpacity>
@@ -810,11 +848,9 @@ export function DriverHome({ navigation }: any) {
         {/* ---------------- VIEW 2: WAITING RADAR SCREEN ---------------- */}
         {currentView === "WAITING_POOL" && (
           <ScrollView contentContainerStyle={styles.scrollArea}>
-            <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 12 }}>
-              <TouchableOpacity style={styles.topBackNavBtn} onPress={() => setCurrentView("CREATE_POOL")}>
-                <Text style={styles.topBackNavText}>{t.backToHome}</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity style={styles.topBackNavBtn} onPress={() => setCurrentView("CREATE_POOL")}>
+              <Text style={styles.topBackNavText}>{t.backToHome}</Text>
+            </TouchableOpacity>
 
             <View style={styles.liveRadarCard}>
               <View style={styles.liveStatusRow}>
@@ -1041,7 +1077,7 @@ export function DriverHome({ navigation }: any) {
           </ScrollView>
         )}
 
-        {/* ---------------- EDIT PROFILE MODAL ---------------- */}
+        {/* ---------------- EDIT PROFILE MODAL (RC & DL MANDATORY HERE) ---------------- */}
         <Modal visible={showEditProfileModal} transparent animationType="slide">
           <View style={styles.modalBackdrop}>
             <View style={styles.sheetModal}>
@@ -1050,14 +1086,27 @@ export function DriverHome({ navigation }: any) {
               <Text style={styles.inputTag}>NAME</Text>
               <TextInput style={styles.inputBox} value={driverName} onChangeText={setDriverName} />
 
-              <Text style={styles.inputTag}>PHONE</Text>
+              <Text style={styles.inputTag}>PHONE NUMBER</Text>
               <TextInput style={styles.inputBox} value={driverPhone} onChangeText={setDriverPhone} keyboardType="phone-pad" />
 
               <Text style={styles.inputTag}>CAR MODEL</Text>
               <TextInput style={styles.inputBox} value={carModel} onChangeText={setCarModel} />
 
-              <Text style={styles.inputTag}>RC NUMBER</Text>
-              <TextInput style={styles.inputBox} value={rcNumber} onChangeText={setRcNumber} />
+              <Text style={[styles.inputTag, { color: "#D97706" }]}>{t.rcNumber} *</Text>
+              <TextInput
+                style={[styles.inputBox, !rcNumber.trim() && { borderColor: "#F59E0B" }]}
+                placeholder="e.g. TS09FA1234"
+                value={rcNumber}
+                onChangeText={setRcNumber}
+              />
+
+              <Text style={[styles.inputTag, { color: "#D97706" }]}>{t.dlNumber} *</Text>
+              <TextInput
+                style={[styles.inputBox, !dlNumber.trim() && { borderColor: "#F59E0B" }]}
+                placeholder="e.g. DL-0920190012345"
+                value={dlNumber}
+                onChangeText={setDlNumber}
+              />
 
               <TouchableOpacity style={styles.submitBtn} onPress={handleSaveProfile}>
                 <Text style={styles.submitBtnText}>{t.saveProfileBtn}</Text>
@@ -1077,7 +1126,7 @@ export function DriverHome({ navigation }: any) {
               <View style={styles.drawerTopRow}>
                 <View>
                   <Text style={styles.menuTitle}>{driverName || "Driver Partner"}</Text>
-                  <Text style={styles.menuSub}>📞 {driverPhone} • {carModel}</Text>
+                  <Text style={styles.menuSub}>📞 {driverPhone} • {rcNumber ? "Verified KYC" : "Pending KYC"}</Text>
                 </View>
                 <TouchableOpacity onPress={() => setShowDrawerMenu(false)}>
                   <Text style={styles.drawerCloseX}>✕</Text>
@@ -1333,6 +1382,19 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   topBackNavText: { fontSize: 12, fontWeight: "800", color: "#0F172A" },
+  kycWarningBanner: {
+    backgroundColor: "#FFFBEB",
+    borderWidth: 1,
+    borderColor: "#FDE68A",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  kycWarningText: { fontSize: 11, fontWeight: "800", color: "#B45309", flex: 1 },
+  kycActionText: { fontSize: 11, fontWeight: "900", color: "#D97706", marginLeft: 8 },
   activeRideBanner: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1355,25 +1417,25 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   gpsButtonText: { color: "#0284C7", fontSize: 10, fontWeight: "800" },
-  quickHubWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
-  quickHubChip: { backgroundColor: "#F1F5F9", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  quickHubText: { fontSize: 10, color: "#475569", fontWeight: "700" },
-  row: { flexDirection: "row", gap: 10 },
-  vibeCard: {
-    flex: 1,
+  suggestionsBox: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 10,
+    marginTop: 4,
+    maxHeight: 180,
+  },
+  suggestionItem: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
     gap: 8,
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    paddingVertical: 12,
-    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#F1F5F9",
   },
-  vibeCardActive: { borderColor: "#D97706", backgroundColor: "#FFFBEB" },
-  vibeTitle: { fontSize: 12, fontWeight: "700", color: "#64748B" },
-  vibeTitleActive: { color: "#B45309", fontWeight: "900" },
+  suggestionText: { fontSize: 12, fontWeight: "700", color: "#1E293B" },
+  row: { flexDirection: "row", gap: 10 },
   plateRow: { gap: 8, marginTop: 6 },
   plateBox: { flexDirection: "row", alignItems: "center", backgroundColor: "#F8FAFC", padding: 12, borderRadius: 12, borderWidth: 1.5, borderColor: "#CBD5E1", gap: 12 },
   plateBoxActive: { borderColor: "#16A34A", backgroundColor: "#F0FDF4" },
