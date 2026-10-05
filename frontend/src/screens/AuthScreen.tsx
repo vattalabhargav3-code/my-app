@@ -127,6 +127,9 @@ export function AuthScreen({ onLogin, onAuthSuccess }: AuthScreenProps) {
   );
 }
 
+// ✅ ఈ లైన్ యాడ్ చేశాం - దీనివల్ల Import ఎలా చేసినా ఎర్రర్ రాదు:
+export default AuthScreen;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
