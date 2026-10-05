@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Image,
   Modal,
   StyleSheet,
   Text,
@@ -11,7 +10,7 @@ import {
   View,
 } from "react-native";
 
-interface LocationPickerProps {
+export interface LocationPickerProps {
   visible: boolean;
   onClose: () => void;
   onSelect: (placeName: string, lat: number, lon: number) => void;
@@ -33,7 +32,7 @@ const QUICK_HUBS = [
   { name: "Financial District", lat: 17.4141, lon: 78.3412 },
 ];
 
-export default function LocationPickerModal({
+export function LocationPickerModal({
   visible,
   onClose,
   onSelect,
@@ -85,12 +84,13 @@ export default function LocationPickerModal({
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <View style={styles.container}>
-        {/* Dynamic Static Map Background */}
+        {/* Dynamic Static Map Background (Web-safe render) */}
         <View style={styles.mapLayer}>
-          <Image
-            source={{ uri: mapImageUrl }}
-            style={styles.mapImage}
-            resizeMode="cover"
+          {/* @ts-ignore */}
+          <img
+            src={mapImageUrl}
+            alt="Location Map"
+            style={{ width: "100%", height: "100%", objectFit: "cover" }}
           />
 
           <View style={styles.fixedPin} pointerEvents="none">
@@ -185,6 +185,9 @@ export default function LocationPickerModal({
   );
 }
 
+// Named మరియు Default exports రెండూ ఇవ్వడం వల్ల ఏ ఇంపోర్ట్ మిస్సింగ్ ఎర్రర్ రాదు
+export default LocationPickerModal;
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -195,10 +198,6 @@ const styles = StyleSheet.create({
     width: "100%",
     position: "relative",
     backgroundColor: "#E2E8F0",
-  },
-  mapImage: {
-    width: "100%",
-    height: "100%",
   },
   fixedPin: {
     position: "absolute",
@@ -246,9 +245,6 @@ const styles = StyleSheet.create({
     backgroundColor: "#FFFFFF",
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
     elevation: 4,
   },
   backBtnText: {
@@ -265,9 +261,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     height: 44,
     gap: 8,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
     elevation: 4,
   },
   searchIconText: {
@@ -288,9 +281,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     maxHeight: 220,
     paddingVertical: 6,
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
     elevation: 6,
     zIndex: 101,
   },
@@ -326,9 +316,6 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 24,
     padding: 20,
     paddingBottom: 28,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
     elevation: 8,
     zIndex: 90,
   },
