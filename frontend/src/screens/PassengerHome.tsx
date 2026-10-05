@@ -10,8 +10,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { RideCard } from "@/src/components/RideCard";
-import { LocationPickerModal } from "@/src/components/LocationPickerModal";
+
+// ✅ ఇక్కడ { } బ్రాకెట్స్ తీసేసి Default Imports గా మార్చాం:
+import RideCard from "@/src/components/RideCard";
+import LocationPickerModal from "@/src/components/LocationPickerModal";
+
+// ఒకవేళ పైన ఉన్న పాత్ ఎర్రర్ వస్తే కింద ఉన్న రిలేటివ్ పాత్ లైన్స్ వాడండి:
+// import RideCard from "../components/RideCard";
+// import LocationPickerModal from "../components/LocationPickerModal";
 
 // డమ్మీ రైడ్స్ డేటా (స్క్రీన్ వెంటనే లోడ్ అవ్వడానికి)
 const INITIAL_RIDES = [
