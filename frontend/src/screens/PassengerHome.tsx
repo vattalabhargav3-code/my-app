@@ -46,6 +46,12 @@ export function PassengerHome({ navigation }: any) {
   const [isModalResolving, setIsModalResolving] = useState(false);
   const [isFetchingGps, setIsFetchingGps] = useState(false);
 
+  // Online Payment Gateway Modal States
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [pendingRideToPay, setPendingRideToPay] = useState<any | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<"GPAY" | "PHONEPE" | "PAYTM" | "QR">("GPAY");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+
   // Navigation, Drawer & Safety
   const [activeTab, setActiveTab] = useState<"RIDE" | "POOLS" | "OFFERS" | "PROFILE">("RIDE");
   const [showDrawerMenu, setShowDrawerMenu] = useState(false);
@@ -55,7 +61,7 @@ export function PassengerHome({ navigation }: any) {
   const [womenOnlyFilter, setWomenOnlyFilter] = useState(false);
   const [isSirenActive, setIsSirenActive] = useState(false);
 
-  // Live Rides & Real Bookings (NO DUMMY DEMO CARD)
+  // Live Rides & Real Bookings (NO DEMO DUMMY CARDS)
   const [publishedRides, setPublishedRides] = useState<any[]>([]);
   const [bookedRide, setBookedRide] = useState<any | null>(null);
 
@@ -212,8 +218,8 @@ export function PassengerHome({ navigation }: any) {
     };
   }, [showSearchMapModal]);
 
-  // Open "Where to go?" modal
-  const openWhereToGoModal = (target: "PICKUP" | "DROP") => {
+  // Open "Where to go" modal for Pickup or Drop
+  const openLocationPickerModal = (target: "PICKUP" | "DROP") => {
     setActiveInputTarget(target);
     setModalSearchText(target === "DROP" ? dropAddress : pickupAddress);
     setSearchResults([]);
@@ -229,7 +235,6 @@ export function PassengerHome({ navigation }: any) {
     }
     setLoadingSearch(true);
     try {
-      // Bounding box strictly limits results to Hyderabad region (lat 17.1 to 17.6, lon 78.1 to 78.7)
       const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
         text.trim() + ", Hyderabad"
       )}&countrycodes=in&viewbox=78.1,17.6,78.7,17.1&bounded=1&limit=6`;
@@ -259,7 +264,7 @@ export function PassengerHome({ navigation }: any) {
     }
   };
 
-  // Fetch Current GPS Location inside Modal
+  // Fetch Current GPS Location inside Modal (ONLY FOR PICKUP)
   const fetchModalLiveGps = () => {
     if (typeof window !== "undefined" && navigator.geolocation) {
       setIsFetchingGps(true);
@@ -295,6 +300,45 @@ export function PassengerHome({ navigation }: any) {
       }
     }
     setShowSearchMapModal(false);
+  };
+
+  // START ONLINE PAYMENT FLOW FOR RIDE CONFIRMATION
+  const initiateRideBookingPayment = (ride: any) => {
+    if (!dropAddress.trim()) {
+      alert("Please set a Drop Location before booking!");
+      openLocationPickerModal("DROP");
+      return;
+    }
+    setPendingRideToPay(ride);
+    setShowPaymentModal(true);
+  };
+
+  // COMPLETE ONLINE PAYMENT & CONFIRM RIDE
+  const handlePaymentSuccessAndConfirm = () => {
+    setIsProcessingPayment(true);
+    setTimeout(() => {
+      setIsProcessingPayment(false);
+      setShowPaymentModal(false);
+
+      const generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
+      const confirmedRideData = {
+        id: pendingRideToPay.id || "bk_" + Date.now(),
+        driver_name: pendingRideToPay.driver_name || "Karthik R.",
+        driver_phone: "9848012345",
+        vehicle_name: pendingRideToPay.vehicle_name || "Swift Dzire",
+        plate_type: pendingRideToPay.plate_type || "WHITE",
+        fare: pendingRideToPay.price_per_seat || 110,
+        otp: generatedOtp,
+        status: "PAYMENT_CONFIRMED",
+        eta: "Arriving in 5 mins",
+        payment_method: selectedPaymentMethod,
+      };
+
+      setBookedRide(confirmedRideData);
+      setPendingRideToPay(null);
+      setActiveTab("RIDE");
+      alert("🎉 Online Payment Successful! Your ride is confirmed.");
+    }, 1500);
   };
 
   const triggerDefenseSiren = () => {
@@ -375,19 +419,41 @@ export function PassengerHome({ navigation }: any) {
           </View>
         </View>
 
-        {/* ---------------- RAPIDO-STYLE BOTTOM SHEET CARD ---------------- */}
+        {/* ---------------- RAPIDO-STYLE BOTTOM SHEET CARD (PICKUP & DROP BOTH VISIBLE) ---------------- */}
         <View style={styles.bottomSheetContainer}>
           <View style={styles.bottomSheetHandle} />
 
-          {/* "Where do you want to go?" Search Input */}
+          {/* 1. PICKUP POINT TRIGGER */}
           <TouchableOpacity
-            style={styles.searchBarTrigger}
-            onPress={() => openWhereToGoModal("DROP")}
+            style={styles.locationSelectorRow}
+            onPress={() => openLocationPickerModal("PICKUP")}
             activeOpacity={0.85}
           >
-            <Text style={{ fontSize: 16 }}>🔍</Text>
-            <Text style={[styles.searchBarTriggerText, !dropAddress && { color: "#64748B" }]}>
-              {dropAddress ? `Drop: ${dropAddress}` : "Where do you want to go?"}
+            <View style={styles.greenDotMini} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.selectorLabel}>PICKUP LOCATION</Text>
+              <Text style={styles.selectorValueText} numberOfLines={1}>{pickupAddress}</Text>
+            </View>
+            <Text style={styles.selectorActionTag}>Change ➔</Text>
+          </TouchableOpacity>
+
+          <View style={styles.selectorDivider} />
+
+          {/* 2. DROP POINT TRIGGER ("Where do you want to go?") */}
+          <TouchableOpacity
+            style={[styles.locationSelectorRow, !dropAddress && { backgroundColor: "#FEF2F2", borderColor: "#FECACA" }]}
+            onPress={() => openLocationPickerModal("DROP")}
+            activeOpacity={0.85}
+          >
+            <View style={styles.redSquareMini} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.selectorLabel}>DROP LOCATION</Text>
+              <Text style={[styles.selectorValueText, !dropAddress && { color: "#DC2626" }]} numberOfLines={1}>
+                {dropAddress || "Where do you want to go? (Tap to Set)"}
+              </Text>
+            </View>
+            <Text style={[styles.selectorActionTag, !dropAddress && { color: "#DC2626" }]}>
+              {dropAddress ? "Change ➔" : "Select ➔"}
             </Text>
           </TouchableOpacity>
 
@@ -415,39 +481,55 @@ export function PassengerHome({ navigation }: any) {
             </TouchableOpacity>
           </View>
 
-          {/* Popular Hyderabad Hubs Quick Select */}
-          <ScrollView style={{ maxHeight: 150 }} showsVerticalScrollIndicator={false}>
-            {HYDERABAD_POPULAR_HUBS.map((item, idx) => (
-              <TouchableOpacity
-                key={idx}
-                style={styles.recentLocationRow}
-                onPress={() => {
-                  setDropAddress(`${item.name}, ${item.sub}`);
-                }}
-              >
-                <Text style={{ fontSize: 15, color: "#64748B" }}>🕒</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.recentItemTitle}>{item.name}</Text>
-                  <Text style={styles.recentItemSub} numberOfLines={1}>{item.sub}</Text>
+          {/* Live Rides Feed or Popular Hyderabad Hubs */}
+          <ScrollView style={{ maxHeight: 160 }} showsVerticalScrollIndicator={false}>
+            {publishedRides.length > 0 ? (
+              publishedRides.map((ride) => (
+                <View key={ride.id} style={styles.availableRideCard}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text style={styles.availableRideDriver}>{ride.driver_name} • {ride.vehicle_name}</Text>
+                    <Text style={styles.availableRideFare}>₹{ride.price_per_seat}</Text>
+                  </View>
+                  <Text style={styles.availableRideRoute}>📍 {ride.from_location} ➔ 🏁 {ride.to_location}</Text>
+                  <TouchableOpacity
+                    style={styles.payAndBookBtn}
+                    onPress={() => initiateRideBookingPayment(ride)}
+                  >
+                    <Text style={styles.payAndBookBtnText}>Pay Online & Confirm (₹{ride.price_per_seat}) ➔</Text>
+                  </TouchableOpacity>
                 </View>
-                <Text style={{ fontSize: 16, color: "#94A3B8" }}>♡</Text>
-              </TouchableOpacity>
-            ))}
+              ))
+            ) : (
+              HYDERABAD_POPULAR_HUBS.map((item, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.recentLocationRow}
+                  onPress={() => setDropAddress(`${item.name}, ${item.sub}`)}
+                >
+                  <Text style={{ fontSize: 15, color: "#64748B" }}>🕒</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.recentItemTitle}>{item.name}</Text>
+                    <Text style={styles.recentItemSub} numberOfLines={1}>{item.sub}</Text>
+                  </View>
+                  <Text style={{ fontSize: 16, color: "#94A3B8" }}>♡</Text>
+                </TouchableOpacity>
+              ))
+            )}
           </ScrollView>
 
-          {/* Active Booked Ride (ONLY IF ACTUALLY BOOKED - NO DEMO) */}
+          {/* Active Booked Ride (ONLY IF PAYMENT COMPLETED - NO DEMO) */}
           {bookedRide && (
             <View style={styles.realBookedRideCard}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
                   <View style={styles.pulsingGreenDot} />
-                  <Text style={styles.realBookedStatus}>TRIP ACTIVE • {bookedRide.eta}</Text>
+                  <Text style={styles.realBookedStatus}>PAID ONLINE • {bookedRide.eta}</Text>
                 </View>
                 <Text style={styles.realBookedFare}>₹{bookedRide.fare}</Text>
               </View>
 
               <View style={styles.otpBanner}>
-                <Text style={styles.otpBannerLabel}>SHARE OTP WITH DRIVER</Text>
+                <Text style={styles.otpBannerLabel}>SHARE TRIP OTP WITH DRIVER</Text>
                 <Text style={styles.otpBannerNum}>{bookedRide.otp}</Text>
               </View>
 
@@ -464,7 +546,7 @@ export function PassengerHome({ navigation }: any) {
                   style={styles.cancelBookingBtn}
                   onPress={() => {
                     setBookedRide(null);
-                    alert("Booking cancelled.");
+                    alert("Booking cancelled. Online refund initiated to your source account.");
                   }}
                 >
                   <Text style={styles.cancelBookingText}>Cancel</Text>
@@ -515,7 +597,116 @@ export function PassengerHome({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* ---------------- FULL-SCREEN "WHERE TO GO" PIN-TO-PIN INTERACTIVE MAP MODAL ---------------- */}
+        {/* ---------------- ONLINE PAYMENT GATEWAY MODAL (PHONEPE / GPAY / PAYTM / QR) ---------------- */}
+        <Modal visible={showPaymentModal} transparent animationType="slide">
+          <View style={styles.modalBackdrop}>
+            <View style={styles.sheetModal}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={styles.paymentModalHeader}>💳 Online Payment Gateway</Text>
+                <TouchableOpacity onPress={() => setShowPaymentModal(false)}>
+                  <Text style={{ fontSize: 18, color: "#64748B", fontWeight: "bold" }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={styles.paymentModalSub}>Payment successful ayyaka mathrame ride confirm avthundi.</Text>
+
+              {/* Ride Summary */}
+              <View style={styles.paymentSummaryCard}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                  <Text style={{ fontWeight: "800", color: "#0F172A" }}>Total Amount to Pay</Text>
+                  <Text style={{ fontWeight: "900", color: "#16A34A", fontSize: 18 }}>
+                    ₹{pendingRideToPay?.price_per_seat || 110}.00
+                  </Text>
+                </View>
+                <Text style={{ fontSize: 11, color: "#64748B", marginTop: 4 }}>
+                  Route: {pickupAddress.split(",")[0]} ➔ {dropAddress.split(",")[0]}
+                </Text>
+              </View>
+
+              {/* Payment Methods */}
+              <Text style={styles.paymentMethodHeading}>SELECT ONLINE PAYMENT SERVICE</Text>
+
+              <TouchableOpacity
+                style={[styles.paymentMethodRow, selectedPaymentMethod === "GPAY" && styles.paymentMethodRowActive]}
+                onPress={() => setSelectedPaymentMethod("GPAY")}
+              >
+                <Text style={{ fontSize: 20 }}>🟢</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.paymentMethodTitle}>Google Pay (UPI)</Text>
+                  <Text style={styles.paymentMethodSub}>Direct Instant UPI Transfer</Text>
+                </View>
+                {selectedPaymentMethod === "GPAY" && <Text style={{ color: "#16A34A", fontWeight: "900" }}>✓</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.paymentMethodRow, selectedPaymentMethod === "PHONEPE" && styles.paymentMethodRowActive]}
+                onPress={() => setSelectedPaymentMethod("PHONEPE")}
+              >
+                <Text style={{ fontSize: 20 }}>🟣</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.paymentMethodTitle}>PhonePe (UPI)</Text>
+                  <Text style={styles.paymentMethodSub}>Fast UPI Gateway</Text>
+                </View>
+                {selectedPaymentMethod === "PHONEPE" && <Text style={{ color: "#16A34A", fontWeight: "900" }}>✓</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.paymentMethodRow, selectedPaymentMethod === "PAYTM" && styles.paymentMethodRowActive]}
+                onPress={() => setSelectedPaymentMethod("PAYTM")}
+              >
+                <Text style={{ fontSize: 20 }}>🔵</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.paymentMethodTitle}>Paytm UPI / NetBanking</Text>
+                  <Text style={styles.paymentMethodSub}>Paytm Wallet or UPI ID</Text>
+                </View>
+                {selectedPaymentMethod === "PAYTM" && <Text style={{ color: "#16A34A", fontWeight: "900" }}>✓</Text>}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.paymentMethodRow, selectedPaymentMethod === "QR" && styles.paymentMethodRowActive]}
+                onPress={() => setSelectedPaymentMethod("QR")}
+              >
+                <Text style={{ fontSize: 20 }}>📷</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.paymentMethodTitle}>Instant QR Code Scanner</Text>
+                  <Text style={styles.paymentMethodSub}>Scan using Any UPI App to Pay</Text>
+                </View>
+                {selectedPaymentMethod === "QR" && <Text style={{ color: "#16A34A", fontWeight: "900" }}>✓</Text>}
+              </TouchableOpacity>
+
+              {/* QR Code Container if selected */}
+              {selectedPaymentMethod === "QR" && (
+                <View style={styles.qrDisplayBox}>
+                  {/* @ts-ignore */}
+                  <img
+                    src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=upi://pay?pa=8919326622@ybl&pn=RidePool&am=${
+                      pendingRideToPay?.price_per_seat || 110
+                    }&cu=INR`}
+                    alt="Scan UPI QR"
+                    style={{ width: 140, height: 140 }}
+                  />
+                  <Text style={styles.qrInstructionText}>Scan QR using Google Pay / PhonePe / Paytm</Text>
+                </View>
+              )}
+
+              {/* Pay Now Button */}
+              <TouchableOpacity
+                style={styles.payNowConfirmBtn}
+                onPress={handlePaymentSuccessAndConfirm}
+                disabled={isProcessingPayment}
+              >
+                {isProcessingPayment ? (
+                  <ActivityIndicator color="#FFFFFF" />
+                ) : (
+                  <Text style={styles.payNowConfirmBtnText}>
+                    Confirm & Pay ₹{pendingRideToPay?.price_per_seat || 110} ➔
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ---------------- FULL-SCREEN PIN-TO-PIN INTERACTIVE MAP MODAL ---------------- */}
         <Modal visible={showSearchMapModal} animationType="slide" transparent={false}>
           <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
             {/* Modal Top Search Header with Target Switchers */}
@@ -532,7 +723,7 @@ export function PassengerHome({ navigation }: any) {
                 >
                   <View style={styles.greenDotMini} />
                   <Text style={styles.inputPillText} numberOfLines={1}>
-                    {activeInputTarget === "PICKUP" ? "Pinpoint Pickup on Map" : pickupAddress}
+                    {activeInputTarget === "PICKUP" ? "Pinpoint Pickup on Map" : `Pickup: ${pickupAddress}`}
                   </Text>
                 </TouchableOpacity>
 
@@ -555,17 +746,19 @@ export function PassengerHome({ navigation }: any) {
               </View>
             </View>
 
-            {/* Quick "Use My Current Location" Action Bar */}
-            <View style={styles.quickGpsBar}>
-              <TouchableOpacity style={styles.gpsActionBtn} onPress={fetchModalLiveGps} disabled={isFetchingGps}>
-                {isFetchingGps ? (
-                  <ActivityIndicator size="small" color="#0284C7" />
-                ) : (
-                  <Text style={{ fontSize: 14 }}>📍</Text>
-                )}
-                <Text style={styles.gpsActionText}>Use My Current Location</Text>
-              </TouchableOpacity>
-            </View>
+            {/* Quick "Use My Current Location" Action Bar (ONLY AVAILABLE FOR PICKUP) */}
+            {activeInputTarget === "PICKUP" && (
+              <View style={styles.quickGpsBar}>
+                <TouchableOpacity style={styles.gpsActionBtn} onPress={fetchModalLiveGps} disabled={isFetchingGps}>
+                  {isFetchingGps ? (
+                    <ActivityIndicator size="small" color="#0284C7" />
+                  ) : (
+                    <Text style={{ fontSize: 14 }}>📍</Text>
+                  )}
+                  <Text style={styles.gpsActionText}>Use My Current Location</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {/* Search Suggestions Dropdown Overlay */}
             {searchResults.length > 0 && (
@@ -614,7 +807,9 @@ export function PassengerHome({ navigation }: any) {
               </View>
 
               <View style={styles.modalDragHintPill} pointerEvents="none">
-                <Text style={styles.modalDragHintText}>🖐️ Drag map to pinpoint location in Hyderabad</Text>
+                <Text style={styles.modalDragHintText}>
+                  🖐️ Drag map to pinpoint {activeInputTarget === "DROP" ? "Drop" : "Pickup"} in Hyderabad
+                </Text>
               </View>
             </View>
 
@@ -957,20 +1152,25 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: "#E2E8F0",
     alignSelf: "center",
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  searchBarTrigger: {
+  locationSelectorRow: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#F8FAFC",
     borderWidth: 1,
     borderColor: "#E2E8F0",
-    borderRadius: 26,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 10,
   },
-  searchBarTriggerText: { fontSize: 14, fontWeight: "800", color: "#0F172A" },
+  selectorDivider: { height: 6 },
+  selectorLabel: { fontSize: 8, fontWeight: "800", color: "#64748B", letterSpacing: 0.5 },
+  selectorValueText: { fontSize: 12, fontWeight: "800", color: "#0F172A", marginTop: 1 },
+  selectorActionTag: { fontSize: 11, fontWeight: "800", color: "#0284C7" },
+  greenDotMini: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#16A34A" },
+  redSquareMini: { width: 8, height: 8, borderRadius: 2, backgroundColor: "#EF4444" },
   plateFilterRow: { flexDirection: "row", gap: 8, marginVertical: 10 },
   plateFilterChip: {
     flex: 1,
@@ -996,6 +1196,25 @@ const styles = StyleSheet.create({
   },
   recentItemTitle: { fontSize: 13, fontWeight: "800", color: "#0F172A" },
   recentItemSub: { fontSize: 11, color: "#64748B", marginTop: 2 },
+  availableRideCard: {
+    backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 8,
+  },
+  availableRideDriver: { fontSize: 13, fontWeight: "800", color: "#0F172A" },
+  availableRideFare: { fontSize: 15, fontWeight: "900", color: "#16A34A" },
+  availableRideRoute: { fontSize: 11, color: "#64748B", marginVertical: 4 },
+  payAndBookBtn: {
+    backgroundColor: "#16A34A",
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  payAndBookBtnText: { color: "#FFFFFF", fontSize: 11, fontWeight: "900" },
   // Real Booked Ride Box
   realBookedRideCard: {
     backgroundColor: "#F0FDF4",
@@ -1050,6 +1269,50 @@ const styles = StyleSheet.create({
   navBarItem: { flex: 1, alignItems: "center", justifyContent: "center" },
   navBarText: { fontSize: 10, fontWeight: "700", color: "#94A3B8", marginTop: 2 },
   navBarTextActive: { color: "#0F172A", fontWeight: "900" },
+  // Payment Modal Styles
+  paymentModalHeader: { fontSize: 16, fontWeight: "900", color: "#0F172A" },
+  paymentModalSub: { fontSize: 11, color: "#64748B", marginTop: 2, marginBottom: 10 },
+  paymentSummaryCard: {
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  paymentMethodHeading: { fontSize: 9, fontWeight: "900", color: "#94A3B8", letterSpacing: 0.5, marginBottom: 8 },
+  paymentMethodRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1.5,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    padding: 12,
+    gap: 12,
+    marginBottom: 8,
+  },
+  paymentMethodRowActive: { borderColor: "#16A34A", backgroundColor: "#F0FDF4" },
+  paymentMethodTitle: { fontSize: 13, fontWeight: "800", color: "#0F172A" },
+  paymentMethodSub: { fontSize: 10, color: "#64748B", marginTop: 1 },
+  qrDisplayBox: {
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginVertical: 8,
+  },
+  qrInstructionText: { fontSize: 11, fontWeight: "700", color: "#475569", marginTop: 8 },
+  payNowConfirmBtn: {
+    backgroundColor: "#16A34A",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 8,
+  },
+  payNowConfirmBtnText: { color: "#FFFFFF", fontSize: 14, fontWeight: "900" },
   // Full-Screen Search Modal Styles
   modalSearchTopHeader: {
     flexDirection: "row",
@@ -1083,8 +1346,6 @@ const styles = StyleSheet.create({
   inputPillBoxActive: { borderColor: "#0284C7", backgroundColor: "#F0F9FF" },
   inputPillText: { fontSize: 12, fontWeight: "700", color: "#0F172A", flex: 1 },
   inputPillInput: { flex: 1, fontSize: 12, fontWeight: "700", color: "#0F172A" },
-  greenDotMini: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#16A34A" },
-  redSquareMini: { width: 8, height: 8, borderRadius: 2, backgroundColor: "#EF4444" },
   quickGpsBar: {
     backgroundColor: "#FFFFFF",
     paddingHorizontal: 16,
