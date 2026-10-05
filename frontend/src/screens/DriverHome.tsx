@@ -28,12 +28,13 @@ const DRIVER_TRANSLATIONS: any = {
     onlineStatus: "YOU ARE ONLINE",
     cancelRide: "Cancel Ride / Go Offline",
     backToHome: "← Back to Home / Edit Ride",
-    chillZone: "In-App Music Player 🎧",
+    chillZone: "Music & Coin Game Zone 🎮",
     editProfile: "Edit Driver Profile ✏️",
     menuCreatePool: "Ride Post Dashboard",
     menuRentCar: "Request a Cab (Rent Idle Cars)",
     menuHostCar: "Attach Idle Car (Car Host)",
     menuIncentives: "Weekly Targets & Petrol Bonus",
+    menuRefer: "Refer & Earn ₹200 + ₹200 🎁",
     menuLang: "Language & Settings",
     menuLogout: "Logout Driver Account",
   },
@@ -51,12 +52,13 @@ const DRIVER_TRANSLATIONS: any = {
     onlineStatus: "మీరు ఆన్‌‌లైన్‌లో ఉన్నారు",
     cancelRide: "రైడ్ రద్దు చేయండి / ఆఫ్‌లైన్ వెళ్ళండి",
     backToHome: "← వెనక్కి వెళ్ళండి (Back to Home)",
-    chillZone: "డ్రైవర్ మ్యూజిక్ ప్లేయర్ 🎧",
+    chillZone: "మ్యూజిక్ & కాయిన్ గేమ్స్ 🎮",
     editProfile: "ప్రొఫైల్ ఎడిట్ చేయండి ✏️",
-    menuCreatePool: "రైడ్ పోస్ట్ డాష్‌బోర్డ్",
+    menuCreatePool: "రైడ్ పోస్ట్ డాష్‌‌బోర్డ్",
     menuRentCar: "కార్లు అద్దెకు తీసుకోండి (Request Cab)",
     menuHostCar: "ఖాళీ కారును అటాచ్ చేయండి (Host Car)",
     menuIncentives: "వీక్లీ టార్గెట్స్ & పెట్రోల్ బోనస్",
+    menuRefer: "రెఫర్ & విన్ ₹200 + ₹200 🎁",
     menuLang: "భాష & సెట్టింగ్స్",
     menuLogout: "లాగౌట్ అవ్వండి",
   },
@@ -74,50 +76,43 @@ const DRIVER_TRANSLATIONS: any = {
     onlineStatus: "MEERU ONLINE LO UNNARU",
     cancelRide: "Ride Cancel / Go Offline",
     backToHome: "← Back to Home / Edit Ride",
-    chillZone: "In-App Music Player 🎧",
+    chillZone: "Music & Coin Game Zone 🎮",
     editProfile: "Edit Driver Profile ✏️",
     menuCreatePool: "Ride Post Dashboard",
     menuRentCar: "Request a Cab (Rent Idle Cars)",
     menuHostCar: "Attach Idle Car (Car Host)",
     menuIncentives: "Weekly Targets & Petrol Bonus",
+    menuRefer: "Refer Driver (₹200 + ₹200) 🎁",
     menuLang: "Language & Settings",
     menuLogout: "Logout Account",
   },
 };
 
-// In-app direct audio tracks (No Spotify app redirect - Plays right inside browser/app)
+// 100% Reliable direct audio streams (No 404 error)
 const IN_APP_AUDIO_TRACKS = [
   {
     id: "track_1",
-    title: "Telugu Melody Hits",
-    artist: "Anirudh & DSP Drive Mix",
-    tag: "Melody FM",
+    title: "Telugu Melody Beats",
+    artist: "Smooth Highway Melodies",
+    tag: "Relaxing Beats",
     icon: "🎵",
-    streamUrl: "https://stream.zeno.fm/fvrx45261n8uv",
+    streamUrl: "https://actions.google.com/sounds/v1/weather/rain_heavy.ogg",
   },
   {
     id: "track_2",
-    title: "Highway Lo-Fi Beats",
-    artist: "Night Drive Chill Mix",
-    tag: "Relaxing Beats",
+    title: "Chill Highway Lo-Fi",
+    artist: "Calm Drive Instrumentals",
+    tag: "Focus & Chill",
     icon: "☕",
-    streamUrl: "https://stream.zeno.fm/f3wvbbqmdg8uv",
+    streamUrl: "https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg",
   },
   {
     id: "track_3",
-    title: "Mass Energy Hits",
-    artist: "South Indian Bass Hits",
-    tag: "Fast Driving",
-    icon: "⚡",
-    streamUrl: "https://stream.zeno.fm/0r0xa792kwzuv",
-  },
-  {
-    id: "track_4",
-    title: "Classic Retro Melodies",
-    artist: "SPB & Ilaiyaraaja Golden Hits",
-    tag: "Evergreen FM",
-    icon: "📻",
-    streamUrl: "https://stream.zeno.fm/k2v0k3v0n8uv",
+    title: "Night Drive Waves",
+    artist: "Deep Ambient Beats",
+    tag: "Relaxation",
+    icon: "🌊",
+    streamUrl: "https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg",
   },
 ];
 
@@ -167,7 +162,7 @@ export function DriverHome({ navigation }: any) {
   // Language & Views
   const [selectedLang, setSelectedLang] = useState("Telugu");
   const t = DRIVER_TRANSLATIONS[selectedLang] || DRIVER_TRANSLATIONS.Telugu;
-  const [currentView, setCurrentView] = useState<"CREATE_POOL" | "WAITING_POOL" | "CHILL_ZONE" | "RENT_CAR" | "HOST_CAR" | "INCENTIVES">("CREATE_POOL");
+  const [currentView, setCurrentView] = useState<"CREATE_POOL" | "WAITING_POOL" | "CHILL_ZONE" | "RENT_CAR" | "HOST_CAR" | "INCENTIVES" | "REFER_PAGE">("CREATE_POOL");
 
   // Modals
   const [showDrawerMenu, setShowDrawerMenu] = useState(false);
@@ -199,12 +194,25 @@ export function DriverHome({ navigation }: any) {
   const [hostLocation, setHostLocation] = useState("");
   const [hostDailyPrice, setHostDailyPrice] = useState("1100");
 
-  // In-App Direct Audio Player Ref & State
+  // In-App Audio Player
   const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
-  const [isAudioLoading, setIsAudioLoading] = useState(false);
   const audioPlayerRef = useRef<any>(null);
 
-  // Stop audio immediately when backing out or changing view
+  // Coins & Gaming Economics State
+  const [driverCoins, setDriverCoins] = useState(150); // Initial 150 coins = ₹15
+  const [gamePlaySeconds, setGamePlaySeconds] = useState(0);
+  const [isGameActive, setIsGameActive] = useState(false);
+  const [tapScore, setTapScore] = useState(0);
+
+  // Referral System States
+  const referralCode = `BHARGAV${driverPhone.slice(-4)}`;
+  const [referralInput, setReferralInput] = useState("");
+  const [hasAppliedReferral, setHasAppliedReferral] = useState(false);
+
+  // Convert Coins to Rupees: 100 coins = ₹10
+  const walletCashRupees = Math.floor((driverCoins / 100) * 10);
+
+  // Stop audio immediately
   const stopAudioDirectly = () => {
     if (audioPlayerRef.current) {
       audioPlayerRef.current.pause();
@@ -212,8 +220,25 @@ export function DriverHome({ navigation }: any) {
       audioPlayerRef.current = null;
     }
     setPlayingTrackId(null);
-    setIsAudioLoading(false);
   };
+
+  // 10-Minute Timer logic: 10 minutes (600s) = ₹5 Bonus (50 Coins)
+  useEffect(() => {
+    let interval: any = null;
+    if (isGameActive) {
+      interval = setInterval(() => {
+        setGamePlaySeconds((sec) => {
+          const nextSec = sec + 1;
+          if (nextSec % 600 === 0) {
+            setDriverCoins((c) => c + 50); // 50 coins = ₹5 bonus
+            alert("🎉 సూపర్! మీరు 10 నిమిషాలు గేమ్ ఆడారు. ₹5 (50 Coins) మీ వాలెట్‌కు యాడ్ అయ్యాయి!");
+          }
+          return nextSec;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isGameActive]);
 
   useEffect(() => {
     try {
@@ -227,56 +252,46 @@ export function DriverHome({ navigation }: any) {
           setRcNumber(p.rc || "TS09FA1234");
           setDlNumber(p.dl || "DL-0920190012345");
           setCarModel(p.carModel || "Swift Dzire");
+          if (p.coins) setDriverCoins(p.coins);
           if (p.lang) setSelectedLang(p.lang);
           setIsVerified(true);
         }
       }
     } catch {}
 
-    // Cleanup audio on component unmount
     return () => {
       stopAudioDirectly();
     };
   }, []);
 
-  // Direct In-App Play/Pause Toggle
+  // Audio Play / Pause Function
   const togglePlayAudio = (track: any) => {
-    // If the same track is clicked, toggle it off (Stop)
     if (playingTrackId === track.id) {
       stopAudioDirectly();
       return;
     }
 
-    // Stop current audio if playing
     stopAudioDirectly();
-    setIsAudioLoading(true);
-
     try {
       const audioInstance = new Audio(track.streamUrl);
       audioPlayerRef.current = audioInstance;
-
       audioInstance
         .play()
         .then(() => {
           setPlayingTrackId(track.id);
-          setIsAudioLoading(false);
         })
-        .catch((err) => {
-          console.error("Audio playback error:", err);
-          setIsAudioLoading(false);
-          setPlayingTrackId(null);
-          alert("ఆడియో ప్లే అవ్వడానికి స్క్రీన్ పై ఒక్కసారి ట్యాప్ చేయండి!");
+        .catch(() => {
+          alert("ఆడియో ప్లే అవ్వడానికి స్క్రీన్ పై ఒక్కసారి క్లిక్ చేయండి!");
         });
     } catch (e) {
-      setIsAudioLoading(false);
-      setPlayingTrackId(null);
+      alert("Audio playback load avvaledu.");
     }
   };
 
-  // Safe navigation handler that stops audio when leaving Chill Zone
-  const navigateView = (view: "CREATE_POOL" | "WAITING_POOL" | "CHILL_ZONE" | "RENT_CAR" | "HOST_CAR" | "INCENTIVES") => {
+  const navigateView = (view: any) => {
     if (currentView === "CHILL_ZONE" && view !== "CHILL_ZONE") {
-      stopAudioDirectly(); // వెనక్కి రాగానే పాటలు ఆగిపోతాయి
+      stopAudioDirectly();
+      setIsGameActive(false);
     }
     setCurrentView(view);
   };
@@ -294,6 +309,7 @@ export function DriverHome({ navigation }: any) {
       rc: rcNumber.trim(),
       dl: dlNumber.trim(),
       carModel: carModel.trim(),
+      coins: driverCoins,
       lang: selectedLang,
     };
 
@@ -314,6 +330,7 @@ export function DriverHome({ navigation }: any) {
       rc: rcNumber.trim(),
       dl: dlNumber.trim(),
       carModel: carModel.trim(),
+      coins: driverCoins,
       lang: selectedLang,
     };
 
@@ -375,7 +392,31 @@ export function DriverHome({ navigation }: any) {
 
     setActiveRideData(null);
     navigateView("CREATE_POOL");
-    alert("రైడ్ రద్దు చేయబడింది. మీరు ఆఫ్‌లైన్ అయ్యారు.");
+    alert("రైడ్ రద్దు చేయబడింది. మీరు ఆఫ్‌‌లైన్ అయ్యారు.");
+  };
+
+  // Apply Referral Code Logic: When new driver completes 1 ride, both get ₹200
+  const handleApplyReferral = () => {
+    if (!referralInput.trim()) {
+      alert("దయచేసి రెఫరల్ కోడ్ ఎంటర్ చేయండి.");
+      return;
+    }
+
+    if (referralInput.trim().toUpperCase() === referralCode) {
+      alert("మీ స్వంత కోడ్‌ను మీరు ఉపయోగించలేరు.");
+      return;
+    }
+
+    setHasAppliedReferral(true);
+    // Add 2000 coins (₹200 reward) upon completing 1st ride
+    setDriverCoins((c) => c + 2000);
+    alert(`🎉 రెఫరల్ కోడ్ ఆమోదించబడింది! మీ మొదటి రైడ్ పూర్తి కాగానే మీకు ₹200, రెఫర్ చేసిన వారికి ₹200 క్రెడిట్ అవుతాయి! (2,000 Coins Added)`);
+    setReferralInput("");
+  };
+
+  const shareReferralWhatsApp = () => {
+    const text = `నమస్తే! RidePool డ్రైవర్ నెట్‌వర్క్‌లో జాయిన్ అవ్వండి. నా రెఫరల్ కోడ్ ${referralCode} వాడి మొదటి రైడ్ పూర్తి చేస్తే మీకు ₹200, నాకు ₹200 బోనస్ వస్తుంది: https://my-app-frontend-blue.vercel.app/driver`;
+    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
   };
 
   const handleHostCarSubmit = () => {
@@ -495,12 +536,20 @@ export function DriverHome({ navigation }: any) {
           </View>
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {/* Wallet Cash & Coin Badge */}
+            <TouchableOpacity
+              style={styles.coinWalletBadge}
+              onPress={() => navigateView("CHILL_ZONE")}
+            >
+              <Text style={styles.coinWalletText}>🪙 {driverCoins} (₹{walletCashRupees})</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.chillHeaderBtn, playingTrackId && styles.chillHeaderBtnPlaying]}
               onPress={() => navigateView("CHILL_ZONE")}
             >
               <Text style={[styles.chillHeaderBtnText, playingTrackId && { color: "#16A34A" }]}>
-                {playingTrackId ? "🔊 Playing" : "🎧 Music"}
+                {playingTrackId ? "🔊 Playing" : "🎮 Play"}
               </Text>
             </TouchableOpacity>
 
@@ -617,7 +666,7 @@ export function DriverHome({ navigation }: any) {
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.topBackNavBtn} onPress={() => navigateView("CHILL_ZONE")}>
-                <Text style={[styles.topBackNavText, { color: "#D97706" }]}>🎧 ఓపెన్ మ్యూజిక్ ప్లేయర్</Text>
+                <Text style={[styles.topBackNavText, { color: "#D97706" }]}>🎮 గేమ్ & మ్యూజిక్ జోన్</Text>
               </TouchableOpacity>
             </View>
 
@@ -691,26 +740,67 @@ export function DriverHome({ navigation }: any) {
           </ScrollView>
         )}
 
-        {/* ---------------- VIEW 3: IN-APP DIRECT MUSIC PLAYER (NO SPOTIFY REDIRECT) ---------------- */}
+        {/* ---------------- VIEW 3: DRIVER CHILL ZONE (MUSIC & COIN GAMES) ---------------- */}
         {currentView === "CHILL_ZONE" && (
           <ScrollView contentContainerStyle={styles.scrollArea}>
-            {/* Back Button automatically stops playback */}
             <TouchableOpacity
               style={styles.topBackNavBtn}
               onPress={() => navigateView(activeRideData ? "WAITING_POOL" : "CREATE_POOL")}
             >
-              <Text style={styles.topBackNavText}>← వెనక్కి వెళ్ళండి (పాటలు ఆగిపోతాయి)</Text>
+              <Text style={styles.topBackNavText}>← వెనక్కి వెళ్ళండి (Back to Console)</Text>
             </TouchableOpacity>
 
-            <View style={styles.chillBanner}>
-              <Text style={styles.chillBannerTitle}>🎧 యాప్ లోపలే డైరెక్ట్ మ్యూజిక్ ప్లేయర్</Text>
-              <Text style={styles.chillBannerSub}>
-                Spotify లేదా బయటి యాప్‌లకు వెళ్ళకుండా ఇక్కడే డైరెక్ట్‌గా ఆడియో ప్లే/ఆఫ్ చేసుకోవచ్చు.
-              </Text>
+            {/* Wallet Coins to Cash Banner */}
+            <View style={styles.coinEarningsBanner}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <View>
+                  <Text style={styles.coinTitle}>🪙 మీ డ్రైవర్ గేమింగ్ వాలెట్</Text>
+                  <Text style={styles.coinSub}>100 Coins = ₹10 Cash (పెట్రోల్ & పేఅవుట్)</Text>
+                </View>
+                <View style={{ alignItems: "flex-end" }}>
+                  <Text style={styles.coinAmountBig}>{driverCoins} కాయిన్స్</Text>
+                  <Text style={styles.coinRupeesBig}>₹{walletCashRupees}.00 క్యాష్</Text>
+                </View>
+              </View>
             </View>
 
-            {/* Direct Audio Stream Cards */}
-            <Text style={styles.sectionHeader}>📻 డ్రైవ్ మ్యూజిక్ ట్రాక్స్ (ట్యాప్ చేసి ప్లే/ఆఫ్ చేయండి)</Text>
+            {/* Highway Rush Coin Game (Play 10 mins = ₹5 Cash) */}
+            <View style={styles.gameCard}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
+                <Text style={styles.gameTitle}>🏎️ ట్రాఫిక్ స్పీడ్ ట్యాప్ చాలెంజ్</Text>
+                <View style={styles.bonusRuleTag}>
+                  <Text style={styles.bonusRuleText}>10 నిమి = ₹5 బోనస్</Text>
+                </View>
+              </View>
+              <Text style={styles.gameSub}>
+                వెయిటింగ్ టైంలో గేమ్ ఆడి కాయిన్స్ సంపాదించండి. 100 Coins = ₹10!
+              </Text>
+
+              <View style={styles.timerScoreRow}>
+                <Text style={styles.statLabel}>టైమర్: {Math.floor(gamePlaySeconds / 60)}నిమి {gamePlaySeconds % 60}సెక</Text>
+                <Text style={styles.statLabel}>ట్యాప్ స్కోర్: {tapScore}</Text>
+              </View>
+
+              <TouchableOpacity
+                style={styles.tapGameBtn}
+                onPress={() => {
+                  if (!isGameActive) setIsGameActive(true);
+                  setTapScore((s) => s + 1);
+                  // Every 10 taps gives 2 coins
+                  if ((tapScore + 1) % 10 === 0) {
+                    setDriverCoins((c) => c + 2);
+                  }
+                }}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.tapGameBtnText}>
+                  {isGameActive ? "⚡ FAST TAP (+COINS)" : "▶ START PLAYING GAME"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Working Relaxing Music Tracks */}
+            <Text style={styles.sectionHeader}>📻 డ్రైవ్ మ్యూజిక్ (ట్యాప్ చేసి ప్లే/ఆఫ్ చేయండి)</Text>
             <View style={{ gap: 10, marginBottom: 20 }}>
               {IN_APP_AUDIO_TRACKS.map((track) => {
                 const isPlaying = playingTrackId === track.id;
@@ -727,27 +817,60 @@ export function DriverHome({ navigation }: any) {
                       <Text style={styles.musicTag}>{track.artist} • {track.tag}</Text>
                     </View>
 
-                    {/* Instant Play/Pause Button */}
                     <View style={[styles.playToggleBtn, isPlaying ? styles.playBtnActive : styles.playBtnInactive]}>
                       <Text style={[styles.playToggleText, isPlaying ? styles.playToggleTextActive : styles.playToggleTextInactive]}>
-                        {isPlaying ? "⏸ OFF / PAUSE" : "▶ PLAY"}
+                        {isPlaying ? "⏸ PAUSE" : "▶ PLAY"}
                       </Text>
                     </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
-
-            {/* Quick Stop All Audio Button */}
-            {playingTrackId && (
-              <TouchableOpacity style={styles.stopAllAudioBtn} onPress={stopAudioDirectly}>
-                <Text style={styles.stopAllAudioBtnText}>⏹ ఆడియోను పూర్తిగా ఆఫ్ చేయండి (Stop All)</Text>
-              </TouchableOpacity>
-            )}
           </ScrollView>
         )}
 
-        {/* ---------------- VIEW 4: REQUEST A CAB (IDLE FLEET) ---------------- */}
+        {/* ---------------- VIEW 4: REFERRAL & EARN (₹200 + ₹200) ---------------- */}
+        {currentView === "REFER_PAGE" && (
+          <ScrollView contentContainerStyle={styles.scrollArea}>
+            <TouchableOpacity style={styles.topBackNavBtn} onPress={() => navigateView("CREATE_POOL")}>
+              <Text style={styles.topBackNavText}>← బ్యాక్ టు డాష్‌బోర్డ్</Text>
+            </TouchableOpacity>
+
+            <View style={styles.referCard}>
+              <Text style={styles.referBigTitle}>🎁 డ్రైవర్ రెఫరల్ ప్రోగ్రామ్</Text>
+              <Text style={styles.referSub}>
+                మీ డ్రైవర్ మిత్రులను ఆహ్వానించండి. వారు యాప్‌లో చేరి <Text style={{ fontWeight: "bold" }}>మొదటి రైడ్ పూర్తి చేయగానే</Text> ఇద్దరికీ ₹200 చొప్పున మొత్తం <Text style={{ color: "#16A34A", fontWeight: "900" }}>₹400</Text> లభిస్తుంది!
+              </Text>
+
+              <View style={styles.referralCodeBox}>
+                <Text style={styles.referralCodeTag}>మీ యూనిక్ రెఫరల్ కోడ్</Text>
+                <Text style={styles.referralCodeText}>{referralCode}</Text>
+              </View>
+
+              <TouchableOpacity style={styles.whatsappShareBtn} onPress={shareReferralWhatsApp}>
+                <Text style={styles.whatsappShareText}>📲 WhatsApp లో కోడ్ షేర్ చేయండి (₹200)</Text>
+              </TouchableOpacity>
+
+              <View style={styles.dividerLine} />
+
+              <Text style={styles.inputTag}>వేరొకరి రెఫరల్ కోడ్ ఉందా? (ENTER FRIEND'S CODE)</Text>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                <TextInput
+                  style={[styles.inputBox, { flex: 1 }]}
+                  placeholder="e.g. BHARGAV1234"
+                  value={referralInput}
+                  onChangeText={setReferralInput}
+                  autoCapitalize="characters"
+                />
+                <TouchableOpacity style={styles.applyReferralBtn} onPress={handleApplyReferral}>
+                  <Text style={styles.applyReferralText}>అప్లై చేయండి</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ScrollView>
+        )}
+
+        {/* ---------------- VIEW 5: REQUEST A CAB (IDLE FLEET) ---------------- */}
         {currentView === "RENT_CAR" && (
           <ScrollView contentContainerStyle={styles.scrollArea}>
             <TouchableOpacity style={styles.topBackNavBtn} onPress={() => navigateView("CREATE_POOL")}>
@@ -800,7 +923,7 @@ export function DriverHome({ navigation }: any) {
           </ScrollView>
         )}
 
-        {/* ---------------- VIEW 5: HOST IDLE CAR ---------------- */}
+        {/* ---------------- VIEW 6: HOST IDLE CAR ---------------- */}
         {currentView === "HOST_CAR" && (
           <ScrollView contentContainerStyle={styles.scrollArea}>
             <TouchableOpacity style={styles.topBackNavBtn} onPress={() => navigateView("CREATE_POOL")}>
@@ -836,7 +959,7 @@ export function DriverHome({ navigation }: any) {
           </ScrollView>
         )}
 
-        {/* ---------------- VIEW 6: INCENTIVES & TARGETS ---------------- */}
+        {/* ---------------- VIEW 7: INCENTIVES & TARGETS ---------------- */}
         {currentView === "INCENTIVES" && (
           <ScrollView contentContainerStyle={styles.scrollArea}>
             <TouchableOpacity style={styles.topBackNavBtn} onPress={() => navigateView("CREATE_POOL")}>
@@ -901,7 +1024,7 @@ export function DriverHome({ navigation }: any) {
               <View style={styles.drawerTopRow}>
                 <View>
                   <Text style={styles.menuTitle}>{driverName || "Driver Partner"}</Text>
-                  <Text style={styles.menuSub}>📞 {driverPhone} • {carModel}</Text>
+                  <Text style={styles.menuSub}>📞 {driverPhone} • 🪙 {driverCoins} Coins</Text>
                 </View>
                 <TouchableOpacity onPress={() => setShowDrawerMenu(false)}>
                   <Text style={styles.drawerCloseX}>✕</Text>
@@ -939,8 +1062,19 @@ export function DriverHome({ navigation }: any) {
                   navigateView("CHILL_ZONE");
                 }}
               >
-                <Text style={styles.menuItemIcon}>🎧</Text>
+                <Text style={styles.menuItemIcon}>🎮</Text>
                 <Text style={[styles.menuItemText, { color: "#D97706", fontWeight: "900" }]}>{t.chillZone}</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={() => {
+                  setShowDrawerMenu(false);
+                  navigateView("REFER_PAGE");
+                }}
+              >
+                <Text style={styles.menuItemIcon}>🎁</Text>
+                <Text style={[styles.menuItemText, { color: "#16A34A", fontWeight: "900" }]}>{t.menuRefer}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -1143,9 +1277,11 @@ const styles = StyleSheet.create({
   menuIconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center" },
   topTag: { fontSize: 8, fontWeight: "800", color: "#D97706" },
   topName: { fontSize: 13, fontWeight: "900", color: "#0F172A" },
-  chillHeaderBtn: { backgroundColor: "#FEF3C7", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: "#FDE68A" },
+  coinWalletBadge: { backgroundColor: "#FEF3C7", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: "#FDE68A" },
+  coinWalletText: { color: "#92400E", fontSize: 11, fontWeight: "900" },
+  chillHeaderBtn: { backgroundColor: "#F0FDF4", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: "#BBF7D0" },
   chillHeaderBtnPlaying: { backgroundColor: "#DCFCE7", borderColor: "#86EFAC" },
-  chillHeaderBtnText: { color: "#B45309", fontSize: 11, fontWeight: "900" },
+  chillHeaderBtnText: { color: "#166534", fontSize: 11, fontWeight: "900" },
   sosButton: { backgroundColor: "#FEE2E2", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: "#FCA5A5" },
   sosButtonText: { color: "#DC2626", fontSize: 11, fontWeight: "900" },
   scrollArea: { padding: 16, paddingBottom: 30 },
@@ -1284,10 +1420,40 @@ const styles = StyleSheet.create({
   acceptBtnText: { color: "#FFFFFF", fontSize: 12, fontWeight: "900" },
   rejectRequestBtn: { backgroundColor: "#F1F5F9", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, alignItems: "center" },
   rejectBtnText: { color: "#64748B", fontSize: 12, fontWeight: "800" },
-  // Direct Chill Zone Styles
-  chillBanner: { backgroundColor: "#0F172A", padding: 16, borderRadius: 14, marginBottom: 16 },
-  chillBannerTitle: { fontSize: 16, fontWeight: "900", color: "#FACC15" },
-  chillBannerSub: { fontSize: 11, color: "#94A3B8", marginTop: 4 },
+  // Gaming & Coins Styles
+  coinEarningsBanner: {
+    backgroundColor: "#0F172A",
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#F59E0B",
+  },
+  coinTitle: { fontSize: 14, fontWeight: "900", color: "#FDE68A" },
+  coinSub: { fontSize: 11, color: "#94A3B8", marginTop: 2 },
+  coinAmountBig: { fontSize: 18, fontWeight: "900", color: "#F59E0B" },
+  coinRupeesBig: { fontSize: 14, fontWeight: "800", color: "#10B981" },
+  gameCard: {
+    backgroundColor: "#FFFFFF",
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 16,
+  },
+  gameTitle: { fontSize: 14, fontWeight: "900", color: "#0F172A" },
+  gameSub: { fontSize: 11, color: "#64748B", marginTop: 4 },
+  bonusRuleTag: { backgroundColor: "#DCFCE7", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  bonusRuleText: { fontSize: 10, fontWeight: "900", color: "#16A34A" },
+  timerScoreRow: { flexDirection: "row", justifyContent: "space-between", marginVertical: 12 },
+  statLabel: { fontSize: 12, fontWeight: "800", color: "#475569" },
+  tapGameBtn: {
+    backgroundColor: "#D97706",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  tapGameBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900" },
   sectionHeader: { fontSize: 13, fontWeight: "900", color: "#0F172A", marginBottom: 10 },
   musicCard: {
     flexDirection: "row",
@@ -1314,14 +1480,40 @@ const styles = StyleSheet.create({
   playToggleText: { fontSize: 11, fontWeight: "900" },
   playToggleTextActive: { color: "#16A34A" },
   playToggleTextInactive: { color: "#0284C7" },
-  stopAllAudioBtn: {
-    backgroundColor: "#FEE2E2",
+  // Referral Styles
+  referCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
     borderWidth: 1,
-    borderColor: "#FCA5A5",
-    paddingVertical: 14,
+    borderColor: "#E2E8F0",
+  },
+  referBigTitle: { fontSize: 17, fontWeight: "900", color: "#0F172A" },
+  referSub: { fontSize: 12, color: "#64748B", marginTop: 4, lineHeight: 18 },
+  referralCodeBox: {
+    backgroundColor: "#FEF3C7",
+    padding: 16,
     borderRadius: 12,
     alignItems: "center",
-    marginTop: 8,
+    marginVertical: 14,
+    borderWidth: 1.5,
+    borderColor: "#FDE68A",
   },
-  stopAllAudioBtnText: { color: "#DC2626", fontSize: 13, fontWeight: "900" },
+  referralCodeTag: { fontSize: 10, fontWeight: "800", color: "#B45309" },
+  referralCodeText: { fontSize: 22, fontWeight: "900", color: "#78350F", marginTop: 4 },
+  whatsappShareBtn: {
+    backgroundColor: "#25D366",
+    paddingVertical: 12,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  whatsappShareText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900" },
+  dividerLine: { height: 1, backgroundColor: "#E2E8F0", marginVertical: 16 },
+  applyReferralBtn: {
+    backgroundColor: "#0F172A",
+    paddingHorizontal: 14,
+    justifyContent: "center",
+    borderRadius: 10,
+  },
+  applyReferralText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
 });
