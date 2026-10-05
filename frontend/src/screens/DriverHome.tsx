@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Linking,
-  Modal,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -40,20 +39,22 @@ export default function DriverHome({ navigation }: any) {
   const [myPublishedRides, setMyPublishedRides] = useState<any[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Load Driver's Rides
+  // Load Driver's Rides (7000ms safe interval)
   const loadDriverRides = () => {
     try {
-      const stored = localStorage.getItem("SHARED_CARPOOL_RIDES");
-      if (stored) {
-        const allRides = JSON.parse(stored);
-        setMyPublishedRides(allRides);
+      if (typeof window !== "undefined" && window.localStorage) {
+        const stored = localStorage.getItem("SHARED_CARPOOL_RIDES");
+        if (stored) {
+          const allRides = JSON.parse(stored);
+          setMyPublishedRides(allRides);
+        }
       }
     } catch {}
   };
 
   useEffect(() => {
     loadDriverRides();
-    const interval = setInterval(loadDriverRides, 3000);
+    const interval = setInterval(loadDriverRides, 7000);
     return () => clearInterval(interval);
   }, []);
 
@@ -84,25 +85,29 @@ export default function DriverHome({ navigation }: any) {
     };
 
     try {
-      const stored = localStorage.getItem("SHARED_CARPOOL_RIDES");
-      const currentList = stored ? JSON.parse(stored) : [];
-      const updatedList = [newRide, ...currentList];
-      localStorage.setItem("SHARED_CARPOOL_RIDES", JSON.stringify(updatedList));
-      setMyPublishedRides(updatedList);
+      if (typeof window !== "undefined" && window.localStorage) {
+        const stored = localStorage.getItem("SHARED_CARPOOL_RIDES");
+        const currentList = stored ? JSON.parse(stored) : [];
+        const updatedList = [newRide, ...currentList];
+        localStorage.setItem("SHARED_CARPOOL_RIDES", JSON.stringify(updatedList));
+        setMyPublishedRides(updatedList);
+      }
     } catch {}
 
     setTimeout(() => {
       setIsSubmitting(false);
       alert("🎉 Ride published successfully! Passenger App lo live ga kanipisthundi.");
       setDriverTab("MY_RIDES");
-    }, 600);
+    }, 500);
   };
 
   // Delete / Cancel Published Ride
   const handleCancelRide = (rideId: string) => {
     try {
       const updated = myPublishedRides.filter((r) => r.id !== rideId);
-      localStorage.setItem("SHARED_CARPOOL_RIDES", JSON.stringify(updated));
+      if (typeof window !== "undefined" && window.localStorage) {
+        localStorage.setItem("SHARED_CARPOOL_RIDES", JSON.stringify(updated));
+      }
       setMyPublishedRides(updated);
       alert("Ride cancelled successfully.");
     } catch {}
@@ -124,7 +129,7 @@ export default function DriverHome({ navigation }: any) {
             onPress={() => {
               if (navigation && navigation.navigate) {
                 navigation.navigate("PassengerHome");
-              } else {
+              } else if (typeof window !== "undefined") {
                 window.location.href = "/";
               }
             }}
@@ -135,10 +140,10 @@ export default function DriverHome({ navigation }: any) {
 
         {/* ---------------- DRIVER MAIN SCREENS ---------------- */}
         <View style={{ flex: 1 }}>
-          {/* TAB 1: POST A RIDE (Interactive Map + Form) */}
+          {/* TAB 1: POST A RIDE */}
           {driverTab === "POST" && (
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollForm}>
-              {/* 1. Rapido Style Drag & Zoom Map */}
+              {/* Interactive Map */}
               <View style={styles.mapCardWrap}>
                 <InteractiveMap
                   lat={coords.lat}
@@ -151,7 +156,7 @@ export default function DriverHome({ navigation }: any) {
                 </View>
               </View>
 
-              {/* 2. Route Inputs */}
+              {/* Route Inputs */}
               <View style={styles.formContainer}>
                 <Text style={styles.formHeading}>Publish New Route</Text>
 
@@ -181,7 +186,7 @@ export default function DriverHome({ navigation }: any) {
                   <Text style={styles.editIcon}>✏️</Text>
                 </TouchableOpacity>
 
-                {/* 3. Vehicle & Seats Details */}
+                {/* Vehicle & Seats Details */}
                 <View style={styles.rowInputs}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.inputLabel}>VEHICLE MODEL</Text>
@@ -226,7 +231,7 @@ export default function DriverHome({ navigation }: any) {
                   </View>
                 </View>
 
-                {/* 4. Departure Time */}
+                {/* Departure Time */}
                 <Text style={styles.inputLabel}>DEPARTURE TIME</Text>
                 <TextInput
                   style={styles.textInput}
@@ -235,7 +240,7 @@ export default function DriverHome({ navigation }: any) {
                   placeholder="e.g. Today, 08:30 AM or In 15 mins"
                 />
 
-                {/* 5. Women Safety / Female-Only Toggle */}
+                {/* Women Safety / Female-Only Toggle */}
                 <TouchableOpacity
                   style={[styles.femaleOnlyBtn, femaleOnly && styles.femaleOnlyBtnActive]}
                   onPress={() => setFemaleOnly(!femaleOnly)}
@@ -255,7 +260,7 @@ export default function DriverHome({ navigation }: any) {
                   </View>
                 </TouchableOpacity>
 
-                {/* 6. Publish Action Button */}
+                {/* Publish Action Button */}
                 <TouchableOpacity
                   style={styles.publishBtn}
                   onPress={handlePublishRide}
@@ -272,7 +277,7 @@ export default function DriverHome({ navigation }: any) {
             </ScrollView>
           )}
 
-          {/* TAB 2: MY ACTIVE RIDES (Manage Live Rides) */}
+          {/* TAB 2: MY ACTIVE RIDES */}
           {driverTab === "MY_RIDES" && (
             <ScrollView contentContainerStyle={styles.manageScroll}>
               <Text style={styles.tabHeading}>My Active Ride Pools</Text>
@@ -335,7 +340,7 @@ export default function DriverHome({ navigation }: any) {
             </ScrollView>
           )}
 
-          {/* TAB 3: EARNINGS & PAYOUTS */}
+          {/* TAB 3: EARNINGS */}
           {driverTab === "EARNINGS" && (
             <ScrollView contentContainerStyle={styles.earningsContainer}>
               <Text style={styles.tabHeading}>Driver Earnings</Text>
@@ -370,7 +375,7 @@ export default function DriverHome({ navigation }: any) {
             </ScrollView>
           )}
 
-          {/* TAB 4: DRIVER PROFILE */}
+          {/* TAB 4: PROFILE */}
           {driverTab === "PROFILE" && (
             <ScrollView contentContainerStyle={styles.profileContainer}>
               <View style={styles.avatarWrap}>
@@ -398,7 +403,7 @@ export default function DriverHome({ navigation }: any) {
           )}
         </View>
 
-        {/* ---------------- 4 BOTTOM TABS FOR DRIVER APP ---------------- */}
+        {/* Bottom Bar */}
         <View style={styles.driverBottomBar}>
           <TouchableOpacity style={styles.tabBtn} onPress={() => setDriverTab("POST")}>
             <Text style={[styles.tabIcon, driverTab === "POST" && styles.tabActiveText]}>➕</Text>
