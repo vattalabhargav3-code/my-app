@@ -19,7 +19,9 @@ const DRIVER_TRANSLATIONS: any = {
     publishHeading: "Route Setup",
     fromLabel: "STARTING POINT (PICKUP)",
     toLabel: "END POINT (DROP)",
-    useLiveLocation: "📍 Current Live GPS",
+    selectPickupPlaceholder: "Tap to set pickup location...",
+    selectDropPlaceholder: "Tap to set drop location...",
+    useLiveLocation: "📍 Use Current GPS Location",
     carModel: "CAR MODEL",
     seats: "SEATS OFFERED",
     seatPrice: "PRICE PER SEAT (₹)",
@@ -81,13 +83,17 @@ const DRIVER_TRANSLATIONS: any = {
     policeText: "Police Emergency (112 / 100)",
     sheTeamsText: "SHE Teams (1091)",
     completeKycNotice: "⚠️ RC & Driving Licence required in Profile to deploy rides!",
+    searchLocationTitle: "Select Location",
+    popularHubs: "POPULAR HYDERABAD HUBS",
   },
   Telugu: {
     dashboardTitle: "డ్రైవర్ కన్సోల్",
     publishHeading: "రైడ్ పోస్ట్ వివరాలు",
     fromLabel: "స్టార్టింగ్ పాయింట్ (పికప్)",
     toLabel: "ఎండ్ పాయింట్ (డ్రాప్)",
-    useLiveLocation: "📍 ప్రస్తుత లైవ్ లొకేషన్",
+    selectPickupPlaceholder: "పికప్ లొకేషన్ ఎంచుకోవడానికి ట్యాప్ చేయండి...",
+    selectDropPlaceholder: "డ్రాప్ లొకేషన్ ఎంచుకోవడానికి ట్యాప్ చేయండి...",
+    useLiveLocation: "📍 ప్రస్తుత లైవ్ GPS లొకేషన్",
     carModel: "కార్ మోడల్",
     seats: "అందుబాటులో ఉన్న సీట్లు",
     seatPrice: "సీటు అమౌంట్ (₹)",
@@ -149,13 +155,17 @@ const DRIVER_TRANSLATIONS: any = {
     policeText: "పోలీస్ ఎమర్జెన్సీ (112 / 100)",
     sheTeamsText: "SHE Teams (1091)",
     completeKycNotice: "⚠️ రైడ్ డిప్లాయ్ చేయడానికి Profile లో RC మరియు DL వివరాలు తప్పనిసరి!",
+    searchLocationTitle: "లొకేషన్ ఎంచుకోండి",
+    popularHubs: "ప్రధాన హైదరాబాద్ ప్రాంతాలు",
   },
   Tenglish: {
     dashboardTitle: "DRIVER CONSOLE",
     publishHeading: "Ride Post Setup",
     fromLabel: "STARTING POINT (PICKUP)",
     toLabel: "END POINT (DROP)",
-    useLiveLocation: "📍 Live GPS Location",
+    selectPickupPlaceholder: "Pickup location select cheyandi...",
+    selectDropPlaceholder: "Drop destination select cheyandi...",
+    useLiveLocation: "📍 Current Live GPS Location",
     carModel: "CAR MODEL",
     seats: "SEATS OFFERED",
     seatPrice: "SEAT AMOUNT (₹)",
@@ -216,14 +226,18 @@ const DRIVER_TRANSLATIONS: any = {
     sosTitle: "🚨 Emergency Safety & SOS",
     policeText: "Police Emergency (112 / 100)",
     sheTeamsText: "SHE Teams (1091)",
-    completeKycNotice: "⚠️️ Ride deploy cheyadaniki Profile lo RC mariyu DL mandatory ga ivvali!",
+    completeKycNotice: "⚠ Ride deploy cheyadaniki Profile lo RC mariyu DL mandatory ga ivvali!",
+    searchLocationTitle: "Location Select Cheyandi",
+    popularHubs: "POPULAR HYDERABAD AREAS",
   },
   Hindi: {
     dashboardTitle: "ड्राइवर कंसोल",
     publishHeading: "रूट सेटअप",
     fromLabel: "पिकअप स्थान",
     toLabel: "ड्रॉप स्थान",
-    useLiveLocation: "📍 वर्तमान लाइव लोकेशन",
+    selectPickupPlaceholder: "पिकअप लोकेशन चुनने के लिए टैप करें...",
+    selectDropPlaceholder: "ड्रॉप लोकेशन चुनने के लिए टैप करें...",
+    useLiveLocation: "📍 वर्तमान लाइव GPS लोकेशन",
     carModel: "कार मॉडल",
     seats: "उपलब्ध सीटें",
     seatPrice: "प्रति सीट किराया (₹)",
@@ -285,10 +299,11 @@ const DRIVER_TRANSLATIONS: any = {
     policeText: "पुलिस आपातकाल (112 / 100)",
     sheTeamsText: "शी टीम्स (1091)",
     completeKycNotice: "⚠️ राइड डिप्लॉय करने के लिए प्रोफ़ाइल में RC और ड्राइविंग लाइसेंस अनिवार्य है!",
+    searchLocationTitle: "स्थान चुनें",
+    popularHubs: "हैदराबाद के प्रमुख क्षेत्र",
   },
 };
 
-// Search database for locations across Hyderabad
 const HYDERABAD_HUBS_DATABASE = [
   "Hitec City Cyber Towers, Hyderabad",
   "Gachibowli DLF Cybercity, Hyderabad",
@@ -351,27 +366,29 @@ export function DriverHome({ navigation }: any) {
 
   // Detailed Mandatory Profile Verification States
   const [driverPhone, setDriverPhone] = useState("8919326622");
-  const [rcNumber, setRcNumber] = useState(""); // empty initially until added in profile
-  const [dlNumber, setDlNumber] = useState(""); // empty initially until added in profile
+  const [rcNumber, setRcNumber] = useState("");
+  const [dlNumber, setDlNumber] = useState("");
   const [carModel, setCarModel] = useState("Swift Dzire");
 
   const [selectedLang, setSelectedLang] = useState("English");
   const t = DRIVER_TRANSLATIONS[selectedLang] || DRIVER_TRANSLATIONS.English;
   const [currentView, setCurrentView] = useState<"CREATE_POOL" | "WAITING_POOL" | "RENT_CAR" | "HOST_CAR" | "INCENTIVES" | "REFER_PAGE">("CREATE_POOL");
 
+  // Modals
   const [showDrawerMenu, setShowDrawerMenu] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showSosModal, setShowSosModal] = useState(false);
   const [showLangModal, setShowLangModal] = useState(false);
 
-  // Live Pickup Search & Suggestion states
-  const [startPoint, setStartPoint] = useState("");
-  const [startSuggestions, setStartSuggestions] = useState<string[]>([]);
+  // Rapido Style Full-Screen Location Search Modal
+  const [locationPickerVisible, setLocationPickerVisible] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<"PICKUP" | "DROP">("PICKUP");
+  const [pickerSearchQuery, setPickerSearchQuery] = useState("");
   const [isFetchingGps, setIsFetchingGps] = useState(false);
 
-  // Live Drop Search & Suggestion states
+  // Pickup & Drop
+  const [startPoint, setStartPoint] = useState("");
   const [endPoint, setEndPoint] = useState("");
-  const [endSuggestions, setEndSuggestions] = useState<string[]>([]);
 
   const [seatsCount, setSeatsCount] = useState("3");
   const [pricePerSeat, setPricePerSeat] = useState("110");
@@ -413,17 +430,33 @@ export function DriverHome({ navigation }: any) {
     } catch {}
   }, []);
 
-  // Live Geolocation
-  const fetchCurrentLocation = () => {
+  // Open Rapido-Style Location Modal
+  const openLocationPicker = (target: "PICKUP" | "DROP") => {
+    setPickerTarget(target);
+    setPickerSearchQuery(target === "PICKUP" ? startPoint : endPoint);
+    setLocationPickerVisible(true);
+  };
+
+  // Select Location from List or GPS
+  const handleSelectLocation = (locName: string) => {
+    if (pickerTarget === "PICKUP") {
+      setStartPoint(locName);
+    } else {
+      setEndPoint(locName);
+    }
+    setLocationPickerVisible(false);
+  };
+
+  // Live GPS Fetch in Location Modal
+  const fetchCurrentLocationGps = () => {
     if (typeof window !== "undefined" && navigator.geolocation) {
       setIsFetchingGps(true);
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          setStartPoint(`Live GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} (Current Location)`);
-          setStartSuggestions([]);
+          const locStr = `Live GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} (Current Location)`;
           setIsFetchingGps(false);
-          alert("📍 Live Location detected successfully!");
+          handleSelectLocation(locStr);
         },
         () => {
           setIsFetchingGps(false);
@@ -432,33 +465,7 @@ export function DriverHome({ navigation }: any) {
         { enableHighAccuracy: true, timeout: 8000 }
       );
     } else {
-      alert("Geolocation not supported on this browser.");
-    }
-  };
-
-  // Live Search filter for Pickup
-  const handleStartPointChange = (text: string) => {
-    setStartPoint(text);
-    if (text.trim().length > 1) {
-      const filtered = HYDERABAD_HUBS_DATABASE.filter((item) =>
-        item.toLowerCase().includes(text.toLowerCase())
-      );
-      setStartSuggestions(filtered);
-    } else {
-      setStartSuggestions([]);
-    }
-  };
-
-  // Live Search filter for Drop
-  const handleEndPointChange = (text: string) => {
-    setEndPoint(text);
-    if (text.trim().length > 1) {
-      const filtered = HYDERABAD_HUBS_DATABASE.filter((item) =>
-        item.toLowerCase().includes(text.toLowerCase())
-      );
-      setEndSuggestions(filtered);
-    } else {
-      setEndSuggestions([]);
+      alert("Geolocation is not supported on this browser.");
     }
   };
 
@@ -524,7 +531,7 @@ export function DriverHome({ navigation }: any) {
     }
 
     if (!startPoint.trim() || !endPoint.trim() || !pricePerSeat.trim()) {
-      alert("Please enter Pickup location, Drop location, and Seat price.");
+      alert("Please select Pickup location, Drop location, and Seat price.");
       return;
     }
 
@@ -688,9 +695,9 @@ export function DriverHome({ navigation }: any) {
           </View>
         </View>
 
-        {/* ---------------- VIEW 1: CREATE RIDE POOL WITH DYNAMIC SEARCH & LIVE GPS ---------------- */}
+        {/* ---------------- VIEW 1: CREATE RIDE POOL (RAPIDO STYLE TAP TO SEARCH) ---------------- */}
         {currentView === "CREATE_POOL" && (
-          <ScrollView contentContainerStyle={styles.scrollArea} keyboardShouldPersistTaps="handled">
+          <ScrollView contentContainerStyle={styles.scrollArea}>
             {/* Kyc Reminder Banner if RC / DL is missing */}
             {(!rcNumber.trim() || !dlNumber.trim()) && (
               <TouchableOpacity
@@ -718,79 +725,46 @@ export function DriverHome({ navigation }: any) {
             <View style={styles.card}>
               <Text style={styles.cardTitle}>{t.publishHeading}</Text>
 
-              {/* Pickup Header + Live GPS Button */}
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                <Text style={styles.inputTag}>{t.fromLabel}</Text>
-                <TouchableOpacity
-                  style={styles.gpsButton}
-                  onPress={fetchCurrentLocation}
-                  disabled={isFetchingGps}
-                >
-                  {isFetchingGps ? (
-                    <ActivityIndicator size="small" color="#0284C7" />
-                  ) : (
-                    <Text style={styles.gpsButtonText}>{t.useLiveLocation}</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* Pickup Search Input */}
-              <TextInput
-                style={styles.inputBox}
-                value={startPoint}
-                onChangeText={handleStartPointChange}
-                placeholder="Search or enter pickup location..."
-              />
-
-              {/* Pickup Live Dropdown Suggestions */}
-              {startSuggestions.length > 0 && (
-                <View style={styles.suggestionsBox}>
-                  {startSuggestions.map((item, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={styles.suggestionItem}
-                      onPress={() => {
-                        setStartPoint(item);
-                        setStartSuggestions([]);
-                      }}
-                    >
-                      <Text style={{ fontSize: 12 }}>📍</Text>
-                      <Text style={styles.suggestionText}>{item}</Text>
-                    </TouchableOpacity>
-                  ))}
+              {/* Rapido Style Pickup Selector Box */}
+              <Text style={[styles.inputTag, { marginTop: 10 }]}>{t.fromLabel}</Text>
+              <TouchableOpacity
+                style={styles.rapidoLocationBox}
+                onPress={() => openLocationPicker("PICKUP")}
+                activeOpacity={0.8}
+              >
+                <View style={styles.greenCircleDot} />
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[styles.rapidoLocationText, !startPoint && { color: "#94A3B8", fontWeight: "600" }]}
+                    numberOfLines={1}
+                  >
+                    {startPoint || t.selectPickupPlaceholder}
+                  </Text>
                 </View>
-              )}
+                <Text style={styles.searchArrowIcon}>🔍</Text>
+              </TouchableOpacity>
 
-              {/* Drop Search Input */}
-              <Text style={[styles.inputTag, { marginTop: 12 }]}>{t.toLabel}</Text>
-              <TextInput
-                style={styles.inputBox}
-                value={endPoint}
-                onChangeText={handleEndPointChange}
-                placeholder="Search destination (e.g. Hitec City, Gachibowli)..."
-              />
-
-              {/* Drop Live Dropdown Suggestions */}
-              {endSuggestions.length > 0 && (
-                <View style={styles.suggestionsBox}>
-                  {endSuggestions.map((item, idx) => (
-                    <TouchableOpacity
-                      key={idx}
-                      style={styles.suggestionItem}
-                      onPress={() => {
-                        setEndPoint(item);
-                        setEndSuggestions([]);
-                      }}
-                    >
-                      <Text style={{ fontSize: 12 }}>🏁</Text>
-                      <Text style={styles.suggestionText}>{item}</Text>
-                    </TouchableOpacity>
-                  ))}
+              {/* Rapido Style Drop Destination Selector Box */}
+              <Text style={[styles.inputTag, { marginTop: 14 }]}>{t.toLabel}</Text>
+              <TouchableOpacity
+                style={styles.rapidoLocationBox}
+                onPress={() => openLocationPicker("DROP")}
+                activeOpacity={0.8}
+              >
+                <View style={styles.redSquareDot} />
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[styles.rapidoLocationText, !endPoint && { color: "#94A3B8", fontWeight: "600" }]}
+                    numberOfLines={1}
+                  >
+                    {endPoint || t.selectDropPlaceholder}
+                  </Text>
                 </View>
-              )}
+                <Text style={styles.searchArrowIcon}>🔍</Text>
+              </TouchableOpacity>
 
               {/* Car & Seats */}
-              <View style={[styles.row, { marginTop: 8 }]}>
+              <View style={[styles.row, { marginTop: 12 }]}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputTag}>{t.carModel}</Text>
                   <TextInput style={styles.inputBox} value={carModel} onChangeText={setCarModel} />
@@ -1077,6 +1051,86 @@ export function DriverHome({ navigation }: any) {
           </ScrollView>
         )}
 
+        {/* ---------------- RAPIDO-STYLE LOCATION PICKER MODAL ---------------- */}
+        <Modal visible={locationPickerVisible} animationType="slide" transparent={false}>
+          <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+            <View style={styles.pickerModalHeader}>
+              <TouchableOpacity
+                onPress={() => setLocationPickerVisible(false)}
+                style={styles.pickerBackCircle}
+              >
+                <Text style={{ fontSize: 18, fontWeight: "bold" }}>←</Text>
+              </TouchableOpacity>
+              <Text style={styles.pickerModalTitle}>
+                {pickerTarget === "PICKUP" ? t.fromLabel : t.toLabel}
+              </Text>
+            </View>
+
+            <View style={{ paddingHorizontal: 16, paddingVertical: 10 }}>
+              {/* Search Bar */}
+              <View style={styles.pickerSearchWrap}>
+                <Text style={{ fontSize: 16 }}>🔍</Text>
+                <TextInput
+                  style={styles.pickerSearchInput}
+                  placeholder="Search colony, metro, area in Hyderabad..."
+                  placeholderTextColor="#94A3B8"
+                  value={pickerSearchQuery}
+                  onChangeText={setPickerSearchQuery}
+                  autoFocus
+                />
+                {pickerSearchQuery.length > 0 && (
+                  <TouchableOpacity onPress={() => setPickerSearchQuery("")}>
+                    <Text style={{ fontSize: 16, color: "#64748B" }}>✕</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {/* Live GPS Button (Specially for Pickup) */}
+              {pickerTarget === "PICKUP" && (
+                <TouchableOpacity
+                  style={styles.gpsLiveActionRow}
+                  onPress={fetchCurrentLocationGps}
+                  disabled={isFetchingGps}
+                >
+                  <View style={styles.gpsPinCircle}>
+                    {isFetchingGps ? (
+                      <ActivityIndicator size="small" color="#0284C7" />
+                    ) : (
+                      <Text style={{ fontSize: 16 }}>📍</Text>
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.gpsLiveTitle}>{t.useLiveLocation}</Text>
+                    <Text style={styles.gpsLiveSub}>Auto-detect using device GPS</Text>
+                  </View>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.pickerDivider} />
+
+            {/* Suggestions & Popular Hubs List */}
+            <ScrollView contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 30 }}>
+              <Text style={styles.popularHubsHeading}>{t.popularHubs}</Text>
+              {HYDERABAD_HUBS_DATABASE.filter((loc) =>
+                loc.toLowerCase().includes(pickerSearchQuery.toLowerCase())
+              ).map((location, idx) => (
+                <TouchableOpacity
+                  key={idx}
+                  style={styles.locationResultRow}
+                  onPress={() => handleSelectLocation(location)}
+                >
+                  <Text style={styles.locationPinIcon}>📍</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.locationResultTitle}>{location.split(",")[0]}</Text>
+                    <Text style={styles.locationResultSub}>{location}</Text>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
+
         {/* ---------------- EDIT PROFILE MODAL (RC & DL MANDATORY HERE) ---------------- */}
         <Modal visible={showEditProfileModal} transparent animationType="slide">
           <View style={styles.modalBackdrop}>
@@ -1339,14 +1393,14 @@ const styles = StyleSheet.create({
   onboardSub: { fontSize: 12, color: "#64748B", marginTop: 4, lineHeight: 18 },
   card: { backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#E2E8F0" },
   cardTitle: { fontSize: 16, fontWeight: "900", color: "#0F172A" },
-  inputTag: { fontSize: 9, fontWeight: "800", color: "#64748B", marginTop: 10, marginBottom: 4 },
+  inputTag: { fontSize: 9, fontWeight: "800", color: "#64748B", marginBottom: 4 },
   inputBox: {
     backgroundColor: "#F8FAFC",
     borderWidth: 1,
     borderColor: "#CBD5E1",
     borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingVertical: 10,
     fontSize: 13,
     fontWeight: "700",
     color: "#0F172A",
@@ -1408,33 +1462,21 @@ const styles = StyleSheet.create({
   },
   activeBannerTitle: { fontSize: 12, fontWeight: "800", color: "#065F46" },
   activeBannerAction: { fontSize: 11, fontWeight: "900", color: "#059669" },
-  gpsButton: {
-    backgroundColor: "#EFF6FF",
-    borderWidth: 1,
-    borderColor: "#BFDBFE",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  gpsButtonText: { color: "#0284C7", fontSize: 10, fontWeight: "800" },
-  suggestionsBox: {
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    borderRadius: 10,
-    marginTop: 4,
-    maxHeight: 180,
-  },
-  suggestionItem: {
+  rapidoLocationBox: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderBottomWidth: 0.5,
-    borderBottomColor: "#F1F5F9",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1.5,
+    borderColor: "#CBD5E1",
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    gap: 12,
   },
-  suggestionText: { fontSize: 12, fontWeight: "700", color: "#1E293B" },
+  greenCircleDot: { width: 10, height: 10, borderRadius: 5, backgroundColor: "#10B981" },
+  redSquareDot: { width: 10, height: 10, borderRadius: 2, backgroundColor: "#EF4444" },
+  rapidoLocationText: { fontSize: 13, fontWeight: "800", color: "#0F172A" },
+  searchArrowIcon: { fontSize: 14, color: "#64748B" },
   row: { flexDirection: "row", gap: 10 },
   plateRow: { gap: 8, marginTop: 6 },
   plateBox: { flexDirection: "row", alignItems: "center", backgroundColor: "#F8FAFC", padding: 12, borderRadius: 12, borderWidth: 1.5, borderColor: "#CBD5E1", gap: 12 },
@@ -1456,37 +1498,6 @@ const styles = StyleSheet.create({
   incentiveBox: { backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16, borderWidth: 1.5, borderColor: "#10B981", marginBottom: 14 },
   incentiveTitle: { fontSize: 13, fontWeight: "900", color: "#0F172A" },
   progressStatusText: { fontSize: 11, fontWeight: "800", color: "#475569", marginTop: 6 },
-  modalBackdrop: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.6)", justifyContent: "flex-end" },
-  sheetModal: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 },
-  modalHeading: { fontSize: 16, fontWeight: "900", color: "#0F172A", marginBottom: 10 },
-  closeBtn: { marginTop: 10, alignItems: "center", paddingVertical: 8 },
-  closeBtnText: { fontSize: 12, fontWeight: "800", color: "#64748B" },
-  sosHeading: { fontSize: 16, fontWeight: "900", color: "#DC2626", marginBottom: 12 },
-  sosRow: { backgroundColor: "#FEE2E2", padding: 14, borderRadius: 12, marginBottom: 10 },
-  sosText: { color: "#B91C1C", fontWeight: "900", fontSize: 13 },
-  menuOverlay: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.4)", flexDirection: "row" },
-  menuDrawer: { width: "75%", maxWidth: 300, backgroundColor: "#FFFFFF", height: "100%", padding: 20, paddingTop: 36 },
-  drawerTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
-  menuTitle: { fontSize: 16, fontWeight: "900", color: "#0F172A" },
-  menuSub: { fontSize: 11, color: "#16A34A", fontWeight: "700" },
-  drawerCloseX: { fontSize: 18, color: "#64748B", fontWeight: "bold" },
-  drawerDivider: { height: 1, backgroundColor: "#F1F5F9", marginVertical: 12 },
-  menuItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14 },
-  menuItemIcon: { fontSize: 18 },
-  menuItemText: { fontSize: 13, fontWeight: "700", color: "#1E293B" },
-  langItemRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    backgroundColor: "#F8FAFC",
-    padding: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  langItemRowActive: { borderColor: "#D97706", backgroundColor: "#FFFBEB" },
-  langItemLabel: { fontSize: 13, fontWeight: "700", color: "#334155" },
-  langItemLabelActive: { color: "#D97706", fontWeight: "900" },
   liveRadarCard: {
     backgroundColor: "#0F172A",
     borderRadius: 20,
@@ -1530,39 +1541,54 @@ const styles = StyleSheet.create({
   acceptBtnText: { color: "#FFFFFF", fontSize: 12, fontWeight: "900" },
   rejectRequestBtn: { backgroundColor: "#F1F5F9", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, alignItems: "center" },
   rejectBtnText: { color: "#64748B", fontSize: 12, fontWeight: "800" },
-  referCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
+  referCard: { backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#E2E8F0" },
   referBigTitle: { fontSize: 17, fontWeight: "900", color: "#0F172A" },
   referSub: { fontSize: 12, color: "#64748B", marginTop: 4, lineHeight: 18 },
-  referralCodeBox: {
-    backgroundColor: "#FEF3C7",
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginVertical: 14,
-    borderWidth: 1.5,
-    borderColor: "#FDE68A",
-  },
+  referralCodeBox: { backgroundColor: "#FEF3C7", padding: 16, borderRadius: 12, alignItems: "center", marginVertical: 14, borderWidth: 1.5, borderColor: "#FDE68A" },
   referralCodeTag: { fontSize: 10, fontWeight: "800", color: "#B45309" },
   referralCodeText: { fontSize: 22, fontWeight: "900", color: "#78350F", marginTop: 4 },
-  whatsappShareBtn: {
-    backgroundColor: "#25D366",
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: "center",
-  },
+  whatsappShareBtn: { backgroundColor: "#25D366", paddingVertical: 12, borderRadius: 10, alignItems: "center" },
   whatsappShareText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900" },
   dividerLine: { height: 1, backgroundColor: "#E2E8F0", marginVertical: 16 },
-  applyReferralBtn: {
-    backgroundColor: "#0F172A",
-    paddingHorizontal: 14,
-    justifyContent: "center",
-    borderRadius: 10,
-  },
+  applyReferralBtn: { backgroundColor: "#0F172A", paddingHorizontal: 14, justifyContent: "center", borderRadius: 10 },
   applyReferralText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
+  // Modal & Drawer
+  modalBackdrop: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.6)", justifyContent: "flex-end" },
+  sheetModal: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 },
+  modalHeading: { fontSize: 16, fontWeight: "900", color: "#0F172A", marginBottom: 10 },
+  closeBtn: { marginTop: 10, alignItems: "center", paddingVertical: 8 },
+  closeBtnText: { fontSize: 12, fontWeight: "800", color: "#64748B" },
+  sosHeading: { fontSize: 16, fontWeight: "900", color: "#DC2626", marginBottom: 12 },
+  sosRow: { backgroundColor: "#FEE2E2", padding: 14, borderRadius: 12, marginBottom: 10 },
+  sosText: { color: "#B91C1C", fontWeight: "900", fontSize: 13 },
+  menuOverlay: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.4)", flexDirection: "row" },
+  menuDrawer: { width: "75%", maxWidth: 300, backgroundColor: "#FFFFFF", height: "100%", padding: 20, paddingTop: 36 },
+  drawerTopRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  menuTitle: { fontSize: 16, fontWeight: "900", color: "#0F172A" },
+  menuSub: { fontSize: 11, color: "#16A34A", fontWeight: "700" },
+  drawerCloseX: { fontSize: 18, color: "#64748B", fontWeight: "bold" },
+  drawerDivider: { height: 1, backgroundColor: "#F1F5F9", marginVertical: 12 },
+  menuItem: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 14 },
+  menuItemIcon: { fontSize: 18 },
+  menuItemText: { fontSize: 13, fontWeight: "700", color: "#1E293B" },
+  langItemRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", backgroundColor: "#F8FAFC", padding: 14, borderRadius: 12, borderWidth: 1, borderColor: "#E2E8F0" },
+  langItemRowActive: { borderColor: "#D97706", backgroundColor: "#FFFBEB" },
+  langItemLabel: { fontSize: 13, fontWeight: "700", color: "#334155" },
+  langItemLabelActive: { color: "#D97706", fontWeight: "900" },
+  // Rapido-Style Location Picker Modal Styles
+  pickerModalHeader: { flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: "#F1F5F9", gap: 12 },
+  pickerBackCircle: { width: 36, height: 36, borderRadius: 18, backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center" },
+  pickerModalTitle: { fontSize: 16, fontWeight: "900", color: "#0F172A" },
+  pickerSearchWrap: { flexDirection: "row", alignItems: "center", backgroundColor: "#F1F5F9", borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8, gap: 10 },
+  pickerSearchInput: { flex: 1, fontSize: 14, fontWeight: "700", color: "#0F172A" },
+  gpsLiveActionRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#BFDBFE", borderRadius: 12, padding: 12, marginTop: 10, gap: 12 },
+  gpsPinCircle: { width: 34, height: 34, borderRadius: 17, backgroundColor: "#DBEAFE", alignItems: "center", justifyContent: "center" },
+  gpsLiveTitle: { fontSize: 13, fontWeight: "900", color: "#1E40AF" },
+  gpsLiveSub: { fontSize: 11, color: "#60A5FA", marginTop: 1 },
+  pickerDivider: { height: 1, backgroundColor: "#F1F5F9", marginVertical: 8 },
+  popularHubsHeading: { fontSize: 11, fontWeight: "900", color: "#94A3B8", letterSpacing: 0.5, marginVertical: 10 },
+  locationResultRow: { flexDirection: "row", alignItems: "center", paddingVertical: 12, borderBottomWidth: 0.5, borderBottomColor: "#F1F5F9", gap: 12 },
+  locationPinIcon: { fontSize: 18 },
+  locationResultTitle: { fontSize: 14, fontWeight: "800", color: "#0F172A" },
+  locationResultSub: { fontSize: 11, color: "#64748B", marginTop: 2 },
 });
