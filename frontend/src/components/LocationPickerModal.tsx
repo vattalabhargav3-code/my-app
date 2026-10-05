@@ -18,7 +18,8 @@ interface LocationPickerProps {
   title?: string;
 }
 
-const MAPBOX_TOKEN = "pk.eyJ1IjoiYmhhcmdhdjE4MTkiLCJhIjoiY211bnJxOGJ6MDJnNjJ4cGNucWV3ZTB5ZyJ9.eeQZMTPajF3ggl5E1ovH0Q";
+const MAPBOX_TOKEN =
+  "pk.eyJ1IjoiYmhhcmdhdjE4MTkiLCJhIjoiY211bnJxOGJ6MDJnNjJ4cGNucWV3ZTB5ZyJ9.eeQZMTPajF3ggl5E1ovH0Q";
 
 const QUICK_HUBS = [
   { name: "Hitec City", lat: 17.4435, lon: 78.3772 },
@@ -27,9 +28,12 @@ const QUICK_HUBS = [
   { name: "LB Nagar", lat: 17.3457, lon: 78.5522 },
   { name: "Kukatpally", lat: 17.4947, lon: 78.3996 },
   { name: "Secunderabad", lat: 17.4399, lon: 78.4983 },
+  { name: "Dilsukhnagar", lat: 17.3688, lon: 78.5247 },
+  { name: "Banjara Hills", lat: 17.4156, lon: 78.4357 },
+  { name: "Financial District", lat: 17.4141, lon: 78.3412 },
 ];
 
-export function LocationPickerModal({
+export default function LocationPickerModal({
   visible,
   onClose,
   onSelect,
@@ -81,6 +85,7 @@ export function LocationPickerModal({
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <View style={styles.container}>
+        {/* Dynamic Static Map Background */}
         <View style={styles.mapLayer}>
           <Image
             source={{ uri: mapImageUrl }}
@@ -96,6 +101,7 @@ export function LocationPickerModal({
           </View>
         </View>
 
+        {/* Top Header with Back button & Live Search */}
         <View style={styles.topHeader}>
           <TouchableOpacity onPress={onClose} style={styles.backBtn}>
             <Text style={styles.backBtnText}>←</Text>
@@ -105,7 +111,7 @@ export function LocationPickerModal({
             <Text style={styles.searchIconText}>🔍</Text>
             <TextInput
               style={styles.input}
-              placeholder="Search area (e.g. Hitec City, LB Nagar)..."
+              placeholder="Search any colony, metro or area..."
               placeholderTextColor="#94A3B8"
               value={query}
               onChangeText={handleSearch}
@@ -114,6 +120,7 @@ export function LocationPickerModal({
           </View>
         </View>
 
+        {/* Live Search Autocomplete Results Dropdown */}
         {results.length > 0 && (
           <View style={styles.resultsBox}>
             <FlatList
@@ -131,7 +138,9 @@ export function LocationPickerModal({
                   <Text style={styles.resPinIcon}>📍</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.resPrimary}>{item.text}</Text>
-                    <Text style={styles.resSecondary} numberOfLines={1}>{item.place_name}</Text>
+                    <Text style={styles.resSecondary} numberOfLines={1}>
+                      {item.place_name}
+                    </Text>
                   </View>
                 </TouchableOpacity>
               )}
@@ -139,9 +148,10 @@ export function LocationPickerModal({
           </View>
         )}
 
+        {/* Bottom Sheet for Confirming Selection */}
         <View style={styles.bottomCard}>
           <Text style={styles.sheetHeading}>{title}</Text>
-          <Text style={styles.sheetSub}>Tap quick hubs or search to position pin</Text>
+          <Text style={styles.sheetSub}>Tap quick hubs or type any area above to update pin</Text>
 
           <View style={styles.chipsWrap}>
             {QUICK_HUBS.map((hub) => (
@@ -174,9 +184,6 @@ export function LocationPickerModal({
     </Modal>
   );
 }
-
-// ✅ ఈ లైన్ కంపల్సరీ ఉండాలి:
-export default LocationPickerModal;
 
 const styles = StyleSheet.create({
   container: {
