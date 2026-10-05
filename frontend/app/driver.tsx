@@ -3,7 +3,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
 import { api, SESSION_KEY, User } from "@/src/api";
 import { AuthScreen } from "@/src/screens/AuthScreen";
-import { DriverHome } from "@/src/screens/DriverHome";
+// ✅ Curly brackets { } theesi Default Import gaa marchesam:
+import DriverHome from "@/src/screens/DriverHome";
 import { shared } from "@/src/styles";
 import { colors } from "@/src/theme";
 import { storage } from "@/src/utils/storage";
