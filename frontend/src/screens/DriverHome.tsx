@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   Linking,
@@ -12,23 +12,27 @@ import {
   View,
 } from "react-native";
 
-// Multi-language dictionary
+// Complete Multi-Language Dictionary
 const DRIVER_TRANSLATIONS: any = {
   English: {
-    dashboardTitle: "Driver Console",
+    dashboardTitle: "DRIVER CONSOLE",
     publishHeading: "Route Setup",
     fromLabel: "STARTING POINT (PICKUP)",
     toLabel: "END POINT (DROP)",
+    useLiveLocation: "📍 Use My Current Live Location",
     carModel: "CAR MODEL",
     seats: "SEATS OFFERED",
     seatPrice: "PRICE PER SEAT (₹)",
     plateType: "NUMBER PLATE TYPE",
+    whitePlateTitle: "Green Saver / Eco Commute",
+    whitePlateSub: "Private carpool & fuel cost sharing (Legal)",
+    yellowPlateTitle: "Commercial Express / Pro Pool",
+    yellowPlateSub: "Commercial taxi permit fast routes",
     publishBtn: "Publish Ride to Live Pool ➔",
     waitingText: "Looking for nearby passengers...",
     onlineStatus: "YOU ARE ONLINE",
     cancelRide: "Cancel Ride / Go Offline",
     backToHome: "← Back to Home / Edit Ride",
-    chillZone: "Music & Coin Game Zone 🎮",
     editProfile: "Edit Driver Profile ✏️",
     menuCreatePool: "Ride Post Dashboard",
     menuRentCar: "Request a Cab (Rent Idle Cars)",
@@ -37,46 +41,136 @@ const DRIVER_TRANSLATIONS: any = {
     menuRefer: "Refer & Earn ₹200 + ₹200 🎁",
     menuLang: "Language & Settings",
     menuLogout: "Logout Driver Account",
+    vibeHeading: "RIDE VIBE PREFERENCE",
+    vibeMusic: "Music & Shared Aux",
+    vibeQuiet: "Quiet Commute (Silent)",
+    activeRideBannerText: "Active Ride Online: Looking for Passengers",
+    viewRadarAction: "View Radar ➔",
+    newRequestBadge: "⚡ NEW PASSENGER REQUEST",
+    acceptBtn: "✓ ACCEPT RIDE",
+    declineBtn: "DECLINE",
+    referTitle: "🎁 Driver Referral Program",
+    referSub: "Invite other drivers. When they complete their 1st ride, both of you get ₹200 each (Total ₹400)!",
+    referYourCode: "YOUR UNIQUE REFERRAL CODE",
+    shareWhatsApp: "📲 Share Code on WhatsApp (₹200)",
+    enterFriendCode: "HAVE A FRIEND'S REFERRAL CODE?",
+    applyCodeBtn: "Apply Code",
+    rentCarsHeading: "Nearby Idle Cars for Rent",
+    rentCarsSub: "Licensed drivers can rent idle cars for 24 hours to drive and earn.",
+    rentPer24hr: "/ 24 Hours",
+    rentAction: "Rent this Car",
+    hostCarHeading: "Attach Your Idle Car (Car Host)",
+    hostCarSub: "Earn ₹25,000+ monthly passive income from your idle car.",
+    ownerName: "OWNER NAME",
+    emailId: "EMAIL ID",
+    carModelYear: "CAR MODEL & YEAR",
+    rcNumber: "RC NUMBER",
+    parkingLocation: "PARKING LOCATION (HYDERABAD)",
+    dailyRentPrice: "24 HOURS RENTAL RATE (₹)",
+    hostSubmitBtn: "List Idle Car ➔",
+    targetsHeading: "WEEKLY DRIVER TARGETS",
+    targetsSub: "Completed trips this week (Up & Down pooled together)",
+    ridesCompleted: "Rides Completed",
+    target1: "Target 1: 5 Rides / Week ➔ ₹500 Petrol Bonus",
+    target2: "Target 2: 10 Rides / Week ➔ ₹1,500 Petrol Bonus",
+    target1Done: "✓ Target reached! ₹500 credited to wallet.",
+    target2Done: "🎉 Target reached! ₹1,500 petrol bonus unlocked!",
+    ridesLeft: "more rides left",
+    saveProfileBtn: "Save Profile Details ➔",
+    cancelBtn: "Cancel",
+    closeBtn: "Close",
+    sosTitle: "🚨 Emergency SOS & Police Dispatch",
+    policeText: "Police Emergency (112 / 100)",
+    sheTeamsText: "SHE Teams (1091)",
   },
   Telugu: {
     dashboardTitle: "డ్రైవర్ కన్సోల్",
     publishHeading: "రైడ్ పోస్ట్ వివరాలు",
     fromLabel: "స్టార్టింగ్ పాయింట్ (పికప్)",
     toLabel: "ఎండ్ పాయింట్ (డ్రాప్)",
+    useLiveLocation: "📍 నా ప్రస్తుత లైవ్ లొకేషన్ వాడండి",
     carModel: "కార్ మోడల్",
     seats: "అందుబాటులో ఉన్న సీట్లు",
     seatPrice: "సీటు అమౌంట్ (₹)",
     plateType: "నెంబర్ ప్లేట్ రకం",
+    whitePlateTitle: "Green Saver / Eco Commute",
+    whitePlateSub: "ప్రైవేట్ కార్‌పూల్ & లీగల్ ఇంధన వ్యయం పంచుకోవడం",
+    yellowPlateTitle: "Commercial Express / Pro Pool",
+    yellowPlateSub: "కమర్షియల్ టాక్సీ పర్మిట్ ఫాస్ట్ రూట్స్",
     publishBtn: "రైడ్ పబ్లిష్ చేయండి ➔",
     waitingText: "ప్యాసింజర్ల కోసం వెతుకుతోంది...",
-    onlineStatus: "మీరు ఆన్‌‌లైన్‌లో ఉన్నారు",
+    onlineStatus: "మీరు ఆన్‌లైన్‌లో ఉన్నారు",
     cancelRide: "రైడ్ రద్దు చేయండి / ఆఫ్‌లైన్ వెళ్ళండి",
     backToHome: "← వెనక్కి వెళ్ళండి (Back to Home)",
-    chillZone: "మ్యూజిక్ & కాయిన్ గేమ్స్ 🎮",
     editProfile: "ప్రొఫైల్ ఎడిట్ చేయండి ✏️",
-    menuCreatePool: "రైడ్ పోస్ట్ డాష్‌‌బోర్డ్",
+    menuCreatePool: "రైడ్ పోస్ట్ డాష్‌బోర్డ్",
     menuRentCar: "కార్లు అద్దెకు తీసుకోండి (Request Cab)",
     menuHostCar: "ఖాళీ కారును అటాచ్ చేయండి (Host Car)",
     menuIncentives: "వీక్లీ టార్గెట్స్ & పెట్రోల్ బోనస్",
     menuRefer: "రెఫర్ & విన్ ₹200 + ₹200 🎁",
     menuLang: "భాష & సెట్టింగ్స్",
     menuLogout: "లాగౌట్ అవ్వండి",
+    vibeHeading: "రైడ్ వైబ్ సెలెక్షన్",
+    vibeMusic: "మ్యూజిక్ & వైబ్",
+    vibeQuiet: "సైలెంట్ కమ్యూట్",
+    activeRideBannerText: "రైడ్ ఆన్‌లైన్‌లో ఉంది: ప్యాసింజర్స్ కోసం చూస్తోంది",
+    viewRadarAction: "రాడార్ ఓపెన్ చేయండి ➔",
+    newRequestBadge: "⚡ కొత్త ప్యాసింజర్ రిక్వెస్ట్",
+    acceptBtn: "✓ రైడ్ యాక్సెప్ట్ చేయండి",
+    declineBtn: "డిక్లైన్",
+    referTitle: "🎁 డ్రైవర్ రెఫరల్ ప్రోగ్రామ్",
+    referSub: "మిత్రులను ఆహ్వానించండి. వారు మొదటి రైడ్ పూర్తి చేయగానే ఇద్దరికీ ₹200 చొప్పున ₹400 లభిస్తుంది!",
+    referYourCode: "మీ యూనిక్ రెఫరల్ కోడ్",
+    shareWhatsApp: "📲 WhatsApp లో షేర్ చేయండి (₹200)",
+    enterFriendCode: "మిత్రుల రెఫరల్ కోడ్ ఎంటర్ చేయండి",
+    applyCodeBtn: "అప్లై చేయండి",
+    rentCarsHeading: "సమీపంలో ఖాళీగా ఉన్న కార్లు (Idle Fleet)",
+    rentCarsSub: "లైసెన్స్ ఉన్న డ్రైవర్లు 24 గంటలకు కార్లను రెంట్‌కు తీసుకుని నడుపుకోవచ్చు.",
+    rentPer24hr: "/ 24 గంటలు",
+    rentAction: "కారును అద్దెకు తీసుకోండి",
+    hostCarHeading: "మీ ఖాళీ కారును అటాచ్ చేయండి (Car Host)",
+    hostCarSub: "నిరుపయోగంగా ఉండే కారు ద్వారా నెలకు ₹25,000+ సంపాదించండి.",
+    ownerName: "ఓనర్ పేరు",
+    emailId: "ఈమెయిల్ ఐడీ",
+    carModelYear: "కార్ మోడల్ & ఇయర్",
+    rcNumber: "RC నంబర్",
+    parkingLocation: "పార్కింగ్ లొకేషన్ (హైదరాబాద్)",
+    dailyRentPrice: "24 గంటల అద్దె ధర (₹)",
+    hostSubmitBtn: "కారును లిస్ట్ చేయండి ➔",
+    targetsHeading: "వీక్లీ డ్రైవర్ టార్గెట్స్",
+    targetsSub: "ఈ వారం పూర్తి చేసిన ట్రిప్పులు (Up & Down కలిపి)",
+    ridesCompleted: "రైడ్లు పూర్తయ్యాయి",
+    target1: "టార్గెట్ 1: 5 రైడ్స్ / వారం ➔ ₹500 పెట్రోల్ బోనస్",
+    target2: "టార్గెట్ 2: 10 రైడ్స్ / వారం ➔ ₹1,500 పెట్రోల్ బోనస్",
+    target1Done: "✓ టార్గెట్ పూర్తయింది! ₹500 క్రెడిట్ అయింది.",
+    target2Done: "🎉 అద్భుతం! ₹1,500 పెట్రోల్ బోనస్ గెలుచుకున్నారు!",
+    ridesLeft: "రైడ్లు మిగిలి ఉన్నాయి",
+    saveProfileBtn: "వివరాలు సేవ్ చేయండి ➔",
+    cancelBtn: "రద్దు చేయండి",
+    closeBtn: "మూసివేయండి",
+    sosTitle: "🚨 ఎమర్జెన్సీ రక్షణ కేంద్రం",
+    policeText: "పోలీస్ ఎమర్జెన్సీ (112 / 100)",
+    sheTeamsText: "SHE Teams (1091)",
   },
   Tenglish: {
-    dashboardTitle: "Driver Console",
+    dashboardTitle: "DRIVER CONSOLE",
     publishHeading: "Ride Post Setup",
     fromLabel: "STARTING POINT (PICKUP)",
     toLabel: "END POINT (DROP)",
+    useLiveLocation: "📍 Naa Current Live Location Use Cheyandi",
     carModel: "CAR MODEL",
     seats: "SEATS OFFERED",
     seatPrice: "SEAT AMOUNT (₹)",
     plateType: "NUMBER PLATE TYPE",
+    whitePlateTitle: "Green Saver / Eco Commute",
+    whitePlateSub: "Private carpool & fuel sharing (Legal)",
+    yellowPlateTitle: "Commercial Express / Pro Pool",
+    yellowPlateSub: "Commercial taxi permit fast routes",
     publishBtn: "Ride Publish Cheyandi ➔",
     waitingText: "Passengers kosam search chesthondi...",
     onlineStatus: "MEERU ONLINE LO UNNARU",
     cancelRide: "Ride Cancel / Go Offline",
     backToHome: "← Back to Home / Edit Ride",
-    chillZone: "Music & Coin Game Zone 🎮",
     editProfile: "Edit Driver Profile ✏️",
     menuCreatePool: "Ride Post Dashboard",
     menuRentCar: "Request a Cab (Rent Idle Cars)",
@@ -85,35 +179,128 @@ const DRIVER_TRANSLATIONS: any = {
     menuRefer: "Refer Driver (₹200 + ₹200) 🎁",
     menuLang: "Language & Settings",
     menuLogout: "Logout Account",
+    vibeHeading: "RIDE VIBE PREFERENCE",
+    vibeMusic: "Music & Shared Aux",
+    vibeQuiet: "Quiet Commute (Silent)",
+    activeRideBannerText: "Active Ride Online: Passengers kosam waiting",
+    viewRadarAction: "Radar Choodandi ➔",
+    newRequestBadge: "⚡ NEW PASSENGER REQUEST",
+    acceptBtn: "✓ ACCEPT RIDE",
+    declineBtn: "DECLINE",
+    referTitle: "🎁 Driver Referral Program",
+    referSub: "Friends ni invite cheyandi. 1st ride avvagane iddariki ₹200 each (Total ₹400) vasthundi!",
+    referYourCode: "MEE UNIQUE REFERRAL CODE",
+    shareWhatsApp: "📲 WhatsApp lo Share Cheyandi (₹200)",
+    enterFriendCode: "FRIEND REFERRAL CODE ENTER CHEYANDI",
+    applyCodeBtn: "Apply Code",
+    rentCarsHeading: "Nearby Idle Cars for Rent",
+    rentCarsSub: "License unna drivers 24 hours rent ki car theesukoni drive chesukovachu.",
+    rentPer24hr: "/ 24 Hours",
+    rentAction: "Rent this Car",
+    hostCarHeading: "Attach Your Idle Car (Car Host)",
+    hostCarSub: "Idle car nundi nelaki ₹25,000+ passive income earn cheyandi.",
+    ownerName: "OWNER NAME",
+    emailId: "EMAIL ID",
+    carModelYear: "CAR MODEL & YEAR",
+    rcNumber: "RC NUMBER",
+    parkingLocation: "PARKING LOCATION (HYDERABAD)",
+    dailyRentPrice: "24 HOURS RENTAL RATE (₹)",
+    hostSubmitBtn: "List Idle Car ➔",
+    targetsHeading: "WEEKLY DRIVER TARGETS",
+    targetsSub: "Ee week trips count (Up & Down kalipi)",
+    ridesCompleted: "Rides Completed",
+    target1: "Target 1: 5 Rides / Week ➔ ₹500 Petrol Bonus",
+    target2: "Target 2: 10 Rides / Week ➔ ₹1,500 Petrol Bonus",
+    target1Done: "✓ Target complete! ₹500 wallet lo add aindi.",
+    target2Done: "🎉 Super! ₹1,500 petrol bonus unlock aindi!",
+    ridesLeft: "rides migili unnayi",
+    saveProfileBtn: "Save Profile ➔",
+    cancelBtn: "Cancel",
+    closeBtn: "Close",
+    sosTitle: "🚨 Emergency Safety & SOS",
+    policeText: "Police Emergency (112 / 100)",
+    sheTeamsText: "SHE Teams (1091)",
+  },
+  Hindi: {
+    dashboardTitle: "ड्राइवर कंसोल",
+    publishHeading: "रूट सेटअप",
+    fromLabel: "पिकअप स्थान",
+    toLabel: "ड्रॉप स्थान",
+    useLiveLocation: "📍 मेरी वर्तमान लाइव लोकेशन उपयोग करें",
+    carModel: "कार मॉडल",
+    seats: "उपलब्ध सीटें",
+    seatPrice: "प्रति सीट किराया (₹)",
+    plateType: "नंबर प्लेट प्रकार",
+    whitePlateTitle: "Green Saver / Eco Commute",
+    whitePlateSub: "प्राइवेट कारपूल व लीगल ईंधन शेयरिंग",
+    yellowPlateTitle: "Commercial Express / Pro Pool",
+    yellowPlateSub: "कमर्शियल टैक्सी परमिट फास्ट रूट्स",
+    publishBtn: "राइड पब्लिश करें ➔",
+    waitingText: "यात्रियों की तलाश जारी है...",
+    onlineStatus: "आप ऑनलाइन हैं",
+    cancelRide: "राइड रद्द करें / ऑफलाइन जाएं",
+    backToHome: "← वापस जाएं (Back to Home)",
+    editProfile: "प्रोफ़ाइल संपादित करें ✏️",
+    menuCreatePool: "राइड पोस्ट डैशबोर्ड",
+    menuRentCar: "कार किराए पर लें (Request Cab)",
+    menuHostCar: "खाली कार जोड़ें (Host Car)",
+    menuIncentives: "साप्ताहिक लक्ष्य और पेट्रोल बोनस",
+    menuRefer: "रेफर करें और ₹200 + ₹200 पाएं 🎁",
+    menuLang: "भाषा और सेटिंग्स",
+    menuLogout: "लॉगआउट करें",
+    vibeHeading: "राइड वाइब प्राथमिकता",
+    vibeMusic: "म्यूजिक और शेयर ऑक्स",
+    vibeQuiet: "शांत कम्यूट (साइलेंट)",
+    activeRideBannerText: "राइड ऑनलाइन है: यात्री खोजे जा रहे हैं",
+    viewRadarAction: "रडार खोलें ➔",
+    newRequestBadge: "⚡ नया यात्री अनुरोध",
+    acceptBtn: "✓ राइड स्वीकार करें",
+    declineBtn: "अस्वीकार करें",
+    referTitle: "🎁 ड्राइवर रेफरल प्रोग्राम",
+    referSub: "दोस्तों को आमंत्रित करें। पहली राइड पूरी होने पर दोनों को ₹200-₹200 मिलेंगे!",
+    referYourCode: "आपका रेफरल कोड",
+    shareWhatsApp: "📲 WhatsApp पर शेयर करें (₹200)",
+    enterFriendCode: "दोस्त का रेफरल कोड दर्ज करें",
+    applyCodeBtn: "लागू करें",
+    rentCarsHeading: "किराए के लिए उपलब्ध खाली कारें",
+    rentCarsSub: "ड्राइवर 24 घंटे के लिए कार किराए पर लेकर चला सकते हैं।",
+    rentPer24hr: "/ 24 घंटे",
+    rentAction: "कार किराए पर लें",
+    hostCarHeading: "अपनी खाली कार जोड़ें (Car Host)",
+    hostCarSub: "अपनी खाली कार से महीने में ₹25,000+ कमाएं।",
+    ownerName: "मालिक का नाम",
+    emailId: "ईमेल आईडी",
+    carModelYear: "कार मॉडल और वर्ष",
+    rcNumber: "आरसी नंबर",
+    parkingLocation: "पार्किंग स्थान (हैदराबाद)",
+    dailyRentPrice: "24 घंटे का किराया (₹)",
+    hostSubmitBtn: "कार लिस्ट करें ➔",
+    targetsHeading: "साप्ताहिक ड्राइवर लक्ष्य",
+    targetsSub: "इस सप्ताह की कुल ट्रिप्स (अप व डाउन मिलाकर)",
+    ridesCompleted: "राइड्स पूरी हुईं",
+    target1: "लक्ष्य 1: 5 राइड्स / सप्ताह ➔ ₹500 पेट्रोल बोनस",
+    target2: "लक्ष्य 2: 10 राइड्स / सप्ताह ➔ ₹1,500 पेट्रोल बोनस",
+    target1Done: "✓ लक्ष्य पूरा हुआ! ₹500 जोड़े गए।",
+    target2Done: "🎉 बधाई! ₹1,500 पेट्रोल बोनस मिला!",
+    ridesLeft: "राइड्स बाकी हैं",
+    saveProfileBtn: "विवरण सहेजें ➔",
+    cancelBtn: "रद्द करें",
+    closeBtn: "बंद करें",
+    sosTitle: "🚨 आपातकालीन सुरक्षा केंद्र",
+    policeText: "पुलिस आपातकाल (112 / 100)",
+    sheTeamsText: "शी टीम्स (1091)",
   },
 };
 
-// 100% Reliable direct audio streams (No 404 error)
-const IN_APP_AUDIO_TRACKS = [
-  {
-    id: "track_1",
-    title: "Telugu Melody Beats",
-    artist: "Smooth Highway Melodies",
-    tag: "Relaxing Beats",
-    icon: "🎵",
-    streamUrl: "https://actions.google.com/sounds/v1/weather/rain_heavy.ogg",
-  },
-  {
-    id: "track_2",
-    title: "Chill Highway Lo-Fi",
-    artist: "Calm Drive Instrumentals",
-    tag: "Focus & Chill",
-    icon: "☕",
-    streamUrl: "https://actions.google.com/sounds/v1/ambiences/coffee_shop.ogg",
-  },
-  {
-    id: "track_3",
-    title: "Night Drive Waves",
-    artist: "Deep Ambient Beats",
-    tag: "Relaxation",
-    icon: "🌊",
-    streamUrl: "https://actions.google.com/sounds/v1/water/waves_crashing_on_rock_beach.ogg",
-  },
+const QUICK_HYDERABAD_HUBS = [
+  "Hitec City Cyber Towers",
+  "Gachibowli DLF",
+  "Madhapur Metro Station",
+  "LB Nagar Ring Road",
+  "Kukatpally KPHB",
+  "Secunderabad Station",
+  "Financial District",
+  "Banjara Hills Road No 12",
 ];
 
 const INITIAL_IDLE_CARS = [
@@ -150,7 +337,6 @@ const INITIAL_IDLE_CARS = [
 ];
 
 export function DriverHome({ navigation }: any) {
-  // Verification & Profile States
   const [isVerified, setIsVerified] = useState(false);
   const [driverName, setDriverName] = useState("Bhargav");
   const [driverPhone, setDriverPhone] = useState("8919326622");
@@ -159,33 +345,31 @@ export function DriverHome({ navigation }: any) {
   const [dlNumber, setDlNumber] = useState("DL-0920190012345");
   const [carModel, setCarModel] = useState("Swift Dzire");
 
-  // Language & Views
-  const [selectedLang, setSelectedLang] = useState("Telugu");
-  const t = DRIVER_TRANSLATIONS[selectedLang] || DRIVER_TRANSLATIONS.Telugu;
-  const [currentView, setCurrentView] = useState<"CREATE_POOL" | "WAITING_POOL" | "CHILL_ZONE" | "RENT_CAR" | "HOST_CAR" | "INCENTIVES" | "REFER_PAGE">("CREATE_POOL");
+  const [selectedLang, setSelectedLang] = useState("English");
+  const t = DRIVER_TRANSLATIONS[selectedLang] || DRIVER_TRANSLATIONS.English;
+  const [currentView, setCurrentView] = useState<"CREATE_POOL" | "WAITING_POOL" | "RENT_CAR" | "HOST_CAR" | "INCENTIVES" | "REFER_PAGE">("CREATE_POOL");
 
-  // Modals
   const [showDrawerMenu, setShowDrawerMenu] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showSosModal, setShowSosModal] = useState(false);
   const [showLangModal, setShowLangModal] = useState(false);
 
-  // Pool Form
+  // Route & Live GPS
   const [startPoint, setStartPoint] = useState("LB Nagar, Hyderabad");
   const [endPoint, setEndPoint] = useState("Hitec City Cyber Towers");
+  const [isFetchingGps, setIsFetchingGps] = useState(false);
+
   const [seatsCount, setSeatsCount] = useState("3");
   const [pricePerSeat, setPricePerSeat] = useState("110");
   const [plateType, setPlateType] = useState<"WHITE" | "YELLOW">("WHITE");
   const [rideVibe, setRideVibe] = useState<"MUSIC" | "SILENT">("MUSIC");
   const [activeRideData, setActiveRideData] = useState<any>(null);
 
-  // Targets & Fleet
   const [weeklyRidesCount, setWeeklyRidesCount] = useState(4);
   const [idleCars, setIdleCars] = useState(INITIAL_IDLE_CARS);
   const [carSearchQuery, setCarSearchQuery] = useState("");
   const [selectedCarToRent, setSelectedCarToRent] = useState<any>(null);
 
-  // Host Car
   const [hostOwnerName, setHostOwnerName] = useState("");
   const [hostEmail, setHostEmail] = useState("");
   const [hostRc, setHostRc] = useState("");
@@ -194,51 +378,8 @@ export function DriverHome({ navigation }: any) {
   const [hostLocation, setHostLocation] = useState("");
   const [hostDailyPrice, setHostDailyPrice] = useState("1100");
 
-  // In-App Audio Player
-  const [playingTrackId, setPlayingTrackId] = useState<string | null>(null);
-  const audioPlayerRef = useRef<any>(null);
-
-  // Coins & Gaming Economics State
-  const [driverCoins, setDriverCoins] = useState(150); // Initial 150 coins = ₹15
-  const [gamePlaySeconds, setGamePlaySeconds] = useState(0);
-  const [isGameActive, setIsGameActive] = useState(false);
-  const [tapScore, setTapScore] = useState(0);
-
-  // Referral System States
   const referralCode = `BHARGAV${driverPhone.slice(-4)}`;
   const [referralInput, setReferralInput] = useState("");
-  const [hasAppliedReferral, setHasAppliedReferral] = useState(false);
-
-  // Convert Coins to Rupees: 100 coins = ₹10
-  const walletCashRupees = Math.floor((driverCoins / 100) * 10);
-
-  // Stop audio immediately
-  const stopAudioDirectly = () => {
-    if (audioPlayerRef.current) {
-      audioPlayerRef.current.pause();
-      audioPlayerRef.current.src = "";
-      audioPlayerRef.current = null;
-    }
-    setPlayingTrackId(null);
-  };
-
-  // 10-Minute Timer logic: 10 minutes (600s) = ₹5 Bonus (50 Coins)
-  useEffect(() => {
-    let interval: any = null;
-    if (isGameActive) {
-      interval = setInterval(() => {
-        setGamePlaySeconds((sec) => {
-          const nextSec = sec + 1;
-          if (nextSec % 600 === 0) {
-            setDriverCoins((c) => c + 50); // 50 coins = ₹5 bonus
-            alert("🎉 సూపర్! మీరు 10 నిమిషాలు గేమ్ ఆడారు. ₹5 (50 Coins) మీ వాలెట్‌కు యాడ్ అయ్యాయి!");
-          }
-          return nextSec;
-        });
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [isGameActive]);
 
   useEffect(() => {
     try {
@@ -252,53 +393,38 @@ export function DriverHome({ navigation }: any) {
           setRcNumber(p.rc || "TS09FA1234");
           setDlNumber(p.dl || "DL-0920190012345");
           setCarModel(p.carModel || "Swift Dzire");
-          if (p.coins) setDriverCoins(p.coins);
           if (p.lang) setSelectedLang(p.lang);
           setIsVerified(true);
         }
       }
     } catch {}
-
-    return () => {
-      stopAudioDirectly();
-    };
   }, []);
 
-  // Audio Play / Pause Function
-  const togglePlayAudio = (track: any) => {
-    if (playingTrackId === track.id) {
-      stopAudioDirectly();
-      return;
+  // Fetch Live GPS Current Location for Pickup
+  const fetchCurrentLocation = () => {
+    if (typeof window !== "undefined" && navigator.geolocation) {
+      setIsFetchingGps(true);
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setStartPoint(`Live GPS: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} (Current Location)`);
+          setIsFetchingGps(false);
+          alert("📍 Live GPS Location fetched successfully!");
+        },
+        (error) => {
+          setIsFetchingGps(false);
+          alert("GPS permission denied or unavailable. Please type your location manually.");
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    } else {
+      alert("Geolocation is not supported on this device.");
     }
-
-    stopAudioDirectly();
-    try {
-      const audioInstance = new Audio(track.streamUrl);
-      audioPlayerRef.current = audioInstance;
-      audioInstance
-        .play()
-        .then(() => {
-          setPlayingTrackId(track.id);
-        })
-        .catch(() => {
-          alert("ఆడియో ప్లే అవ్వడానికి స్క్రీన్ పై ఒక్కసారి క్లిక్ చేయండి!");
-        });
-    } catch (e) {
-      alert("Audio playback load avvaledu.");
-    }
-  };
-
-  const navigateView = (view: any) => {
-    if (currentView === "CHILL_ZONE" && view !== "CHILL_ZONE") {
-      stopAudioDirectly();
-      setIsGameActive(false);
-    }
-    setCurrentView(view);
   };
 
   const handleVerifyDriver = () => {
     if (!driverName.trim() || !driverEmail.trim() || !rcNumber.trim() || !dlNumber.trim()) {
-      alert("దయచేసి పేరు, ఈమెయిల్, RC మరియు DL నంబర్ నమోదు చేయండి.");
+      alert("Please enter Name, Email, RC and DL details.");
       return;
     }
 
@@ -309,7 +435,6 @@ export function DriverHome({ navigation }: any) {
       rc: rcNumber.trim(),
       dl: dlNumber.trim(),
       carModel: carModel.trim(),
-      coins: driverCoins,
       lang: selectedLang,
     };
 
@@ -330,7 +455,6 @@ export function DriverHome({ navigation }: any) {
       rc: rcNumber.trim(),
       dl: dlNumber.trim(),
       carModel: carModel.trim(),
-      coins: driverCoins,
       lang: selectedLang,
     };
 
@@ -341,12 +465,12 @@ export function DriverHome({ navigation }: any) {
     } catch {}
 
     setShowEditProfileModal(false);
-    alert("ప్రొఫైల్ వివరాలు విజయవంతంగా అప్‌డేట్ అయ్యాయి!");
+    alert("Profile details updated successfully!");
   };
 
   const handlePublishPoolRide = () => {
     if (!startPoint || !endPoint || !pricePerSeat) {
-      alert("దయచేసి రూట్ వివరాలు మరియు సీట్ ధరను నమోదు చేయండి.");
+      alert("Please enter Pickup, Drop, and Seat Price.");
       return;
     }
 
@@ -375,7 +499,7 @@ export function DriverHome({ navigation }: any) {
 
     setActiveRideData(newPoolRide);
     setWeeklyRidesCount((prev) => prev + 1);
-    navigateView("WAITING_POOL");
+    setCurrentView("WAITING_POOL");
   };
 
   const handleCancelActiveRide = () => {
@@ -391,37 +515,32 @@ export function DriverHome({ navigation }: any) {
     } catch {}
 
     setActiveRideData(null);
-    navigateView("CREATE_POOL");
-    alert("రైడ్ రద్దు చేయబడింది. మీరు ఆఫ్‌‌లైన్ అయ్యారు.");
+    setCurrentView("CREATE_POOL");
   };
 
-  // Apply Referral Code Logic: When new driver completes 1 ride, both get ₹200
   const handleApplyReferral = () => {
     if (!referralInput.trim()) {
-      alert("దయచేసి రెఫరల్ కోడ్ ఎంటర్ చేయండి.");
+      alert("Please enter a referral code.");
       return;
     }
 
     if (referralInput.trim().toUpperCase() === referralCode) {
-      alert("మీ స్వంత కోడ్‌ను మీరు ఉపయోగించలేరు.");
+      alert("You cannot use your own referral code.");
       return;
     }
 
-    setHasAppliedReferral(true);
-    // Add 2000 coins (₹200 reward) upon completing 1st ride
-    setDriverCoins((c) => c + 2000);
-    alert(`🎉 రెఫరల్ కోడ్ ఆమోదించబడింది! మీ మొదటి రైడ్ పూర్తి కాగానే మీకు ₹200, రెఫర్ చేసిన వారికి ₹200 క్రెడిట్ అవుతాయి! (2,000 Coins Added)`);
+    alert(`🎉 Referral applied! Once your 1st ride is complete, ₹200 will be credited to both of your wallets!`);
     setReferralInput("");
   };
 
   const shareReferralWhatsApp = () => {
-    const text = `నమస్తే! RidePool డ్రైవర్ నెట్‌వర్క్‌లో జాయిన్ అవ్వండి. నా రెఫరల్ కోడ్ ${referralCode} వాడి మొదటి రైడ్ పూర్తి చేస్తే మీకు ₹200, నాకు ₹200 బోనస్ వస్తుంది: https://my-app-frontend-blue.vercel.app/driver`;
+    const text = `Join RidePool Driver Network! Use my referral code ${referralCode} and when you complete your 1st ride, both of us get ₹200: https://my-app-frontend-blue.vercel.app/driver`;
     Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
   };
 
   const handleHostCarSubmit = () => {
     if (!hostOwnerName || !hostCarModel || !hostLocation || !hostDailyPrice) {
-      alert("దయచేసి కారు వివరాలు, లొకేషన్ మరియు 24 గంటల అద్దె ధర నమోదు చేయండి.");
+      alert("Please enter car details, location, and daily rent price.");
       return;
     }
 
@@ -437,8 +556,8 @@ export function DriverHome({ navigation }: any) {
     };
 
     setIdleCars([newCarListing, ...idleCars]);
-    alert("మీ ఖాళీ కారు విజయవంతంగా లిస్ట్ చేయబడింది!");
-    navigateView("RENT_CAR");
+    alert("Your idle car has been listed successfully!");
+    setCurrentView("RENT_CAR");
   };
 
   const dialEmergency = (num: string) => {
@@ -452,14 +571,14 @@ export function DriverHome({ navigation }: any) {
         <ScrollView contentContainerStyle={styles.onboardContainer}>
           <View style={styles.onboardHeader}>
             <Text style={styles.badgeOrange}>DRIVER PARTNER REGISTRATION</Text>
-            <Text style={styles.onboardTitle}>డ్రైవర్ వెరిఫికేషన్ & లాగిన్</Text>
+            <Text style={styles.onboardTitle}>Driver Verification & Login</Text>
             <Text style={styles.onboardSub}>
-              రైడ్ పోస్ట్ చేయడానికి లేదా ఖాళీ కార్లను రెంట్‌కు తీసుకోవడానికి మీ వివరాలు నమోదు చేయండి.
+              Enter your details to publish rides or rent idle vehicles.
             </Text>
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.inputTag}>డ్రైవర్ పూర్తి పేరు (NAME)</Text>
+            <Text style={styles.inputTag}>DRIVER NAME</Text>
             <TextInput
               style={styles.inputBox}
               placeholder="e.g. Bhargav Vattala"
@@ -467,7 +586,7 @@ export function DriverHome({ navigation }: any) {
               onChangeText={setDriverName}
             />
 
-            <Text style={styles.inputTag}>ఫోన్ నంబర్ (PHONE NUMBER)</Text>
+            <Text style={styles.inputTag}>PHONE NUMBER</Text>
             <TextInput
               style={styles.inputBox}
               placeholder="8919326622"
@@ -476,7 +595,7 @@ export function DriverHome({ navigation }: any) {
               onChangeText={setDriverPhone}
             />
 
-            <Text style={styles.inputTag}>ఈమెయిల్ ఐడీ (EMAIL ID)</Text>
+            <Text style={styles.inputTag}>EMAIL ID</Text>
             <TextInput
               style={styles.inputBox}
               placeholder="vattalabhargav3@gmail.com"
@@ -486,7 +605,7 @@ export function DriverHome({ navigation }: any) {
               onChangeText={setDriverEmail}
             />
 
-            <Text style={styles.inputTag}>కార్ మోడల్ (CAR MODEL)</Text>
+            <Text style={styles.inputTag}>CAR MODEL</Text>
             <TextInput
               style={styles.inputBox}
               placeholder="Swift Dzire"
@@ -494,7 +613,7 @@ export function DriverHome({ navigation }: any) {
               onChangeText={setCarModel}
             />
 
-            <Text style={styles.inputTag}>వాహన రిజిస్ట్రేషన్ నంబర్ (RC NUMBER)</Text>
+            <Text style={styles.inputTag}>VEHICLE RC NUMBER</Text>
             <TextInput
               style={styles.inputBox}
               placeholder="e.g. TS09FA1234"
@@ -502,7 +621,7 @@ export function DriverHome({ navigation }: any) {
               onChangeText={setRcNumber}
             />
 
-            <Text style={styles.inputTag}>డ్రైవింగ్ లైసెన్స్ నంబర్ (DRIVING LICENCE)</Text>
+            <Text style={styles.inputTag}>DRIVING LICENCE NUMBER</Text>
             <TextInput
               style={styles.inputBox}
               placeholder="e.g. DL-0920190012345"
@@ -511,7 +630,7 @@ export function DriverHome({ navigation }: any) {
             />
 
             <TouchableOpacity style={styles.submitBtn} onPress={handleVerifyDriver}>
-              <Text style={styles.submitBtnText}>వెరిఫై చేసి లాగిన్ అవ్వండి ➔</Text>
+              <Text style={styles.submitBtnText}>Verify & Login ➔</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -519,7 +638,7 @@ export function DriverHome({ navigation }: any) {
     );
   }
 
-  // 2. Pure Driver Dashboard
+  // 2. Main Driver Dashboard
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -530,27 +649,17 @@ export function DriverHome({ navigation }: any) {
               <Text style={{ fontSize: 22, fontWeight: "bold", color: "#0F172A" }}>☰</Text>
             </TouchableOpacity>
             <View>
-              <Text style={styles.topTag}>DRIVER CONSOLE</Text>
+              <Text style={styles.topTag}>{t.dashboardTitle}</Text>
               <Text style={styles.topName}>{driverName} • {carModel}</Text>
             </View>
           </View>
 
           <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            {/* Wallet Cash & Coin Badge */}
             <TouchableOpacity
-              style={styles.coinWalletBadge}
-              onPress={() => navigateView("CHILL_ZONE")}
+              style={styles.langSelectorBadge}
+              onPress={() => setShowLangModal(true)}
             >
-              <Text style={styles.coinWalletText}>🪙 {driverCoins} (₹{walletCashRupees})</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.chillHeaderBtn, playingTrackId && styles.chillHeaderBtnPlaying]}
-              onPress={() => navigateView("CHILL_ZONE")}
-            >
-              <Text style={[styles.chillHeaderBtnText, playingTrackId && { color: "#16A34A" }]}>
-                {playingTrackId ? "🔊 Playing" : "🎮 Play"}
-              </Text>
+              <Text style={styles.langSelectorText}>🌐 {selectedLang}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.sosButton} onPress={() => setShowSosModal(true)}>
@@ -559,31 +668,71 @@ export function DriverHome({ navigation }: any) {
           </View>
         </View>
 
-        {/* ---------------- VIEW 1: CREATE RIDE POOL ---------------- */}
+        {/* ---------------- VIEW 1: CREATE RIDE POOL WITH LIVE GPS ---------------- */}
         {currentView === "CREATE_POOL" && (
           <ScrollView contentContainerStyle={styles.scrollArea}>
             {activeRideData && (
               <TouchableOpacity
                 style={styles.activeRideBanner}
-                onPress={() => navigateView("WAITING_POOL")}
+                onPress={() => setCurrentView("WAITING_POOL")}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
                   <View style={styles.pulsingGreenDot} />
-                  <Text style={styles.activeBannerTitle}>రైడ్ ఆన్‌లైన్‌లో ఉంది: ప్యాసింజర్స్ కోసం చూస్తోంది</Text>
+                  <Text style={styles.activeBannerTitle}>{t.activeRideBannerText}</Text>
                 </View>
-                <Text style={styles.activeBannerAction}>రాడార్ ఓపెన్ చేయండి ➔</Text>
+                <Text style={styles.activeBannerAction}>{t.viewRadarAction}</Text>
               </TouchableOpacity>
             )}
 
             <View style={styles.card}>
               <Text style={styles.cardTitle}>{t.publishHeading}</Text>
 
-              <Text style={styles.inputTag}>{t.fromLabel}</Text>
-              <TextInput style={styles.inputBox} value={startPoint} onChangeText={setStartPoint} />
+              {/* Pickup Input + Live GPS Trigger Button */}
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                <Text style={styles.inputTag}>{t.fromLabel}</Text>
+                <TouchableOpacity
+                  style={styles.gpsButton}
+                  onPress={fetchCurrentLocation}
+                  disabled={isFetchingGps}
+                >
+                  {isFetchingGps ? (
+                    <ActivityIndicator size="small" color="#0284C7" />
+                  ) : (
+                    <Text style={styles.gpsButtonText}>{t.useLiveLocation}</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
 
+              <TextInput
+                style={styles.inputBox}
+                value={startPoint}
+                onChangeText={setStartPoint}
+                placeholder="Enter pickup point"
+              />
+
+              {/* Destination Drop Input */}
               <Text style={styles.inputTag}>{t.toLabel}</Text>
-              <TextInput style={styles.inputBox} value={endPoint} onChangeText={setEndPoint} />
+              <TextInput
+                style={styles.inputBox}
+                value={endPoint}
+                onChangeText={setEndPoint}
+                placeholder="Enter drop destination"
+              />
 
+              {/* Quick Destination Selectors */}
+              <View style={styles.quickHubWrap}>
+                {QUICK_HYDERABAD_HUBS.map((hub) => (
+                  <TouchableOpacity
+                    key={hub}
+                    style={styles.quickHubChip}
+                    onPress={() => setEndPoint(hub)}
+                  >
+                    <Text style={styles.quickHubText}>{hub}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* Car & Seats */}
               <View style={styles.row}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputTag}>{t.carModel}</Text>
@@ -595,18 +744,19 @@ export function DriverHome({ navigation }: any) {
                 </View>
               </View>
 
+              {/* Seat Price */}
               <Text style={styles.inputTag}>{t.seatPrice}</Text>
               <TextInput style={styles.inputBox} keyboardType="numeric" value={pricePerSeat} onChangeText={setPricePerSeat} />
 
-              {/* Gen Z Vibe Preference */}
-              <Text style={[styles.inputTag, { marginTop: 14 }]}>రైడ్ వైబ్ సెలెక్షన్ (GEN Z PREFERENCE)</Text>
+              {/* Vibe Selection */}
+              <Text style={[styles.inputTag, { marginTop: 14 }]}>{t.vibeHeading}</Text>
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <TouchableOpacity
                   style={[styles.vibeCard, rideVibe === "MUSIC" && styles.vibeCardActive]}
                   onPress={() => setRideVibe("MUSIC")}
                 >
                   <Text style={{ fontSize: 16 }}>🎵</Text>
-                  <Text style={[styles.vibeTitle, rideVibe === "MUSIC" && styles.vibeTitleActive]}>మ్యూజిక్ & వైబ్</Text>
+                  <Text style={[styles.vibeTitle, rideVibe === "MUSIC" && styles.vibeTitleActive]}>{t.vibeMusic}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -614,7 +764,7 @@ export function DriverHome({ navigation }: any) {
                   onPress={() => setRideVibe("SILENT")}
                 >
                   <Text style={{ fontSize: 16 }}>🤫</Text>
-                  <Text style={[styles.vibeTitle, rideVibe === "SILENT" && styles.vibeTitleActive]}>సైలెంట్ కమ్యూట్</Text>
+                  <Text style={[styles.vibeTitle, rideVibe === "SILENT" && styles.vibeTitleActive]}>{t.vibeQuiet}</Text>
                 </TouchableOpacity>
               </View>
 
@@ -629,8 +779,8 @@ export function DriverHome({ navigation }: any) {
                     <Text style={{ fontWeight: "900", fontSize: 10, color: "#000" }}>WHITE</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.plateTitle}>Green Saver / Eco Commute</Text>
-                    <Text style={styles.plateSub}>ప్రైవేట్ కార్‌పూల్ & లీగల్ ఇంధన వ్యయం పంచుకోవడం</Text>
+                    <Text style={styles.plateTitle}>{t.whitePlateTitle}</Text>
+                    <Text style={styles.plateSub}>{t.whitePlateSub}</Text>
                   </View>
                   {plateType === "WHITE" && <Text style={{ color: "#16A34A", fontWeight: "900" }}>✓</Text>}
                 </TouchableOpacity>
@@ -643,8 +793,8 @@ export function DriverHome({ navigation }: any) {
                     <Text style={{ fontWeight: "900", fontSize: 10, color: "#000" }}>YELLOW</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.plateTitle}>Commercial Express / Pro Pool</Text>
-                    <Text style={styles.plateSub}>కమర్షియల్ టాక్సీ పర్మిట్ ఫాస్ట్ రూట్స్</Text>
+                    <Text style={styles.plateTitle}>{t.yellowPlateTitle}</Text>
+                    <Text style={styles.plateSub}>{t.yellowPlateSub}</Text>
                   </View>
                   {plateType === "YELLOW" && <Text style={{ color: "#D97706", fontWeight: "900" }}>✓</Text>}
                 </TouchableOpacity>
@@ -657,16 +807,12 @@ export function DriverHome({ navigation }: any) {
           </ScrollView>
         )}
 
-        {/* ---------------- VIEW 2: RAPIDO/UBER LIVE WAITING RADAR SCREEN ---------------- */}
+        {/* ---------------- VIEW 2: WAITING RADAR SCREEN ---------------- */}
         {currentView === "WAITING_POOL" && (
           <ScrollView contentContainerStyle={styles.scrollArea}>
             <View style={{ flexDirection: "row", justifyContent: "space-between", marginBottom: 12 }}>
-              <TouchableOpacity style={styles.topBackNavBtn} onPress={() => navigateView("CREATE_POOL")}>
+              <TouchableOpacity style={styles.topBackNavBtn} onPress={() => setCurrentView("CREATE_POOL")}>
                 <Text style={styles.topBackNavText}>{t.backToHome}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.topBackNavBtn} onPress={() => navigateView("CHILL_ZONE")}>
-                <Text style={[styles.topBackNavText, { color: "#D97706" }]}>🎮 గేమ్ & మ్యూజిక్ జోన్</Text>
               </TouchableOpacity>
             </View>
 
@@ -683,20 +829,20 @@ export function DriverHome({ navigation }: any) {
 
               <Text style={styles.waitingMainHeading}>{t.waitingText}</Text>
               <Text style={styles.waitingSubHeading}>
-                రూట్: <Text style={{ color: "#FFFFFF", fontWeight: "bold" }}>{activeRideData?.from_location}</Text> ➔ <Text style={{ color: "#FFFFFF", fontWeight: "bold" }}>{activeRideData?.to_location}</Text>
+                Route: <Text style={{ color: "#FFFFFF", fontWeight: "bold" }}>{activeRideData?.from_location}</Text> ➔ <Text style={{ color: "#FFFFFF", fontWeight: "bold" }}>{activeRideData?.to_location}</Text>
               </Text>
 
               <View style={styles.activeRideDetailsBox}>
                 <View style={styles.detailMetricCol}>
-                  <Text style={styles.detailMetricLabel}>కార్ మోడల్</Text>
+                  <Text style={styles.detailMetricLabel}>{t.carModel}</Text>
                   <Text style={styles.detailMetricVal}>{activeRideData?.vehicle_name}</Text>
                 </View>
                 <View style={styles.detailMetricCol}>
-                  <Text style={styles.detailMetricLabel}>సీట్లు</Text>
-                  <Text style={styles.detailMetricVal}>{activeRideData?.available_seats} అందుబాటులో</Text>
+                  <Text style={styles.detailMetricLabel}>{t.seats}</Text>
+                  <Text style={styles.detailMetricVal}>{activeRideData?.available_seats}</Text>
                 </View>
                 <View style={styles.detailMetricCol}>
-                  <Text style={styles.detailMetricLabel}>ధర / సీట్</Text>
+                  <Text style={styles.detailMetricLabel}>{t.seatPrice}</Text>
                   <Text style={[styles.detailMetricVal, { color: "#10B981" }]}>₹{activeRideData?.price_per_seat}</Text>
                 </View>
               </View>
@@ -706,11 +852,11 @@ export function DriverHome({ navigation }: any) {
               </TouchableOpacity>
             </View>
 
-            {/* Simulated Live Incoming Passenger Request */}
+            {/* Passenger Request Match */}
             <View style={[styles.card, { marginTop: 16, borderColor: "#10B981", borderWidth: 2 }]}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                 <View style={styles.newRequestBadge}>
-                  <Text style={styles.newRequestBadgeText}>⚡ కొత్త ప్యాసింజర్ రిక్వెస్ట్</Text>
+                  <Text style={styles.newRequestBadgeText}>{t.newRequestBadge}</Text>
                 </View>
                 <Text style={{ fontWeight: "900", color: "#16A34A", fontSize: 16 }}>₹{activeRideData?.price_per_seat}</Text>
               </View>
@@ -719,141 +865,50 @@ export function DriverHome({ navigation }: any) {
                 Vattala (Passenger)
               </Text>
               <Text style={{ fontSize: 12, color: "#64748B", marginTop: 2 }}>
-                పికప్: {activeRideData?.from_location} (300 మీటర్ల దూరం)
+                Pickup: {activeRideData?.from_location} (300m away)
               </Text>
 
               <View style={{ flexDirection: "row", gap: 10, marginTop: 14 }}>
                 <TouchableOpacity
                   style={styles.acceptRequestBtn}
-                  onPress={() => alert("రైడ్ యాక్సెప్ట్ అయింది! ప్యాసింజర్ పికప్ లొకేషన్‌కు బయలుదేరండి.")}
+                  onPress={() => alert("Ride Accepted! Navigate to passenger pickup point.")}
                 >
-                  <Text style={styles.acceptBtnText}>✓ ACCEPT RIDE</Text>
+                  <Text style={styles.acceptBtnText}>{t.acceptBtn}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={styles.rejectRequestBtn}
-                  onPress={() => alert("రిక్వెస్ట్ తిరస్కరించబడింది.")}
+                  onPress={() => alert("Request Declined.")}
                 >
-                  <Text style={styles.rejectBtnText}>DECLINE</Text>
+                  <Text style={styles.rejectBtnText}>{t.declineBtn}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </ScrollView>
         )}
 
-        {/* ---------------- VIEW 3: DRIVER CHILL ZONE (MUSIC & COIN GAMES) ---------------- */}
-        {currentView === "CHILL_ZONE" && (
-          <ScrollView contentContainerStyle={styles.scrollArea}>
-            <TouchableOpacity
-              style={styles.topBackNavBtn}
-              onPress={() => navigateView(activeRideData ? "WAITING_POOL" : "CREATE_POOL")}
-            >
-              <Text style={styles.topBackNavText}>← వెనక్కి వెళ్ళండి (Back to Console)</Text>
-            </TouchableOpacity>
-
-            {/* Wallet Coins to Cash Banner */}
-            <View style={styles.coinEarningsBanner}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <View>
-                  <Text style={styles.coinTitle}>🪙 మీ డ్రైవర్ గేమింగ్ వాలెట్</Text>
-                  <Text style={styles.coinSub}>100 Coins = ₹10 Cash (పెట్రోల్ & పేఅవుట్)</Text>
-                </View>
-                <View style={{ alignItems: "flex-end" }}>
-                  <Text style={styles.coinAmountBig}>{driverCoins} కాయిన్స్</Text>
-                  <Text style={styles.coinRupeesBig}>₹{walletCashRupees}.00 క్యాష్</Text>
-                </View>
-              </View>
-            </View>
-
-            {/* Highway Rush Coin Game (Play 10 mins = ₹5 Cash) */}
-            <View style={styles.gameCard}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", width: "100%", alignItems: "center" }}>
-                <Text style={styles.gameTitle}>🏎️ ట్రాఫిక్ స్పీడ్ ట్యాప్ చాలెంజ్</Text>
-                <View style={styles.bonusRuleTag}>
-                  <Text style={styles.bonusRuleText}>10 నిమి = ₹5 బోనస్</Text>
-                </View>
-              </View>
-              <Text style={styles.gameSub}>
-                వెయిటింగ్ టైంలో గేమ్ ఆడి కాయిన్స్ సంపాదించండి. 100 Coins = ₹10!
-              </Text>
-
-              <View style={styles.timerScoreRow}>
-                <Text style={styles.statLabel}>టైమర్: {Math.floor(gamePlaySeconds / 60)}నిమి {gamePlaySeconds % 60}సెక</Text>
-                <Text style={styles.statLabel}>ట్యాప్ స్కోర్: {tapScore}</Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.tapGameBtn}
-                onPress={() => {
-                  if (!isGameActive) setIsGameActive(true);
-                  setTapScore((s) => s + 1);
-                  // Every 10 taps gives 2 coins
-                  if ((tapScore + 1) % 10 === 0) {
-                    setDriverCoins((c) => c + 2);
-                  }
-                }}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.tapGameBtnText}>
-                  {isGameActive ? "⚡ FAST TAP (+COINS)" : "▶ START PLAYING GAME"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Working Relaxing Music Tracks */}
-            <Text style={styles.sectionHeader}>📻 డ్రైవ్ మ్యూజిక్ (ట్యాప్ చేసి ప్లే/ఆఫ్ చేయండి)</Text>
-            <View style={{ gap: 10, marginBottom: 20 }}>
-              {IN_APP_AUDIO_TRACKS.map((track) => {
-                const isPlaying = playingTrackId === track.id;
-                return (
-                  <TouchableOpacity
-                    key={track.id}
-                    style={[styles.musicCard, isPlaying && styles.musicCardPlaying]}
-                    onPress={() => togglePlayAudio(track)}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={{ fontSize: 24 }}>{track.icon}</Text>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.musicTitle, isPlaying && { color: "#16A34A" }]}>{track.title}</Text>
-                      <Text style={styles.musicTag}>{track.artist} • {track.tag}</Text>
-                    </View>
-
-                    <View style={[styles.playToggleBtn, isPlaying ? styles.playBtnActive : styles.playBtnInactive]}>
-                      <Text style={[styles.playToggleText, isPlaying ? styles.playToggleTextActive : styles.playToggleTextInactive]}>
-                        {isPlaying ? "⏸ PAUSE" : "▶ PLAY"}
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
-            </View>
-          </ScrollView>
-        )}
-
-        {/* ---------------- VIEW 4: REFERRAL & EARN (₹200 + ₹200) ---------------- */}
+        {/* ---------------- VIEW 3: REFERRAL PAGE ---------------- */}
         {currentView === "REFER_PAGE" && (
           <ScrollView contentContainerStyle={styles.scrollArea}>
-            <TouchableOpacity style={styles.topBackNavBtn} onPress={() => navigateView("CREATE_POOL")}>
-              <Text style={styles.topBackNavText}>← బ్యాక్ టు డాష్‌బోర్డ్</Text>
+            <TouchableOpacity style={styles.topBackNavBtn} onPress={() => setCurrentView("CREATE_POOL")}>
+              <Text style={styles.topBackNavText}>{t.backToHome}</Text>
             </TouchableOpacity>
 
             <View style={styles.referCard}>
-              <Text style={styles.referBigTitle}>🎁 డ్రైవర్ రెఫరల్ ప్రోగ్రామ్</Text>
-              <Text style={styles.referSub}>
-                మీ డ్రైవర్ మిత్రులను ఆహ్వానించండి. వారు యాప్‌లో చేరి <Text style={{ fontWeight: "bold" }}>మొదటి రైడ్ పూర్తి చేయగానే</Text> ఇద్దరికీ ₹200 చొప్పున మొత్తం <Text style={{ color: "#16A34A", fontWeight: "900" }}>₹400</Text> లభిస్తుంది!
-              </Text>
+              <Text style={styles.referBigTitle}>{t.referTitle}</Text>
+              <Text style={styles.referSub}>{t.referSub}</Text>
 
               <View style={styles.referralCodeBox}>
-                <Text style={styles.referralCodeTag}>మీ యూనిక్ రెఫరల్ కోడ్</Text>
+                <Text style={styles.referralCodeTag}>{t.referYourCode}</Text>
                 <Text style={styles.referralCodeText}>{referralCode}</Text>
               </View>
 
               <TouchableOpacity style={styles.whatsappShareBtn} onPress={shareReferralWhatsApp}>
-                <Text style={styles.whatsappShareText}>📲 WhatsApp లో కోడ్ షేర్ చేయండి (₹200)</Text>
+                <Text style={styles.whatsappShareText}>{t.shareWhatsApp}</Text>
               </TouchableOpacity>
 
               <View style={styles.dividerLine} />
 
-              <Text style={styles.inputTag}>వేరొకరి రెఫరల్ కోడ్ ఉందా? (ENTER FRIEND'S CODE)</Text>
+              <Text style={styles.inputTag}>{t.enterFriendCode}</Text>
               <View style={{ flexDirection: "row", gap: 10 }}>
                 <TextInput
                   style={[styles.inputBox, { flex: 1 }]}
@@ -863,28 +918,26 @@ export function DriverHome({ navigation }: any) {
                   autoCapitalize="characters"
                 />
                 <TouchableOpacity style={styles.applyReferralBtn} onPress={handleApplyReferral}>
-                  <Text style={styles.applyReferralText}>అప్లై చేయండి</Text>
+                  <Text style={styles.applyReferralText}>{t.applyCodeBtn}</Text>
                 </TouchableOpacity>
               </View>
             </View>
           </ScrollView>
         )}
 
-        {/* ---------------- VIEW 5: REQUEST A CAB (IDLE FLEET) ---------------- */}
+        {/* ---------------- VIEW 4: RENT CAR ---------------- */}
         {currentView === "RENT_CAR" && (
           <ScrollView contentContainerStyle={styles.scrollArea}>
-            <TouchableOpacity style={styles.topBackNavBtn} onPress={() => navigateView("CREATE_POOL")}>
-              <Text style={styles.topBackNavText}>← బ్యాక్ టు రూట్ సెటప్</Text>
+            <TouchableOpacity style={styles.topBackNavBtn} onPress={() => setCurrentView("CREATE_POOL")}>
+              <Text style={styles.topBackNavText}>{t.backToHome}</Text>
             </TouchableOpacity>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>సమీపంలో ఖాళీగా ఉన్న కార్లు (Idle Fleet)</Text>
-              <Text style={styles.cardSub}>
-                డ్రైవింగ్ లైసెన్స్ ఉన్న డ్రైవర్లు 24 గంటలకు కార్లను రెంట్‌కు తీసుకుని నడుపుకోవచ్చు.
-              </Text>
+              <Text style={styles.cardTitle}>{t.rentCarsHeading}</Text>
+              <Text style={styles.cardSub}>{t.rentCarsSub}</Text>
               <TextInput
                 style={styles.inputBox}
-                placeholder="ఏరియా సెర్చ్ (e.g. Gachibowli, LB Nagar)..."
+                placeholder="Search area (e.g. Gachibowli, LB Nagar)..."
                 value={carSearchQuery}
                 onChangeText={setCarSearchQuery}
               />
@@ -906,7 +959,7 @@ export function DriverHome({ navigation }: any) {
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
                       <Text style={styles.carRentPrice}>₹{car.price_per_24hr}</Text>
-                      <Text style={styles.carRentDuration}>/ 24 గంటలు</Text>
+                      <Text style={styles.carRentDuration}>{t.rentPer24hr}</Text>
                     </View>
                   </View>
 
@@ -915,7 +968,7 @@ export function DriverHome({ navigation }: any) {
                     onPress={() => setSelectedCarToRent(car)}
                   >
                     <Text style={[styles.submitBtnText, { color: "#FFFFFF" }]}>
-                      కారును అద్దెకు తీసుకోండి (₹{car.price_per_24hr}) ➔
+                      {t.rentAction} (₹{car.price_per_24hr}) ➔
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -923,66 +976,66 @@ export function DriverHome({ navigation }: any) {
           </ScrollView>
         )}
 
-        {/* ---------------- VIEW 6: HOST IDLE CAR ---------------- */}
+        {/* ---------------- VIEW 5: HOST CAR ---------------- */}
         {currentView === "HOST_CAR" && (
           <ScrollView contentContainerStyle={styles.scrollArea}>
-            <TouchableOpacity style={styles.topBackNavBtn} onPress={() => navigateView("CREATE_POOL")}>
-              <Text style={styles.topBackNavText}>← బ్యాక్ టు రూట్ సెటప్</Text>
+            <TouchableOpacity style={styles.topBackNavBtn} onPress={() => setCurrentView("CREATE_POOL")}>
+              <Text style={styles.topBackNavText}>{t.backToHome}</Text>
             </TouchableOpacity>
 
             <View style={styles.card}>
-              <Text style={styles.cardTitle}>మీ ఖాళీ కారును అటాచ్ చేయండి (Car Host)</Text>
-              <Text style={styles.cardSub}>నిరుపయోగంగా ఉండే కారు ద్వారా నెలకు ₹25,000+ సంపాదించండి.</Text>
+              <Text style={styles.cardTitle}>{t.hostCarHeading}</Text>
+              <Text style={styles.cardSub}>{t.hostCarSub}</Text>
 
-              <Text style={styles.inputTag}>ఓనర్ పేరు</Text>
+              <Text style={styles.inputTag}>{t.ownerName}</Text>
               <TextInput style={styles.inputBox} value={hostOwnerName} onChangeText={setHostOwnerName} />
 
-              <Text style={styles.inputTag}>ఈమెయిల్</Text>
+              <Text style={styles.inputTag}>{t.emailId}</Text>
               <TextInput style={styles.inputBox} value={hostEmail} onChangeText={setHostEmail} />
 
-              <Text style={styles.inputTag}>కార్ మోడల్</Text>
+              <Text style={styles.inputTag}>{t.carModelYear}</Text>
               <TextInput style={styles.inputBox} value={hostCarModel} onChangeText={setHostCarModel} placeholder="e.g. Swift Dzire" />
 
-              <Text style={styles.inputTag}>RC నంబర్</Text>
+              <Text style={styles.inputTag}>{t.rcNumber}</Text>
               <TextInput style={styles.inputBox} value={hostRc} onChangeText={setHostRc} placeholder="TS09AB1234" />
 
-              <Text style={styles.inputTag}>లొకేషన్ (హైదరాబాద్)</Text>
+              <Text style={styles.inputTag}>{t.parkingLocation}</Text>
               <TextInput style={styles.inputBox} value={hostLocation} onChangeText={setHostLocation} placeholder="e.g. Madhapur" />
 
-              <Text style={styles.inputTag}>24 గంటల అద్దె ధర (₹)</Text>
+              <Text style={styles.inputTag}>{t.dailyRentPrice}</Text>
               <TextInput style={styles.inputBox} value={hostDailyPrice} onChangeText={setHostDailyPrice} keyboardType="numeric" />
 
               <TouchableOpacity style={styles.submitBtn} onPress={handleHostCarSubmit}>
-                <Text style={styles.submitBtnText}>కారును లిస్ట్ చేయండి ➔</Text>
+                <Text style={styles.submitBtnText}>{t.hostSubmitBtn}</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
         )}
 
-        {/* ---------------- VIEW 7: INCENTIVES & TARGETS ---------------- */}
+        {/* ---------------- VIEW 6: INCENTIVES ---------------- */}
         {currentView === "INCENTIVES" && (
           <ScrollView contentContainerStyle={styles.scrollArea}>
-            <TouchableOpacity style={styles.topBackNavBtn} onPress={() => navigateView("CREATE_POOL")}>
-              <Text style={styles.topBackNavText}>← బ్యాక్ టు రూట్ సెటప్</Text>
+            <TouchableOpacity style={styles.topBackNavBtn} onPress={() => setCurrentView("CREATE_POOL")}>
+              <Text style={styles.topBackNavText}>{t.backToHome}</Text>
             </TouchableOpacity>
 
             <View style={styles.targetStatusCard}>
-              <Text style={styles.targetCardTag}>WEEKLY DRIVER TARGETS</Text>
-              <Text style={styles.targetCountBig}>{weeklyRidesCount} రైడ్లు పూర్తయ్యాయి</Text>
-              <Text style={styles.targetSub}>ఈ వారం పూర్తి చేసిన ట్రిప్పులు (Up & Down కలిపి)</Text>
+              <Text style={styles.targetCardTag}>{t.targetsHeading}</Text>
+              <Text style={styles.targetCountBig}>{weeklyRidesCount} {t.ridesCompleted}</Text>
+              <Text style={styles.targetSub}>{t.targetsSub}</Text>
             </View>
 
             <View style={styles.incentiveBox}>
-              <Text style={styles.incentiveTitle}>టార్గెట్ 1: 5 రైడ్స్ / వారం ➔ ₹500 పెట్రోల్ బోనస్</Text>
+              <Text style={styles.incentiveTitle}>{t.target1}</Text>
               <Text style={styles.progressStatusText}>
-                {weeklyRidesCount >= 5 ? "✓ టార్గెట్ పూర్తయింది! ₹500 క్రెడిట్ అయింది." : `${5 - weeklyRidesCount} రైడ్లు మిగిలి ఉన్నాయి`}
+                {weeklyRidesCount >= 5 ? t.target1Done : `${5 - weeklyRidesCount} ${t.ridesLeft}`}
               </Text>
             </View>
 
             <View style={[styles.incentiveBox, { borderColor: "#F59E0B" }]}>
-              <Text style={styles.incentiveTitle}>టార్గెట్ 2: 10 రైడ్స్ / వారం ➔ ₹1,500 పెట్రోల్ బోనస్</Text>
+              <Text style={styles.incentiveTitle}>{t.target2}</Text>
               <Text style={styles.progressStatusText}>
-                {weeklyRidesCount >= 10 ? "🎉 అద్భుతం! ₹1,500 పెట్రోల్ బోనస్ గెలుచుకున్నారు!" : `${10 - weeklyRidesCount} రైడ్లు మిగిలి ఉన్నాయి`}
+                {weeklyRidesCount >= 10 ? t.target2Done : `${10 - weeklyRidesCount} ${t.ridesLeft}`}
               </Text>
             </View>
           </ScrollView>
@@ -992,26 +1045,26 @@ export function DriverHome({ navigation }: any) {
         <Modal visible={showEditProfileModal} transparent animationType="slide">
           <View style={styles.modalBackdrop}>
             <View style={styles.sheetModal}>
-              <Text style={styles.modalHeading}>డ్రైవర్ ప్రొఫైల్ ఎడిట్ చేయండి</Text>
+              <Text style={styles.modalHeading}>{t.editProfile}</Text>
 
-              <Text style={styles.inputTag}>డ్రైవర్ పేరు</Text>
+              <Text style={styles.inputTag}>NAME</Text>
               <TextInput style={styles.inputBox} value={driverName} onChangeText={setDriverName} />
 
-              <Text style={styles.inputTag}>ఫోన్ నంబర్</Text>
+              <Text style={styles.inputTag}>PHONE</Text>
               <TextInput style={styles.inputBox} value={driverPhone} onChangeText={setDriverPhone} keyboardType="phone-pad" />
 
-              <Text style={styles.inputTag}>కార్ మోడల్</Text>
+              <Text style={styles.inputTag}>CAR MODEL</Text>
               <TextInput style={styles.inputBox} value={carModel} onChangeText={setCarModel} />
 
-              <Text style={styles.inputTag}>RC నంబర్</Text>
+              <Text style={styles.inputTag}>RC NUMBER</Text>
               <TextInput style={styles.inputBox} value={rcNumber} onChangeText={setRcNumber} />
 
               <TouchableOpacity style={styles.submitBtn} onPress={handleSaveProfile}>
-                <Text style={styles.submitBtnText}>వివరాలు సేవ్ చేయండి ➔</Text>
+                <Text style={styles.submitBtnText}>{t.saveProfileBtn}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.closeBtn} onPress={() => setShowEditProfileModal(false)}>
-                <Text style={styles.closeBtnText}>రద్దు చేయండి (Cancel)</Text>
+                <Text style={styles.closeBtnText}>{t.cancelBtn}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1024,7 +1077,7 @@ export function DriverHome({ navigation }: any) {
               <View style={styles.drawerTopRow}>
                 <View>
                   <Text style={styles.menuTitle}>{driverName || "Driver Partner"}</Text>
-                  <Text style={styles.menuSub}>📞 {driverPhone} • 🪙 {driverCoins} Coins</Text>
+                  <Text style={styles.menuSub}>📞 {driverPhone} • {carModel}</Text>
                 </View>
                 <TouchableOpacity onPress={() => setShowDrawerMenu(false)}>
                   <Text style={styles.drawerCloseX}>✕</Text>
@@ -1048,7 +1101,7 @@ export function DriverHome({ navigation }: any) {
                 style={styles.menuItem}
                 onPress={() => {
                   setShowDrawerMenu(false);
-                  navigateView(activeRideData ? "WAITING_POOL" : "CREATE_POOL");
+                  setCurrentView(activeRideData ? "WAITING_POOL" : "CREATE_POOL");
                 }}
               >
                 <Text style={styles.menuItemIcon}>🚗</Text>
@@ -1059,18 +1112,7 @@ export function DriverHome({ navigation }: any) {
                 style={styles.menuItem}
                 onPress={() => {
                   setShowDrawerMenu(false);
-                  navigateView("CHILL_ZONE");
-                }}
-              >
-                <Text style={styles.menuItemIcon}>🎮</Text>
-                <Text style={[styles.menuItemText, { color: "#D97706", fontWeight: "900" }]}>{t.chillZone}</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={() => {
-                  setShowDrawerMenu(false);
-                  navigateView("REFER_PAGE");
+                  setCurrentView("REFER_PAGE");
                 }}
               >
                 <Text style={styles.menuItemIcon}>🎁</Text>
@@ -1081,7 +1123,7 @@ export function DriverHome({ navigation }: any) {
                 style={styles.menuItem}
                 onPress={() => {
                   setShowDrawerMenu(false);
-                  navigateView("RENT_CAR");
+                  setCurrentView("RENT_CAR");
                 }}
               >
                 <Text style={styles.menuItemIcon}>🔑</Text>
@@ -1092,7 +1134,7 @@ export function DriverHome({ navigation }: any) {
                 style={styles.menuItem}
                 onPress={() => {
                   setShowDrawerMenu(false);
-                  navigateView("HOST_CAR");
+                  setCurrentView("HOST_CAR");
                 }}
               >
                 <Text style={styles.menuItemIcon}>🏠</Text>
@@ -1103,7 +1145,7 @@ export function DriverHome({ navigation }: any) {
                 style={styles.menuItem}
                 onPress={() => {
                   setShowDrawerMenu(false);
-                  navigateView("INCENTIVES");
+                  setCurrentView("INCENTIVES");
                 }}
               >
                 <Text style={styles.menuItemIcon}>⛽</Text>
@@ -1129,13 +1171,12 @@ export function DriverHome({ navigation }: any) {
                 }}
               >
                 <Text style={styles.menuItemIcon}>🚨</Text>
-                <Text style={styles.menuItemText}>Emergency Safety & SOS</Text>
+                <Text style={styles.menuItemText}>{t.sosTitle}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 style={[styles.menuItem, { marginTop: "auto", borderTopWidth: 1, borderColor: "#F1F5F9" }]}
                 onPress={() => {
-                  stopAudioDirectly();
                   try {
                     if (typeof window !== "undefined" && window.localStorage) {
                       window.localStorage.removeItem("DRIVER_REGISTERED_PROFILE");
@@ -1160,8 +1201,8 @@ export function DriverHome({ navigation }: any) {
               <Text style={styles.modalHeading}>Select Language / భాష ఎంచుకోండి</Text>
               <View style={{ gap: 10, marginVertical: 14 }}>
                 {[
-                  { id: "Telugu", label: "తెలుగు (Telugu)" },
                   { id: "English", label: "English" },
+                  { id: "Telugu", label: "తెలుగు (Telugu)" },
                   { id: "Tenglish", label: "Telugu + English (Tenglish)" },
                   { id: "Hindi", label: "हिन्दी (Hindi)" },
                 ].map((item) => (
@@ -1181,7 +1222,7 @@ export function DriverHome({ navigation }: any) {
                 ))}
               </View>
               <TouchableOpacity style={styles.closeBtn} onPress={() => setShowLangModal(false)}>
-                <Text style={styles.closeBtnText}>Done</Text>
+                <Text style={styles.closeBtnText}>{t.closeBtn}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1191,21 +1232,21 @@ export function DriverHome({ navigation }: any) {
         <Modal visible={showSosModal} transparent animationType="slide">
           <View style={styles.modalBackdrop}>
             <View style={styles.sheetModal}>
-              <Text style={styles.sosHeading}>🚨 Emergency SOS & Police Dispatch</Text>
+              <Text style={styles.sosHeading}>{t.sosTitle}</Text>
               <TouchableOpacity style={styles.sosRow} onPress={() => dialEmergency("112")}>
-                <Text style={styles.sosText}>Police Emergency (112 / 100)</Text>
+                <Text style={styles.sosText}>{t.policeText}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.sosRow, { backgroundColor: "#FDF2F8" }]} onPress={() => dialEmergency("1091")}>
-                <Text style={[styles.sosText, { color: "#BE185D" }]}>SHE Teams (1091)</Text>
+                <Text style={[styles.sosText, { color: "#BE185D" }]}>{t.sheTeamsText}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.closeBtn} onPress={() => setShowSosModal(false)}>
-                <Text style={styles.closeBtnText}>Close</Text>
+                <Text style={styles.closeBtnText}>{t.closeBtn}</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
 
-        {/* ---------------- RENT CAR BOOKING MODAL ---------------- */}
+        {/* ---------------- RENT CAR MODAL ---------------- */}
         <Modal visible={selectedCarToRent !== null} transparent animationType="slide">
           <View style={styles.modalBackdrop}>
             <View style={styles.sheetModal}>
@@ -1214,7 +1255,7 @@ export function DriverHome({ navigation }: any) {
                 {selectedCarToRent?.car_model} • {selectedCarToRent?.location}
               </Text>
               <Text style={{ fontSize: 20, fontWeight: "900", color: "#16A34A" }}>
-                ₹{selectedCarToRent?.price_per_24hr} / 24 Hours
+                ₹{selectedCarToRent?.price_per_24hr} {t.rentPer24hr}
               </Text>
 
               <TouchableOpacity
@@ -1227,7 +1268,7 @@ export function DriverHome({ navigation }: any) {
                 <Text style={styles.submitBtnText}>Confirm Booking ➔</Text>
               </TouchableOpacity>
               <TouchableOpacity style={{ marginTop: 10, alignItems: "center" }} onPress={() => setSelectedCarToRent(null)}>
-                <Text style={{ color: "#64748B", fontWeight: "700" }}>Cancel</Text>
+                <Text style={{ color: "#64748B", fontWeight: "700" }}>{t.cancelBtn}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -1249,7 +1290,6 @@ const styles = StyleSheet.create({
   onboardSub: { fontSize: 12, color: "#64748B", marginTop: 4, lineHeight: 18 },
   card: { backgroundColor: "#FFFFFF", borderRadius: 16, padding: 16, borderWidth: 1, borderColor: "#E2E8F0" },
   cardTitle: { fontSize: 16, fontWeight: "900", color: "#0F172A" },
-  cardSub: { fontSize: 11, color: "#64748B", marginTop: 4, marginBottom: 14 },
   inputTag: { fontSize: 9, fontWeight: "800", color: "#64748B", marginTop: 10, marginBottom: 4 },
   inputBox: {
     backgroundColor: "#F8FAFC",
@@ -1277,11 +1317,8 @@ const styles = StyleSheet.create({
   menuIconBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: "#F1F5F9", alignItems: "center", justifyContent: "center" },
   topTag: { fontSize: 8, fontWeight: "800", color: "#D97706" },
   topName: { fontSize: 13, fontWeight: "900", color: "#0F172A" },
-  coinWalletBadge: { backgroundColor: "#FEF3C7", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: "#FDE68A" },
-  coinWalletText: { color: "#92400E", fontSize: 11, fontWeight: "900" },
-  chillHeaderBtn: { backgroundColor: "#F0FDF4", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: "#BBF7D0" },
-  chillHeaderBtnPlaying: { backgroundColor: "#DCFCE7", borderColor: "#86EFAC" },
-  chillHeaderBtnText: { color: "#166534", fontSize: 11, fontWeight: "900" },
+  langSelectorBadge: { backgroundColor: "#EFF6FF", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: "#BFDBFE" },
+  langSelectorText: { color: "#1D4ED8", fontSize: 11, fontWeight: "800" },
   sosButton: { backgroundColor: "#FEE2E2", paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: "#FCA5A5" },
   sosButtonText: { color: "#DC2626", fontSize: 11, fontWeight: "900" },
   scrollArea: { padding: 16, paddingBottom: 30 },
@@ -1309,6 +1346,18 @@ const styles = StyleSheet.create({
   },
   activeBannerTitle: { fontSize: 12, fontWeight: "800", color: "#065F46" },
   activeBannerAction: { fontSize: 11, fontWeight: "900", color: "#059669" },
+  gpsButton: {
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  gpsButtonText: { color: "#0284C7", fontSize: 10, fontWeight: "800" },
+  quickHubWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
+  quickHubChip: { backgroundColor: "#F1F5F9", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  quickHubText: { fontSize: 10, color: "#475569", fontWeight: "700" },
   row: { flexDirection: "row", gap: 10 },
   vibeCard: {
     flex: 1,
@@ -1376,7 +1425,6 @@ const styles = StyleSheet.create({
   langItemRowActive: { borderColor: "#D97706", backgroundColor: "#FFFBEB" },
   langItemLabel: { fontSize: 13, fontWeight: "700", color: "#334155" },
   langItemLabelActive: { color: "#D97706", fontWeight: "900" },
-  // Radar styles
   liveRadarCard: {
     backgroundColor: "#0F172A",
     borderRadius: 20,
@@ -1420,67 +1468,6 @@ const styles = StyleSheet.create({
   acceptBtnText: { color: "#FFFFFF", fontSize: 12, fontWeight: "900" },
   rejectRequestBtn: { backgroundColor: "#F1F5F9", paddingHorizontal: 16, paddingVertical: 12, borderRadius: 10, alignItems: "center" },
   rejectBtnText: { color: "#64748B", fontSize: 12, fontWeight: "800" },
-  // Gaming & Coins Styles
-  coinEarningsBanner: {
-    backgroundColor: "#0F172A",
-    padding: 16,
-    borderRadius: 14,
-    marginBottom: 14,
-    borderWidth: 1,
-    borderColor: "#F59E0B",
-  },
-  coinTitle: { fontSize: 14, fontWeight: "900", color: "#FDE68A" },
-  coinSub: { fontSize: 11, color: "#94A3B8", marginTop: 2 },
-  coinAmountBig: { fontSize: 18, fontWeight: "900", color: "#F59E0B" },
-  coinRupeesBig: { fontSize: 14, fontWeight: "800", color: "#10B981" },
-  gameCard: {
-    backgroundColor: "#FFFFFF",
-    padding: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    marginBottom: 16,
-  },
-  gameTitle: { fontSize: 14, fontWeight: "900", color: "#0F172A" },
-  gameSub: { fontSize: 11, color: "#64748B", marginTop: 4 },
-  bonusRuleTag: { backgroundColor: "#DCFCE7", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  bonusRuleText: { fontSize: 10, fontWeight: "900", color: "#16A34A" },
-  timerScoreRow: { flexDirection: "row", justifyContent: "space-between", marginVertical: 12 },
-  statLabel: { fontSize: 12, fontWeight: "800", color: "#475569" },
-  tapGameBtn: {
-    backgroundColor: "#D97706",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  tapGameBtnText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900" },
-  sectionHeader: { fontSize: 13, fontWeight: "900", color: "#0F172A", marginBottom: 10 },
-  musicCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    gap: 12,
-  },
-  musicCardPlaying: { borderColor: "#16A34A", backgroundColor: "#F0FDF4" },
-  musicTitle: { fontSize: 14, fontWeight: "800", color: "#0F172A" },
-  musicTag: { fontSize: 11, color: "#64748B", marginTop: 2 },
-  playToggleBtn: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  playBtnActive: { backgroundColor: "#DCFCE7", borderWidth: 1, borderColor: "#86EFAC" },
-  playBtnInactive: { backgroundColor: "#F1F5F9" },
-  playToggleText: { fontSize: 11, fontWeight: "900" },
-  playToggleTextActive: { color: "#16A34A" },
-  playToggleTextInactive: { color: "#0284C7" },
-  // Referral Styles
   referCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
