@@ -11,1242 +11,772 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import RideCard from "@/src/components/RideCard";
-import LocationPickerModal from "@/src/components/LocationPickerModal";
-import InteractiveMap from "@/src/components/InteractiveMap";
 
-// Language Dictionary
-const TRANSLATIONS: any = {
-  English: {
-    home: "Home",
-    myRides: "My Rides",
-    offers: "Offers",
-    profile: "Profile",
-    searchTitle: "Find a Ride Pool",
-    pickupLabel: "PICKUP LOCATION",
-    dropLabel: "DROP DESTINATION",
-    searchBtn: "Search Carpools ➔",
-    livePools: "Available Rides",
-    sosHeader: "Emergency & Safety Hub",
-    settingsTitle: "App Settings & Language",
-  },
-  Telugu: {
-    home: "హోమ్",
-    myRides: "నా రైడ్స్",
-    offers: "ఆఫర్లు",
-    profile: "ప్రొఫైల్",
-    searchTitle: "కార్‌పూల్ రైడ్ వెతకండి",
-    pickupLabel: "పికప్ లొకేషన్",
-    dropLabel: "డ్రాప్ లొకేషన్",
-    searchBtn: "రైడ్స్ వెతకండి ➔",
-    livePools: "అందుబాటులో ఉన్న రైడ్లు",
-    sosHeader: "అత్యవసర రక్షణ కేంద్రం",
-    settingsTitle: "సెట్టింగ్స్ & భాష",
-  },
-  Hindi: {
-    home: "होम",
-    myRides: "मेरी राइड्स",
-    offers: "ऑफ़र्स",
-    profile: "प्रोफ़ाइल",
-    searchTitle: "राइड पूल खोजें",
-    pickupLabel: "पिकअप स्थान",
-    dropLabel: "ड्रॉप स्थान",
-    searchBtn: "राइड्स खोजें ➔",
-    livePools: "उपलब्ध राइड्स",
-    sosHeader: "आपातकालीन और सुरक्षा केंद्र",
-    settingsTitle: "सेटिंग्स और भाषा",
-  },
-  Tenglish: {
-    home: "Home",
-    myRides: "Naa Rides",
-    offers: "Offers",
-    profile: "Profile",
-    searchTitle: "Ride Pool Vethakandi",
-    pickupLabel: "PICKUP POINT",
-    dropLabel: "DROP POINT",
-    searchBtn: "Pools Choodandi ➔",
-    livePools: "Live Rides",
-    sosHeader: "Emergency & Safety",
-    settingsTitle: "Settings & Language",
-  },
-};
+const MAPBOX_TOKEN =
+  "pk.eyJ1IjoiYmhhcmdhdjE4MTkiLCJhIjoiY211bnJxOGJ6MDJnNjJ4cGNucWV3ZTB5ZyJ9.eeQZMTPajF3ggl5E1ovH0Q";
 
-export default function PassengerHome({ navigation }: any) {
-  // Onboarding / Profile States
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState("");
-  const [userEmail, setUserEmail] = useState("");
-  const [employeeId, setEmployeeId] = useState("");
-  const [userPhone, setUserPhone] = useState("8919326622");
-  const [selectedLanguage, setSelectedLanguage] = useState("Tenglish");
+const POPULAR_HUBS = [
+  { name: "Hitec City Cyber Towers", lat: 17.4435, lon: 78.3772 },
+  { name: "Gachibowli DLF", lat: 17.4401, lon: 78.3489 },
+  { name: "Madhapur Metro", lat: 17.4483, lon: 78.3915 },
+  { name: "LB Nagar Ring Road", lat: 17.3457, lon: 78.5522 },
+  { name: "Kukatpally KPHB", lat: 17.4947, lon: 78.3996 },
+  { name: "Secunderabad Station", lat: 17.4399, lon: 78.4983 },
+  { name: "Financial District", lat: 17.4141, lon: 78.3412 },
+  { name: "Banjara Hills Rd 12", lat: 17.4156, lon: 78.4357 },
+];
 
-  // App Navigation & Modals
-  const [currentTab, setCurrentTab] = useState<"HOME" | "RIDES" | "OFFERS" | "PROFILE">("HOME");
-  const [showEditProfile, setShowEditProfile] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showEmergencyHub, setShowEmergencyHub] = useState(false);
-  const [showReferModal, setShowReferModal] = useState(false);
+export function PassengerHome({ navigation }: any) {
+  const [passengerName, setPassengerName] = useState("BHARGAV");
+  const [startPoint, setStartPoint] = useState("LB Nagar, Hyderabad");
+  const [startCoords, setStartCoords] = useState({ lat: 17.3457, lon: 78.5522 });
+  const [endPoint, setEndPoint] = useState("Madhapur, Hyderabad");
+  const [endCoords, setEndCoords] = useState({ lat: 17.4483, lon: 78.3915 });
 
-  // Map & Route States
-  const [coords, setCoords] = useState({ lat: 17.4435, lon: 78.3772 });
-  const [pickup, setPickup] = useState("Hitec City, Hyderabad");
-  const [drop, setDrop] = useState("LB Nagar, Hyderabad");
-  const [modalType, setModalType] = useState<"pickup" | "drop" | null>(null);
+  const [publishedRides, setPublishedRides] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState<"HOME" | "RIDES" | "OFFERS" | "PROFILE">("HOME");
 
-  // Rides & Live Booking
-  const [rides, setRides] = useState<any[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [selectedRideForBooking, setSelectedRideForBooking] = useState<any>(null);
-  const [activeBookedRide, setActiveBookedRide] = useState<any>(null);
-  const [isRideStarted, setIsRideStarted] = useState(false);
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
-  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  // Rapido Style Interactive Drag Map Modal State
+  const [mapModalVisible, setMapModalVisible] = useState(false);
+  const [pickerMode, setPickerMode] = useState<"PICKUP" | "DROP">("PICKUP");
+  const [mapCenter, setMapCenter] = useState({ lat: 17.3457, lon: 78.5522 });
+  const [selectedAddress, setSelectedAddress] = useState("LB Nagar, Hyderabad");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [loadingSearch, setLoadingSearch] = useState(false);
+  const [isFetchingGps, setIsFetchingGps] = useState(false);
 
-  const t = TRANSLATIONS[selectedLanguage] || TRANSLATIONS.English;
-
-  // Local Storage Sync (ఇక్కడ 2000 తీసేసి 7000 కి మార్చాం - సూపర్ ఫాస్ట్ పెర్ఫార్మెన్స్)
   useEffect(() => {
     try {
-      const savedUser = localStorage.getItem("PASSENGER_USER_PROFILE");
-      if (savedUser) {
-        const parsed = JSON.parse(savedUser);
-        setUserName(parsed.name || "");
-        setUserEmail(parsed.email || "");
-        setEmployeeId(parsed.employeeId || "");
-        setUserPhone(parsed.phone || "8919326622");
-        setSelectedLanguage(parsed.language || "Tenglish");
-        setIsLoggedIn(true);
+      if (typeof window !== "undefined" && window.localStorage) {
+        const stored = window.localStorage.getItem("SHARED_CARPOOL_RIDES");
+        if (stored) {
+          setPublishedRides(JSON.parse(stored));
+        }
+        const profile = window.localStorage.getItem("DRIVER_REGISTERED_PROFILE");
+        if (profile) {
+          const p = JSON.parse(profile);
+          if (p.name) setPassengerName(p.name.toUpperCase());
+        }
       }
     } catch {}
-
-    const syncRides = () => {
-      try {
-        const stored = localStorage.getItem("SHARED_CARPOOL_RIDES");
-        if (stored) {
-          setRides(JSON.parse(stored));
-        }
-      } catch {}
-    };
-
-    syncRides();
-    const interval = setInterval(syncRides, 7000); // 7 సెకన్లకు ఒకసారి మాత్రమే బ్యాక్‌గ్రౌండ్ సింక్
-    return () => clearInterval(interval);
   }, []);
 
-  // Save Profile Details
-  const handleSaveProfile = (skipId: boolean = false) => {
-    if (!userName.trim() || !userEmail.trim()) {
-      alert("Name mariyu Email ID enter cheyandi");
+  const openMapPicker = (mode: "PICKUP" | "DROP") => {
+    setPickerMode(mode);
+    const coords = mode === "PICKUP" ? startCoords : endCoords;
+    const addr = mode === "PICKUP" ? startPoint : endPoint;
+    setMapCenter(coords);
+    setSelectedAddress(addr);
+    setSearchQuery("");
+    setSearchResults([]);
+    setMapModalVisible(true);
+  };
+
+  const handleLiveSearch = async (text: string) => {
+    setSearchQuery(text);
+    if (text.trim().length < 2) {
+      setSearchResults([]);
       return;
     }
-
-    const profileData = {
-      name: userName.trim(),
-      email: userEmail.trim(),
-      phone: userPhone.trim(),
-      employeeId: skipId ? "Not Provided" : employeeId.trim(),
-      language: selectedLanguage,
-    };
-
+    setLoadingSearch(true);
     try {
-      localStorage.setItem("PASSENGER_USER_PROFILE", JSON.stringify(profileData));
-    } catch {}
-
-    setIsLoggedIn(true);
-    setShowEditProfile(false);
+      const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+        text.trim()
+      )}.json?access_token=${MAPBOX_TOKEN}&country=in&proximity=78.4867,17.3850&types=neighborhood,locality,place,poi,address&limit=5`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data && data.features) {
+        setSearchResults(data.features);
+      }
+    } catch {
+      setSearchResults([]);
+    } finally {
+      setLoadingSearch(false);
+    }
   };
 
-  // Confirm Booking (Strictly Online Payment Only)
-  const handleConfirmOnlineBooking = () => {
-    setPaymentSuccess(true);
-    setTimeout(() => {
-      setPaymentSuccess(false);
-      const bookingData = {
-        bookingId: "BK-" + Math.floor(100000 + Math.random() * 900000),
-        ride: selectedRideForBooking,
-        driverNumber: selectedRideForBooking.phone || "8919326622",
-        driverLocation: selectedRideForBooking.from_location,
-        driverCoords: coords,
-        farePaid: appliedCoupon
-          ? Math.round(selectedRideForBooking.price_per_seat * 0.8)
-          : selectedRideForBooking.price_per_seat,
-        status: "CONFIRMED",
-      };
-      setActiveBookedRide(bookingData);
-      setSelectedRideForBooking(null);
-      setCurrentTab("RIDES");
-      alert("Payment Successful! Ride booked via UPI.");
-    }, 1000);
+  const pickSearchedLocation = (item: any) => {
+    const lat = item.center[1];
+    const lon = item.center[0];
+    const name = item.text + ", Hyderabad";
+    setMapCenter({ lat, lon });
+    setSelectedAddress(name);
+    setSearchQuery("");
+    setSearchResults([]);
   };
 
-  // Share Live Journey on WhatsApp
-  const shareLiveJourney = () => {
-    const text = `🚨 LIVE RIDE TRACKING: Nenu ${pickup} nundi ${drop} varaku Carpool lo unnanu. Booking ID: ${activeBookedRide?.bookingId}. Driver Phone: ${activeBookedRide?.driverNumber}. Live location: https://maps.google.com/?q=${coords.lat},${coords.lon}`;
-    Linking.openURL(`https://wa.me/?text=${encodeURIComponent(text)}`);
+  const fetchLiveGps = () => {
+    if (typeof window !== "undefined" && navigator.geolocation) {
+      setIsFetchingGps(true);
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const lat = pos.coords.latitude;
+          const lon = pos.coords.longitude;
+          const name = `Live GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+          setMapCenter({ lat, lon });
+          setSelectedAddress(name);
+          setIsFetchingGps(false);
+        },
+        () => {
+          setIsFetchingGps(false);
+          alert("GPS Permission denied. Type location to search.");
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
   };
 
-  // Call Helper
-  const dialEmergency = (number: string) => {
-    Linking.openURL(`tel:${number}`).catch(() => alert(`Calling ${number}...`));
+  const confirmLocationChoice = () => {
+    if (pickerMode === "PICKUP") {
+      setStartPoint(selectedAddress);
+      setStartCoords(mapCenter);
+    } else {
+      setEndPoint(selectedAddress);
+      setEndCoords(mapCenter);
+    }
+    setMapModalVisible(false);
   };
 
-  // ---------------- 1. LOGIN / ONBOARDING SCREEN ----------------
-  if (!isLoggedIn) {
-    return (
-      <SafeAreaView style={styles.loginSafeArea}>
-        <ScrollView contentContainerStyle={styles.loginContainer}>
-          <Text style={styles.loginHeaderTitle}>Welcome to RidePool 👋</Text>
-          <Text style={styles.loginSub}>Daily office commutes made safe & affordable</Text>
+  // Drag simulation helpers
+  const nudgeMap = (dLat: number, dLon: number, label: string) => {
+    const newLat = mapCenter.lat + dLat;
+    const newLon = mapCenter.lon + dLon;
+    setMapCenter({ lat: newLat, lon: newLon });
+    setSelectedAddress(label);
+  };
 
-          <View style={styles.formGroup}>
-            <Text style={styles.fieldTitle}>What should we call you? :)</Text>
-            <TextInput
-              style={styles.loginInput}
-              placeholder="e.g. Bhargav"
-              placeholderTextColor="#94A3B8"
-              value={userName}
-              onChangeText={setUserName}
-            />
-          </View>
+  const homeMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${startCoords.lon},${startCoords.lat},13.5,0/800x480@2x?access_token=${MAPBOX_TOKEN}`;
+  const modalMapUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/static/${mapCenter.lon},${mapCenter.lat},15,0/800x600@2x?access_token=${MAPBOX_TOKEN}`;
 
-          <View style={styles.formGroup}>
-            <Text style={styles.fieldTitle}>Email ID (Login)</Text>
-            <TextInput
-              style={styles.loginInput}
-              placeholder="vattalabhargav3@gmail.com"
-              placeholderTextColor="#94A3B8"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={userEmail}
-              onChangeText={setUserEmail}
-            />
-          </View>
-
-          <View style={styles.formGroup}>
-            <View style={styles.optionalRow}>
-              <Text style={styles.fieldTitle}>
-                Work / College ID Card <Text style={styles.optionalTag}>(optional)</Text>
-              </Text>
-              <TouchableOpacity onPress={() => handleSaveProfile(true)}>
-                <Text style={styles.skipBtnText}>Skip ➔</Text>
-              </TouchableOpacity>
-            </View>
-
-            <TextInput
-              style={styles.loginInput}
-              placeholder="e.g. EMP8919 or College Roll ID"
-              placeholderTextColor="#94A3B8"
-              value={employeeId}
-              onChangeText={setEmployeeId}
-            />
-            <Text style={styles.idHelperText}>
-              ID card verify cheskunte Corporate Commuter Badge vasthundi.
-            </Text>
-          </View>
-
-          <TouchableOpacity
-            style={styles.startCommuteBtn}
-            onPress={() => handleSaveProfile(false)}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.startCommuteBtnText}>Start Commute ➔</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    );
-  }
-
-  // ---------------- 2. MAIN PASSENGER DASHBOARD ----------------
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         {/* Top Header */}
-        <View style={styles.header}>
+        <View style={styles.topHeader}>
           <View>
-            <Text style={styles.headerSub}>PASSENGER POOL</Text>
-            <Text style={styles.headerTitle}>Hi, {userName || "Commuter"} 👋</Text>
+            <Text style={styles.topTag}>PASSENGER POOL</Text>
+            <Text style={styles.topGreeting}>Hi, {passengerName} 👋</Text>
           </View>
 
-          <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
             <TouchableOpacity
-              style={styles.headerSosBtn}
-              onPress={() => setShowEmergencyHub(true)}
+              style={styles.sosButton}
+              onPress={() => Linking.openURL("tel:112").catch(() => alert("Calling 112..."))}
             >
-              <Text style={styles.headerSosText}>🚨 SOS</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.openDriverBtn}
-              onPress={() => {
-                if (navigation && navigation.navigate) {
-                  navigation.navigate("DriverHome");
-                } else {
-                  window.location.href = "/driver";
-                }
-              }}
-            >
-              <Text style={styles.openDriverText}>🚗 Driver App ➔</Text>
+              <Text style={styles.sosButtonText}>🚨 SOS</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* ---------------- PASSENGER SCREENS ---------------- */}
-        <View style={{ flex: 1 }}>
-          {/* TAB 1: HOME (Rapido Half-Screen Map + Search Kinda) */}
-          {currentTab === "HOME" && (
-            <ScrollView showsVerticalScrollIndicator={false} style={{ flex: 1 }}>
-              <InteractiveMap
-                lat={coords.lat}
-                lon={coords.lon}
-                height={260}
-                onLocationChange={(newLat, newLon) => setCoords({ lat: newLat, lon: newLon })}
-              />
+        <ScrollView contentContainerStyle={styles.scrollArea}>
+          {/* Main Map Background with Hardware Acceleration Badge */}
+          <View style={styles.homeMapContainer}>
+            {/* @ts-ignore */}
+            <img
+              src={homeMapUrl}
+              alt="Live City Map"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
+            <View style={styles.hardwareBadge}>
+              <Text style={styles.hardwareBadgeText}>⚡ Hardware Accelerated (Fast)</Text>
+            </View>
 
-              <View style={styles.searchUnderMapCard}>
-                <TouchableOpacity
-                  style={styles.inputLocationRow}
-                  onPress={() => setModalType("pickup")}
-                >
-                  <View style={styles.greenCircle} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputTag}>{t.pickupLabel}</Text>
-                    <Text style={styles.inputText} numberOfLines={1}>{pickup}</Text>
-                  </View>
-                  <Text style={styles.editSign}>✏️</Text>
-                </TouchableOpacity>
-
-                <View style={styles.inputDivider} />
-
-                <TouchableOpacity
-                  style={styles.inputLocationRow}
-                  onPress={() => setModalType("drop")}
-                >
-                  <View style={styles.redCircle} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputTag}>{t.dropLabel}</Text>
-                    <Text style={styles.inputText} numberOfLines={1}>{drop}</Text>
-                  </View>
-                  <Text style={styles.editSign}>✏️</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.searchRidesBtn}
-                  onPress={() => {
-                    setLoading(true);
-                    setTimeout(() => setLoading(false), 400);
-                  }}
-                >
-                  <Text style={styles.searchRidesBtnText}>{t.searchBtn}</Text>
-                </TouchableOpacity>
+            {/* Live Center Pin */}
+            <View style={styles.homeFixedPin} pointerEvents="none">
+              <View style={styles.pinBubbleGreen}>
+                <View style={styles.innerDotWhite} />
               </View>
-
-              <View style={styles.ridesHeaderRow}>
-                <Text style={styles.ridesSectionTitle}>{t.livePools}</Text>
-                <Text style={styles.ridesCountBadge}>
-                  {rides.length > 0 ? `${rides.length} Pools Live` : "Waiting for Drivers"}
-                </Text>
-              </View>
-
-              {rides.length === 0 ? (
-                <View style={styles.noRidesCard}>
-                  <Text style={styles.noRidesTitle}>No live rides published yet</Text>
-                  <Text style={styles.noRidesSub}>
-                    Driver App lo ride create cheyagane ventane ikkadiki live sync avthundi.
-                  </Text>
-                </View>
-              ) : (
-                rides.map((item) => {
-                  const finalFare = appliedCoupon
-                    ? Math.round(item.price_per_seat * 0.8)
-                    : item.price_per_seat;
-                  return (
-                    <View key={item.id} style={{ marginHorizontal: 16 }}>
-                      <RideCard
-                        ride={{ ...item, price_per_seat: finalFare }}
-                        onPress={() => setSelectedRideForBooking({ ...item, price_per_seat: finalFare })}
-                      />
-                    </View>
-                  );
-                })
-              )}
-              <View style={{ height: 30 }} />
-            </ScrollView>
-          )}
-
-          {/* TAB 2: MY RIDES (Live Tracking, Booking ID & Driver Info) */}
-          {currentTab === "RIDES" && (
-            <ScrollView contentContainerStyle={{ padding: 16 }}>
-              <Text style={styles.tabBigTitle}>My Confirmed Journey</Text>
-
-              {activeBookedRide ? (
-                <View style={styles.bookingConfirmedCard}>
-                  <View style={styles.bookingBadgeRow}>
-                    <View style={styles.confirmedBadge}>
-                      <Text style={styles.confirmedBadgeText}>✓ CONFIRMED (ONLINE PAID)</Text>
-                    </View>
-                    <Text style={styles.bookingIdText}>ID: {activeBookedRide.bookingId}</Text>
-                  </View>
-
-                  <Text style={styles.journeyRouteText}>
-                    {activeBookedRide.ride.from_location} ➔ {activeBookedRide.ride.to_location}
-                  </Text>
-
-                  {/* Driver Details Card */}
-                  <View style={styles.driverInfoCard}>
-                    <View style={styles.driverAvatar}>
-                      <Text style={{ fontSize: 22 }}>👤</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.driverName}>{activeBookedRide.ride.driver_name}</Text>
-                      <Text style={styles.driverVehicle}>
-                        {activeBookedRide.ride.vehicle_name} • {activeBookedRide.ride.vehicle_number || "TS09FA1234"}
-                      </Text>
-                      <Text style={styles.driverPhone}>📞 {activeBookedRide.driverNumber}</Text>
-                    </View>
-                    <TouchableOpacity
-                      style={styles.callDriverBtn}
-                      onPress={() => dialEmergency(activeBookedRide.driverNumber)}
-                    >
-                      <Text style={styles.callDriverText}>Call Driver</Text>
-                    </TouchableOpacity>
-                  </View>
-
-                  {/* Live Journey Map Tracker */}
-                  <View style={styles.liveMapWrap}>
-                    <InteractiveMap
-                      lat={coords.lat}
-                      lon={coords.lon}
-                      height={200}
-                    />
-                    <View style={styles.driverTrackingOverlay}>
-                      <Text style={styles.driverTrackingText}>
-                        🚗 Driver is {isRideStarted ? "En Route (On Trip)" : "5 mins away from pickup"}
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Journey Action Buttons */}
-                  <View style={{ gap: 10, marginTop: 14 }}>
-                    <TouchableOpacity
-                      style={styles.whatsappShareBtn}
-                      onPress={shareLiveJourney}
-                    >
-                      <Text style={styles.whatsappShareText}>
-                        📲 Share Live Journey to WhatsApp (Emergency)
-                      </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.startRideBtn, isRideStarted && { backgroundColor: "#16A34A" }]}
-                      onPress={() => {
-                        setIsRideStarted(!isRideStarted);
-                        alert(isRideStarted ? "Ride Completed!" : "Ride Started! Live tracking active.");
-                      }}
-                    >
-                      <Text style={styles.startRideBtnText}>
-                        {isRideStarted ? "✓ End Journey" : "▶ Start Journey Tracking"}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              ) : (
-                <View style={styles.noRidesCard}>
-                  <Text style={styles.noRidesTitle}>No active ride booking</Text>
-                  <Text style={styles.noRidesSub}>
-                    Book a pool from Home tab with instant online payment to track live driver status.
-                  </Text>
-                </View>
-              )}
-            </ScrollView>
-          )}
-
-          {/* TAB 3: OFFERS */}
-          {currentTab === "OFFERS" && (
-            <ScrollView contentContainerStyle={styles.offersScroll}>
-              <Text style={styles.tabBigTitle}>Exclusive Offers & Promos</Text>
-              <Text style={styles.tabSubDesc}>Apply promo discounts directly to your daily rides</Text>
-
-              <View style={styles.offerCard}>
-                <View style={styles.offerBadge}>
-                  <Text style={styles.offerBadgeText}>FLAT 20% OFF</Text>
-                </View>
-                <Text style={styles.offerCode}>CODE: FIRSTPOOL</Text>
-                <Text style={styles.offerDesc}>Get 20% off on your office commute pools.</Text>
-                <TouchableOpacity
-                  style={[styles.applyOfferBtn, appliedCoupon === "FIRSTPOOL" && styles.appliedBtn]}
-                  onPress={() => {
-                    if (appliedCoupon === "FIRSTPOOL") {
-                      setAppliedCoupon(null);
-                      alert("Coupon removed");
-                    } else {
-                      setAppliedCoupon("FIRSTPOOL");
-                      alert("Coupon FIRSTPOOL applied! 20% OFF Active.");
-                    }
-                  }}
-                >
-                  <Text style={styles.applyOfferText}>
-                    {appliedCoupon === "FIRSTPOOL" ? "✓ APPLIED" : "APPLY COUPON"}
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </ScrollView>
-          )}
-
-          {/* TAB 4: PROFILE */}
-          {currentTab === "PROFILE" && (
-            <ScrollView contentContainerStyle={styles.profileContent}>
-              <View style={styles.profileAvatar}>
-                <Text style={{ fontSize: 36 }}>👤</Text>
-              </View>
-              <Text style={styles.profileName}>{userName || "Bhargav Vattala"}</Text>
-              <Text style={styles.profileEmail}>{userEmail}</Text>
-              <Text style={styles.profileTag}>
-                {employeeId && employeeId !== "Not Provided"
-                  ? `Corporate ID: ${employeeId}`
-                  : "Verified Commuter"}
-              </Text>
-
-              {/* Profile Menu Actions */}
-              <View style={styles.profileActionsList}>
-                <TouchableOpacity
-                  style={styles.profileActionItem}
-                  onPress={() => setShowEmergencyHub(true)}
-                >
-                  <Text style={styles.actionIcon}>🚨</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.actionTitle}>Emergency SOS & SHE Teams</Text>
-                    <Text style={styles.actionSub}>24x7 Women Safety & Police helpline</Text>
-                  </View>
-                  <Text style={styles.actionArrow}>➔</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.profileActionItem}
-                  onPress={() => setShowSettings(true)}
-                >
-                  <Text style={styles.actionIcon}>⚙️</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.actionTitle}>Settings & Language</Text>
-                    <Text style={styles.actionSub}>Telugu, English, Hindi, Tenglish</Text>
-                  </View>
-                  <Text style={styles.actionArrow}>➔</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.profileActionItem}
-                  onPress={() => setShowReferModal(true)}
-                >
-                  <Text style={styles.actionIcon}>🎁</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.actionTitle}>Refer a Friend</Text>
-                    <Text style={styles.actionSub}>Earn ₹100 pool credits for each referral</Text>
-                  </View>
-                  <Text style={styles.actionArrow}>➔</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.profileActionItem}
-                  onPress={() => setShowEditProfile(true)}
-                >
-                  <Text style={styles.actionIcon}>✏️</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.actionTitle}>Edit Profile</Text>
-                    <Text style={styles.actionSub}>Change name, email & work ID</Text>
-                  </View>
-                  <Text style={styles.actionArrow}>➔</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.profileActionItem, { borderBottomWidth: 0 }]}
-                  onPress={() => dialEmergency("18002008919")}
-                >
-                  <Text style={styles.actionIcon}>🎧</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.actionTitle}>Customer Care Support</Text>
-                    <Text style={styles.actionSub}>Toll-free 1800-200-8919</Text>
-                  </View>
-                  <Text style={styles.actionArrow}>➔</Text>
-                </TouchableOpacity>
-              </View>
-
-              {/* Logout Button */}
-              <TouchableOpacity
-                style={styles.logoutBtn}
-                onPress={() => {
-                  try {
-                    localStorage.removeItem("PASSENGER_USER_PROFILE");
-                  } catch {}
-                  setIsLoggedIn(false);
-                }}
-              >
-                <Text style={styles.logoutBtnText}>🚪 Logout Account</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          )}
-        </View>
-
-        {/* ---------------- 4 BOTTOM TABS ---------------- */}
-        <View style={styles.bottomBar}>
-          <TouchableOpacity style={styles.tabBtn} onPress={() => setCurrentTab("HOME")}>
-            <Text style={[styles.tabIcon, currentTab === "HOME" && styles.tabActiveText]}>🏠</Text>
-            <Text style={[styles.tabLabel, currentTab === "HOME" && styles.tabActiveText]}>{t.home}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.tabBtn} onPress={() => setCurrentTab("RIDES")}>
-            <Text style={[styles.tabIcon, currentTab === "RIDES" && styles.tabActiveText]}>🚗</Text>
-            <Text style={[styles.tabLabel, currentTab === "RIDES" && styles.tabActiveText]}>{t.myRides}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.tabBtn} onPress={() => setCurrentTab("OFFERS")}>
-            <Text style={[styles.tabIcon, currentTab === "OFFERS" && styles.tabActiveText]}>🎁</Text>
-            <Text style={[styles.tabLabel, currentTab === "OFFERS" && styles.tabActiveText]}>{t.offers}</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.tabBtn} onPress={() => setCurrentTab("PROFILE")}>
-            <Text style={[styles.tabIcon, currentTab === "PROFILE" && styles.tabActiveText]}>👤</Text>
-            <Text style={[styles.tabLabel, currentTab === "PROFILE" && styles.tabActiveText]}>{t.profile}</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ---------------- 3. EMERGENCY SOS & SHE TEAMS MODAL ---------------- */}
-        <Modal visible={showEmergencyHub} transparent animationType="slide">
-          <View style={styles.modalBackdrop}>
-            <View style={styles.emergencyModalCard}>
-              <Text style={styles.emergencyModalTitle}>🚨 Emergency Safety & SHE Teams</Text>
-              <Text style={styles.emergencyModalSub}>
-                Instant police dispatch, live location relay & women emergency helplines
-              </Text>
-
-              <TouchableOpacity
-                style={styles.sheTeamBtn}
-                onPress={() => dialEmergency("1091")}
-              >
-                <Text style={styles.sosPhoneIcon}>🌸</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.sheTeamTitle}>SHE Teams Helpline</Text>
-                  <Text style={styles.sheTeamSub}>Dial 1091 (Telangana Women Protection)</Text>
-                </View>
-                <Text style={styles.callTag}>CALL NOW</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.policeSosBtn}
-                onPress={() => dialEmergency("112")}
-              >
-                <Text style={styles.sosPhoneIcon}>🚔</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.policeTitle}>Police Emergency (All India)</Text>
-                  <Text style={styles.policeSub}>Dial 112 / 100</Text>
-                </View>
-                <Text style={styles.callTag}>CALL NOW</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.customerCareBtn}
-                onPress={() => dialEmergency("18002008919")}
-              >
-                <Text style={styles.sosPhoneIcon}>🎧</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.supportTitle}>RidePool 24x7 Customer Care</Text>
-                  <Text style={styles.supportSub}>Toll-free 1800-200-8919</Text>
-                </View>
-                <Text style={styles.callTag}>CALL</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.closeSheetBtn}
-                onPress={() => setShowEmergencyHub(false)}
-              >
-                <Text style={styles.closeSheetText}>Close Safety Hub</Text>
-              </TouchableOpacity>
+              <View style={styles.pinStemGreen} />
             </View>
           </View>
-        </Modal>
 
-        {/* ---------------- 4. SETTINGS & LANGUAGE MODAL ---------------- */}
-        <Modal visible={showSettings} transparent animationType="slide">
-          <View style={styles.modalBackdrop}>
-            <View style={styles.paymentModalCard}>
-              <Text style={styles.modalHeading}>App Settings & Language</Text>
-              <Text style={styles.modalSub}>Select your preferred app language:</Text>
+          {/* Clean Rapido-Style Pure White Location Selection Card */}
+          <View style={styles.whiteRouteCard}>
+            {/* Pickup Selector */}
+            <TouchableOpacity
+              style={styles.routeRow}
+              onPress={() => openMapPicker("PICKUP")}
+              activeOpacity={0.8}
+            >
+              <View style={styles.greenDot} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.routeLabel}>PICKUP POINT</Text>
+                <Text style={styles.routeAddressText} numberOfLines={1}>
+                  {startPoint}
+                </Text>
+              </View>
+              <Text style={styles.searchIconText}>🔍</Text>
+            </TouchableOpacity>
 
-              <View style={{ gap: 10, marginVertical: 14 }}>
-                {[
-                  { id: "Tenglish", label: "Telugu + English (Tenglish)" },
-                  { id: "Telugu", label: "తెలుగు (Telugu)" },
-                  { id: "English", label: "English" },
-                  { id: "Hindi", label: "हिन्दी (Hindi)" },
-                ].map((item) => (
+            <View style={styles.routeDivider} />
+
+            {/* Drop Selector */}
+            <TouchableOpacity
+              style={styles.routeRow}
+              onPress={() => openMapPicker("DROP")}
+              activeOpacity={0.8}
+            >
+              <View style={styles.redSquare} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.routeLabel}>DROP POINT</Text>
+                <Text style={styles.routeAddressText} numberOfLines={1}>
+                  {endPoint}
+                </Text>
+              </View>
+              <Text style={styles.searchIconText}>🔍</Text>
+            </TouchableOpacity>
+
+            {/* Pools Action Button */}
+            <TouchableOpacity
+              style={styles.poolsChoodandiBtn}
+              onPress={() => alert(`Searching pools from ${startPoint} to ${endPoint}...`)}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.poolsChoodandiText}>Pools Choodandi ➔</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Live Rides Feed */}
+          <View style={styles.liveRidesHeaderRow}>
+            <Text style={styles.sectionTitle}>Live Rides</Text>
+            <TouchableOpacity onPress={() => alert("Refreshing pools...")}>
+              <Text style={styles.refreshLink}>Wait / Refresh</Text>
+            </TouchableOpacity>
+          </View>
+
+          {publishedRides.length === 0 ? (
+            <View style={styles.emptyStateCard}>
+              <Text style={{ fontSize: 28, marginBottom: 8 }}>🚗</Text>
+              <Text style={styles.emptyStateTitle}>No live rides published yet</Text>
+              <Text style={styles.emptyStateSub}>
+                Driver App lo ride create cheyagane ventane ikkadiki live sync avthundi.
+              </Text>
+            </View>
+          ) : (
+            publishedRides.map((ride) => (
+              <View key={ride.id} style={styles.rideCard}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                  <Text style={styles.rideDriverName}>{ride.driver_name || "Driver Partner"}</Text>
+                  <Text style={styles.rideFare}>₹{ride.price_per_seat} / seat</Text>
+                </View>
+                <Text style={styles.rideVehicle}>{ride.vehicle_name} • {ride.plate_type === "WHITE" ? "Green Saver" : "Commercial Express"}</Text>
+                <Text style={styles.rideRoute}>
+                  📍 {ride.from_location} ➔ 🏁 {ride.to_location}
+                </Text>
+                <TouchableOpacity
+                  style={styles.bookRideBtn}
+                  onPress={() => alert(`Booking seat with ${ride.driver_name}!`)}
+                >
+                  <Text style={styles.bookRideBtnText}>Book Seat ➔</Text>
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+        </ScrollView>
+
+        {/* ---------------- RAPIDO/UBER STYLE INTERACTIVE DRAG MAP MODAL ---------------- */}
+        <Modal visible={mapModalVisible} animationType="slide" transparent={false}>
+          <SafeAreaView style={{ flex: 1, backgroundColor: "#FFFFFF" }}>
+            {/* Top Bar with Search & Back */}
+            <View style={styles.modalTopHeader}>
+              <TouchableOpacity
+                onPress={() => setMapModalVisible(false)}
+                style={styles.backCircleBtn}
+              >
+                <Text style={{ fontSize: 18, fontWeight: "bold", color: "#0F172A" }}>←</Text>
+              </TouchableOpacity>
+
+              <View style={styles.searchBarWrap}>
+                <Text style={{ fontSize: 14 }}>🔍</Text>
+                <TextInput
+                  style={styles.searchBarInput}
+                  placeholder={`Search ${pickerMode === "PICKUP" ? "Pickup" : "Drop"} location in Hyderabad...`}
+                  placeholderTextColor="#94A3B8"
+                  value={searchQuery}
+                  onChangeText={handleLiveSearch}
+                />
+                {loadingSearch && <ActivityIndicator size="small" color="#0284C7" />}
+              </View>
+            </View>
+
+            {/* Live Autocomplete Suggestions Dropdown */}
+            {searchResults.length > 0 && (
+              <View style={styles.searchResultsDropdown}>
+                {searchResults.map((item) => (
                   <TouchableOpacity
                     key={item.id}
-                    style={[
-                      styles.langItem,
-                      selectedLanguage === item.id && styles.langItemActive,
-                    ]}
-                    onPress={() => {
-                      setSelectedLanguage(item.id);
-                      handleSaveProfile(false);
-                    }}
+                    style={styles.searchResultRow}
+                    onPress={() => pickSearchedLocation(item)}
                   >
-                    <Text
-                      style={[
-                        styles.langText,
-                        selectedLanguage === item.id && styles.langTextActive,
-                      ]}
-                    >
-                      {item.label}
-                    </Text>
-                    {selectedLanguage === item.id && <Text style={{ color: "#0284C7" }}>✓</Text>}
+                    <Text style={{ fontSize: 16 }}>📍</Text>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.resultTitle}>{item.text}</Text>
+                      <Text style={styles.resultSub} numberOfLines={1}>{item.place_name}</Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
               </View>
+            )}
 
-              <TouchableOpacity
-                style={styles.closeSheetBtn}
-                onPress={() => setShowSettings(false)}
-              >
-                <Text style={styles.closeSheetText}>Done</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+            {/* Interactive Map Area with Fixed Center Pin */}
+            <View style={styles.interactiveMapLayer}>
+              {/* @ts-ignore */}
+              <img
+                src={modalMapUrl}
+                alt="Interactive Map"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
 
-        {/* ---------------- 5. REFER A FRIEND MODAL ---------------- */}
-        <Modal visible={showReferModal} transparent animationType="slide">
-          <View style={styles.modalBackdrop}>
-            <View style={styles.paymentModalCard}>
-              <Text style={styles.modalHeading}>🎁 Refer Friends, Earn Credits</Text>
-              <Text style={styles.modalSub}>
-                Give your friends 20% off on their first commute and earn ₹100 pool credits!
-              </Text>
-
-              <View style={styles.referBox}>
-                <Text style={styles.referLabel}>YOUR REFERRAL CODE</Text>
-                <Text style={styles.referCode}>BHARGAVPOOL100</Text>
+              {/* Rapido Fixed Center Pin */}
+              <View style={styles.fixedPinWrapper} pointerEvents="none">
+                <View style={pickerMode === "PICKUP" ? styles.pinBubbleGreen : styles.pinBubbleRed}>
+                  <View style={styles.innerDotWhite} />
+                </View>
+                <View style={pickerMode === "PICKUP" ? styles.pinStemGreen : styles.pinStemRed} />
+                <View style={styles.pinShadow} />
               </View>
 
+              {/* Drag / Nudge Floating Controls for Browser Drag Simulation */}
+              <View style={styles.nudgeContainer}>
+                <Text style={styles.dragHelpText}>Drag map or tap directions to reposition pin:</Text>
+                <View style={styles.nudgeButtonsRow}>
+                  <TouchableOpacity
+                    style={styles.nudgeBtn}
+                    onPress={() => nudgeMap(0.005, 0, "North Zone, Hyderabad")}
+                  >
+                    <Text style={styles.nudgeBtnText}>▲ North</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.nudgeBtn}
+                    onPress={() => nudgeMap(-0.005, 0, "South Zone, Hyderabad")}
+                  >
+                    <Text style={styles.nudgeBtnText}>▼ South</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.nudgeBtn}
+                    onPress={() => nudgeMap(0, -0.005, "West / Hitec Zone")}
+                  >
+                    <Text style={styles.nudgeBtnText}>◀ West</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.nudgeBtn}
+                    onPress={() => nudgeMap(0, 0.005, "East / LB Nagar Zone")}
+                  >
+                    <Text style={styles.nudgeBtnText}>▶ East</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* Live GPS Floating Button */}
               <TouchableOpacity
-                style={styles.whatsappShareBtn}
-                onPress={() => {
-                  const shareText = `Hey! Join RidePool carpooling app with my code BHARGAVPOOL100 and get 20% off on your office rides: https://ridepool.in`;
-                  Linking.openURL(`https://wa.me/?text=${encodeURIComponent(shareText)}`);
-                }}
+                style={styles.floatingGpsBtn}
+                onPress={fetchLiveGps}
+                disabled={isFetchingGps}
               >
-                <Text style={styles.whatsappShareText}>Share Code on WhatsApp</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.closeSheetBtn}
-                onPress={() => setShowReferModal(false)}
-              >
-                <Text style={styles.closeSheetText}>Close</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        {/* ---------------- 6. EDIT PROFILE MODAL ---------------- */}
-        <Modal visible={showEditProfile} transparent animationType="slide">
-          <View style={styles.modalBackdrop}>
-            <View style={styles.paymentModalCard}>
-              <Text style={styles.modalHeading}>Edit Profile Details</Text>
-
-              <Text style={styles.inputTag}>NAME</Text>
-              <TextInput
-                style={styles.loginInput}
-                value={userName}
-                onChangeText={setUserName}
-              />
-
-              <Text style={[styles.inputTag, { marginTop: 10 }]}>EMAIL ID</Text>
-              <TextInput
-                style={styles.loginInput}
-                value={userEmail}
-                onChangeText={setUserEmail}
-              />
-
-              <Text style={[styles.inputTag, { marginTop: 10 }]}>COLLEGE / WORK ID</Text>
-              <TextInput
-                style={styles.loginInput}
-                value={employeeId}
-                onChangeText={setEmployeeId}
-              />
-
-              <TouchableOpacity
-                style={[styles.startCommuteBtn, { marginTop: 18 }]}
-                onPress={() => handleSaveProfile(false)}
-              >
-                <Text style={styles.startCommuteBtnText}>Save Changes</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.closeSheetBtn}
-                onPress={() => setShowEditProfile(false)}
-              >
-                <Text style={styles.closeSheetText}>Cancel</Text>
+                {isFetchingGps ? (
+                  <ActivityIndicator size="small" color="#0284C7" />
+                ) : (
+                  <Text style={{ fontSize: 18 }}>🎯</Text>
+                )}
               </TouchableOpacity>
             </View>
-          </View>
-        </Modal>
 
-        {/* ---------------- 7. ONLINE PAYMENT CHECKOUT MODAL (STRICTLY NO CASH) ---------------- */}
-        <Modal visible={selectedRideForBooking !== null} transparent animationType="slide">
-          <View style={styles.modalBackdrop}>
-            <View style={styles.paymentModalCard}>
-              <Text style={styles.modalHeading}>Confirm Seat & Online Payment</Text>
-              <Text style={styles.modalSub}>
-                Driver: {selectedRideForBooking?.driver_name} ({selectedRideForBooking?.vehicle_name})
+            {/* Bottom Confirmation Sheet */}
+            <View style={styles.bottomSheetConfirm}>
+              <Text style={styles.confirmSheetLabel}>
+                {pickerMode === "PICKUP" ? "SELECTED PICKUP LOCATION" : "SELECTED DROP LOCATION"}
               </Text>
 
-              <View style={styles.noCashNotice}>
-                <Text style={styles.noCashText}>
-                  🛡️ 100% Cashless Commute: Only Online Payments are accepted to ensure verified booking safety.
+              <View style={styles.selectedAddressBox}>
+                <View style={pickerMode === "PICKUP" ? styles.greenDot : styles.redSquare} />
+                <Text style={styles.selectedAddressText} numberOfLines={2}>
+                  {selectedAddress}
                 </Text>
               </View>
 
-              <View style={styles.fareBox}>
-                <Text style={styles.fareLabel}>Payable Total (1 Seat)</Text>
-                <Text style={styles.fareValue}>
-                  ₹
-                  {appliedCoupon
-                    ? Math.round(selectedRideForBooking?.price_per_seat * 0.8)
-                    : selectedRideForBooking?.price_per_seat}
-                </Text>
-              </View>
-
-              <TouchableOpacity style={styles.upiCard} onPress={handleConfirmOnlineBooking}>
-                <Text style={{ fontSize: 22 }}>⚡</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.upiName}>Pay via Instant UPI (GPay / PhonePe / Paytm)</Text>
-                  <Text style={styles.upiVpa}>vattalabhargav3@okhdfcbank</Text>
+              {/* Popular Quick Hub Chips */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 14 }}>
+                <View style={{ flexDirection: "row", gap: 8 }}>
+                  {POPULAR_HUBS.map((hub) => (
+                    <TouchableOpacity
+                      key={hub.name}
+                      style={styles.hubChip}
+                      onPress={() => {
+                        setMapCenter({ lat: hub.lat, lon: hub.lon });
+                        setSelectedAddress(`${hub.name}, Hyderabad`);
+                      }}
+                    >
+                      <Text style={styles.hubChipText}>{hub.name}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
-                <Text style={styles.payArrow}>➔</Text>
-              </TouchableOpacity>
-
-              {paymentSuccess && (
-                <View style={styles.successTag}>
-                  <Text style={styles.successTagText}>✓ Online Payment Approved! Pass Generating...</Text>
-                </View>
-              )}
+              </ScrollView>
 
               <TouchableOpacity
-                style={styles.cancelBtn}
-                onPress={() => setSelectedRideForBooking(null)}
+                style={styles.confirmLocationBtn}
+                onPress={confirmLocationChoice}
+                activeOpacity={0.85}
               >
-                <Text style={styles.cancelBtnText}>Cancel</Text>
+                <Text style={styles.confirmLocationBtnText}>
+                  Confirm {pickerMode === "PICKUP" ? "Pickup" : "Drop"} ➔
+                </Text>
               </TouchableOpacity>
             </View>
-          </View>
+          </SafeAreaView>
         </Modal>
 
-        {/* Location Picker Modal */}
-        <LocationPickerModal
-          visible={modalType !== null}
-          title={modalType === "pickup" ? "Select Pickup Location" : "Select Drop Location"}
-          onClose={() => setModalType(null)}
-          onSelect={(name, lat, lon) => {
-            if (modalType === "pickup") {
-              setPickup(name);
-              setCoords({ lat, lon });
-            } else if (modalType === "drop") {
-              setDrop(name);
-            }
-            setModalType(null);
-          }}
-        />
+        {/* Bottom Navigation Bar */}
+        <View style={styles.bottomNavBar}>
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setActiveTab("HOME")}
+          >
+            <Text style={{ fontSize: 18 }}>🏠</Text>
+            <Text style={[styles.navText, activeTab === "HOME" && styles.navTextActive]}>Home</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setActiveTab("RIDES")}
+          >
+            <Text style={{ fontSize: 18 }}>🚗</Text>
+            <Text style={[styles.navText, activeTab === "RIDES" && styles.navTextActive]}>Naa Rides</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setActiveTab("OFFERS")}
+          >
+            <Text style={{ fontSize: 18 }}>🎁</Text>
+            <Text style={[styles.navText, activeTab === "OFFERS" && styles.navTextActive]}>Offers</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.navItem}
+            onPress={() => setActiveTab("PROFILE")}
+          >
+            <Text style={{ fontSize: 18 }}>👤</Text>
+            <Text style={[styles.navText, activeTab === "PROFILE" && styles.navTextActive]}>Profile</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  // Login Styles
-  loginSafeArea: { flex: 1, backgroundColor: "#FFFFFF" },
-  loginContainer: { padding: 24, paddingTop: 36 },
-  loginHeaderTitle: { fontSize: 24, fontWeight: "900", color: "#0F172A" },
-  loginSub: { fontSize: 13, color: "#64748B", marginTop: 4, marginBottom: 24 },
-  formGroup: { marginBottom: 18 },
-  fieldTitle: { fontSize: 13, fontWeight: "800", color: "#1E293B", marginBottom: 6 },
-  optionalRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 6 },
-  optionalTag: { fontSize: 11, color: "#64748B", fontWeight: "600" },
-  skipBtnText: { fontSize: 13, fontWeight: "800", color: "#0284C7" },
-  loginInput: {
-    backgroundColor: "#F8FAFC",
-    borderWidth: 1.5,
-    borderColor: "#E2E8F0",
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: "#0F172A",
-    fontWeight: "700",
-  },
-  idHelperText: { fontSize: 11, color: "#94A3B8", marginTop: 5 },
-  startCommuteBtn: {
-    backgroundColor: "#E11D48",
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  startCommuteBtnText: { color: "#FFFFFF", fontSize: 15, fontWeight: "900" },
+export default PassengerHome;
 
-  // Dashboard Styles
+const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: "#F8FAFC" },
   container: { flex: 1 },
-  header: {
+  topHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
     backgroundColor: "#FFFFFF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderColor: "#E2E8F0",
   },
-  headerSub: { fontSize: 8, fontWeight: "800", color: "#64748B", letterSpacing: 0.5 },
-  headerTitle: { fontSize: 16, fontWeight: "900", color: "#0F172A" },
-  headerSosBtn: {
+  topTag: { fontSize: 8, fontWeight: "800", color: "#D97706", letterSpacing: 0.5 },
+  topGreeting: { fontSize: 16, fontWeight: "900", color: "#0F172A", marginTop: 2 },
+  sosButton: {
     backgroundColor: "#FEE2E2",
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 10,
+    borderRadius: 8,
     borderWidth: 1,
     borderColor: "#FCA5A5",
   },
-  headerSosText: { color: "#DC2626", fontSize: 11, fontWeight: "900" },
-  openDriverBtn: {
-    backgroundColor: "#FEF3C7",
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#F59E0B",
+  sosButtonText: { color: "#DC2626", fontSize: 11, fontWeight: "900" },
+  scrollArea: { paddingBottom: 80 },
+  homeMapContainer: {
+    width: "100%",
+    height: 250,
+    position: "relative",
+    backgroundColor: "#E2E8F0",
   },
-  openDriverText: { fontSize: 11, fontWeight: "800", color: "#B45309" },
-  searchUnderMapCard: {
-    backgroundColor: "#FFFFFF",
+  hardwareBadge: {
+    position: "absolute",
+    top: 14,
+    alignSelf: "center",
+    backgroundColor: "rgba(15, 23, 42, 0.85)",
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+  },
+  hardwareBadgeText: { color: "#FFFFFF", fontSize: 10, fontWeight: "800" },
+  homeFixedPin: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: [{ translateX: -12 }, { translateY: -28 }],
+    alignItems: "center",
+    zIndex: 10,
+  },
+  // Pure White Rapido-style Floating Card
+  whiteRouteCard: {
     marginHorizontal: 16,
-    marginTop: -20,
-    borderRadius: 16,
-    padding: 14,
+    marginTop: -40,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 18,
+    padding: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.12,
+    shadowRadius: 14,
+    elevation: 8,
     borderWidth: 1,
-    borderColor: "#E2E8F0",
-    shadowColor: "#0F172A",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 4,
+    borderColor: "#F1F5F9",
     zIndex: 20,
   },
-  inputLocationRow: { flexDirection: "row", alignItems: "center", gap: 10, paddingVertical: 4 },
-  greenCircle: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#10B981" },
-  redCircle: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#EF4444" },
-  inputTag: { fontSize: 8, fontWeight: "800", color: "#94A3B8" },
-  inputText: { fontSize: 13, fontWeight: "700", color: "#1E293B" },
-  editSign: { fontSize: 12, opacity: 0.6 },
-  inputDivider: { height: 1, backgroundColor: "#F1F5F9", marginVertical: 8, marginLeft: 18 },
-  searchRidesBtn: {
-    backgroundColor: "#FFC000",
-    borderRadius: 12,
-    paddingVertical: 12,
+  routeRow: {
+    flexDirection: "row",
     alignItems: "center",
-    marginTop: 10,
+    paddingVertical: 8,
+    gap: 12,
   },
-  searchRidesBtnText: { fontSize: 13, fontWeight: "900", color: "#0F172A" },
-  ridesHeaderRow: {
+  greenDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: "#10B981" },
+  redSquare: { width: 12, height: 12, borderRadius: 3, backgroundColor: "#EF4444" },
+  routeLabel: { fontSize: 8, fontWeight: "800", color: "#64748B", letterSpacing: 0.5 },
+  routeAddressText: { fontSize: 13, fontWeight: "800", color: "#0F172A", marginTop: 2 },
+  searchIconText: { fontSize: 14, color: "#94A3B8" },
+  routeDivider: { height: 1, backgroundColor: "#F1F5F9", marginVertical: 6 },
+  poolsChoodandiBtn: {
+    backgroundColor: "#FFC000",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    marginTop: 12,
+  },
+  poolsChoodandiText: { fontSize: 14, fontWeight: "900", color: "#0F172A" },
+  liveRidesHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    marginTop: 16,
+    marginTop: 20,
     marginBottom: 8,
   },
-  ridesSectionTitle: { fontSize: 15, fontWeight: "800", color: "#0F172A" },
-  ridesCountBadge: { fontSize: 11, fontWeight: "700", color: "#0284C7" },
-  noRidesCard: {
+  sectionTitle: { fontSize: 15, fontWeight: "900", color: "#0F172A" },
+  refreshLink: { fontSize: 11, fontWeight: "800", color: "#0284C7" },
+  emptyStateCard: {
     backgroundColor: "#FFFFFF",
     marginHorizontal: 16,
     padding: 24,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: "center",
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-  noRidesTitle: { fontSize: 14, fontWeight: "800", color: "#334155" },
-  noRidesSub: { fontSize: 11, color: "#94A3B8", textAlign: "center", marginTop: 4 },
-  bottomBar: {
-    flexDirection: "row",
-    justifyContent: "space-around",
+  emptyStateTitle: { fontSize: 14, fontWeight: "900", color: "#0F172A" },
+  emptyStateSub: { fontSize: 11, color: "#64748B", textAlign: "center", marginTop: 4 },
+  rideCard: {
     backgroundColor: "#FFFFFF",
+    marginHorizontal: 16,
+    padding: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    marginBottom: 10,
+  },
+  rideDriverName: { fontSize: 14, fontWeight: "900", color: "#0F172A" },
+  rideFare: { fontSize: 14, fontWeight: "900", color: "#16A34A" },
+  rideVehicle: { fontSize: 11, color: "#64748B", marginTop: 2 },
+  rideRoute: { fontSize: 12, fontWeight: "700", color: "#1E293B", marginTop: 8 },
+  bookRideBtn: {
+    backgroundColor: "#0F172A",
     paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: "center",
+    marginTop: 10,
+  },
+  bookRideBtnText: { color: "#FFFFFF", fontSize: 12, fontWeight: "800" },
+  // Bottom Bar
+  bottomNavBar: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 60,
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
     borderTopWidth: 1,
     borderColor: "#E2E8F0",
   },
-  tabBtn: { alignItems: "center" },
-  tabIcon: { fontSize: 18, color: "#64748B" },
-  tabLabel: { fontSize: 10, fontWeight: "700", color: "#64748B", marginTop: 2 },
-  tabActiveText: { color: "#0284C7" },
-  tabBigTitle: { fontSize: 18, fontWeight: "900", color: "#0F172A", marginBottom: 6 },
-  tabSubDesc: { fontSize: 12, color: "#64748B", marginBottom: 16 },
-
-  // Booking Confirmed Card
-  bookingConfirmedCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  bookingBadgeRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 10 },
-  confirmedBadge: { backgroundColor: "#DCFCE7", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  confirmedBadgeText: { color: "#16A34A", fontSize: 10, fontWeight: "900" },
-  bookingIdText: { fontSize: 12, fontWeight: "800", color: "#64748B" },
-  journeyRouteText: { fontSize: 15, fontWeight: "900", color: "#0F172A", marginBottom: 12 },
-  driverInfoCard: {
+  navItem: { flex: 1, alignItems: "center", justifyContent: "center" },
+  navText: { fontSize: 10, fontWeight: "700", color: "#94A3B8", marginTop: 2 },
+  navTextActive: { color: "#0F172A", fontWeight: "900" },
+  // Interactive Modal Styles
+  modalTopHeader: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
-    padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    marginBottom: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    backgroundColor: "#FFFFFF",
     gap: 10,
-  },
-  driverAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#E2E8F0",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  driverName: { fontSize: 14, fontWeight: "800", color: "#0F172A" },
-  driverVehicle: { fontSize: 11, color: "#64748B", marginTop: 2 },
-  driverPhone: { fontSize: 11, color: "#0284C7", fontWeight: "700", marginTop: 2 },
-  callDriverBtn: { backgroundColor: "#0284C7", paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 },
-  callDriverText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
-  liveMapWrap: { borderRadius: 14, overflow: "hidden", position: "relative" },
-  driverTrackingOverlay: {
-    position: "absolute",
-    bottom: 10,
-    left: 10,
-    right: 10,
-    backgroundColor: "rgba(15, 23, 42, 0.85)",
-    padding: 8,
-    borderRadius: 8,
-    alignItems: "center",
-  },
-  driverTrackingText: { color: "#FFFFFF", fontSize: 11, fontWeight: "800" },
-  whatsappShareBtn: {
-    backgroundColor: "#DCFCE7",
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#86EFAC",
-  },
-  whatsappShareText: { color: "#16A34A", fontSize: 12, fontWeight: "800" },
-  startRideBtn: { backgroundColor: "#0F172A", paddingVertical: 12, borderRadius: 10, alignItems: "center" },
-  startRideBtnText: { color: "#FFFFFF", fontSize: 12, fontWeight: "800" },
-
-  // Profile Styles
-  profileContent: { padding: 20, alignItems: "center" },
-  profileAvatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: "#E2E8F0",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 8,
-  },
-  profileName: { fontSize: 18, fontWeight: "900", color: "#0F172A" },
-  profileEmail: { fontSize: 12, color: "#64748B", marginTop: 2 },
-  profileTag: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: "#16A34A",
-    backgroundColor: "#DCFCE7",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    marginTop: 8,
-    marginBottom: 20,
-  },
-  profileActionsList: {
-    width: "100%",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    overflow: "hidden",
-  },
-  profileActionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    padding: 14,
-    gap: 12,
     borderBottomWidth: 1,
     borderColor: "#F1F5F9",
   },
-  actionIcon: { fontSize: 18 },
-  actionTitle: { fontSize: 13, fontWeight: "800", color: "#0F172A" },
-  actionSub: { fontSize: 11, color: "#64748B", marginTop: 2 },
-  actionArrow: { fontSize: 14, color: "#94A3B8" },
-  logoutBtn: { marginTop: 20, padding: 12 },
-  logoutBtnText: { color: "#EF4444", fontSize: 13, fontWeight: "800" },
-
-  // Modals & Emergency Sheet
-  modalBackdrop: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.6)", justifyContent: "flex-end" },
-  emergencyModalCard: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 },
-  emergencyModalTitle: { fontSize: 17, fontWeight: "900", color: "#DC2626" },
-  emergencyModalSub: { fontSize: 12, color: "#64748B", marginTop: 2, marginBottom: 16 },
-  sheTeamBtn: {
+  backCircleBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: "#F1F5F9",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  searchBarWrap: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FDF2F8",
-    padding: 14,
-    borderRadius: 14,
+    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: "#FBCFE8",
-    gap: 12,
-    marginBottom: 10,
+    borderColor: "#CBD5E1",
+    borderRadius: 22,
+    paddingHorizontal: 12,
+    height: 42,
+    gap: 8,
   },
-  sheTeamTitle: { fontSize: 13, fontWeight: "900", color: "#BE185D" },
-  sheTeamSub: { fontSize: 11, color: "#9D174D" },
-  policeSosBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FEE2E2",
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#FCA5A5",
-    gap: 12,
-    marginBottom: 10,
-  },
-  policeTitle: { fontSize: 13, fontWeight: "900", color: "#B91C1C" },
-  policeSub: { fontSize: 11, color: "#991B1B" },
-  customerCareBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F0F9FF",
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#BAE6FD",
-    gap: 12,
-    marginBottom: 10,
-  },
-  supportTitle: { fontSize: 13, fontWeight: "900", color: "#0369A1" },
-  supportSub: { fontSize: 11, color: "#0284C7" },
-  callTag: {
+  searchBarInput: { flex: 1, fontSize: 13, fontWeight: "700", color: "#0F172A" },
+  searchResultsDropdown: {
+    position: "absolute",
+    top: 60,
+    left: 14,
+    right: 14,
     backgroundColor: "#FFFFFF",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    fontSize: 10,
-    fontWeight: "900",
-    color: "#0F172A",
-  },
-  sosPhoneIcon: { fontSize: 24 },
-  closeSheetBtn: { marginTop: 10, alignItems: "center", paddingVertical: 10 },
-  closeSheetText: { fontSize: 13, fontWeight: "800", color: "#64748B" },
-
-  // Settings & Lang
-  paymentModalCard: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20 },
-  modalHeading: { fontSize: 16, fontWeight: "900", color: "#0F172A" },
-  modalSub: { fontSize: 12, color: "#64748B", marginTop: 2 },
-  langItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    maxHeight: 220,
+    elevation: 8,
+    zIndex: 100,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-  langItemActive: { borderColor: "#0284C7", backgroundColor: "#F0F9FF" },
-  langText: { fontSize: 13, fontWeight: "700", color: "#334155" },
-  langTextActive: { color: "#0284C7", fontWeight: "900" },
-
-  // Refer Box
-  referBox: {
-    backgroundColor: "#FEF3C7",
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginVertical: 14,
-    borderWidth: 1,
-    borderColor: "#FDE68A",
-  },
-  referLabel: { fontSize: 10, fontWeight: "800", color: "#B45309" },
-  referCode: { fontSize: 20, fontWeight: "900", color: "#78350F", marginTop: 4 },
-
-  // Online Payment Card (Strictly No Cash)
-  noCashNotice: {
-    backgroundColor: "#EFF6FF",
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: "#BFDBFE",
-  },
-  noCashText: { fontSize: 11, color: "#1D4ED8", fontWeight: "700" },
-  fareBox: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: "#F8FAFC",
-    padding: 12,
-    borderRadius: 12,
-    marginVertical: 12,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-  fareLabel: { fontSize: 12, fontWeight: "700", color: "#475569" },
-  fareValue: { fontSize: 18, fontWeight: "900", color: "#16A34A" },
-  upiCard: {
+  searchResultRow: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F0FDF4",
     padding: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#BBF7D0",
     gap: 10,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "#F1F5F9",
   },
-  upiName: { fontSize: 12, fontWeight: "800", color: "#14532D" },
-  upiVpa: { fontSize: 10, color: "#16A34A" },
-  payArrow: { fontSize: 14, fontWeight: "bold", color: "#15803D" },
-  successTag: { backgroundColor: "#DCFCE7", padding: 10, borderRadius: 8, marginTop: 10, alignItems: "center" },
-  successTagText: { color: "#16A34A", fontSize: 11, fontWeight: "800" },
-  cancelBtn: { marginTop: 14, alignItems: "center", paddingVertical: 8 },
-  cancelBtnText: { fontSize: 13, fontWeight: "700", color: "#64748B" },
-
-  // Offers Tab
-  offersScroll: { padding: 16 },
-  offerCard: {
-    backgroundColor: "#FFFFFF",
+  resultTitle: { fontSize: 13, fontWeight: "800", color: "#0F172A" },
+  resultSub: { fontSize: 10, color: "#64748B", marginTop: 2 },
+  interactiveMapLayer: {
+    flex: 1,
+    position: "relative",
+    backgroundColor: "#E2E8F0",
+  },
+  fixedPinWrapper: {
+    position: "absolute",
+    top: "50%",
+    left: "50%",
+    transform: [{ translateX: -14 }, { translateY: -32 }],
+    alignItems: "center",
+    zIndex: 10,
+  },
+  pinBubbleGreen: {
+    width: 28,
+    height: 28,
     borderRadius: 14,
-    padding: 16,
-    marginBottom: 14,
+    backgroundColor: "#10B981",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+  },
+  pinBubbleRed: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#EF4444",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+  },
+  innerDotWhite: { width: 8, height: 8, borderRadius: 4, backgroundColor: "#FFFFFF" },
+  pinStemGreen: { width: 3, height: 10, backgroundColor: "#10B981" },
+  pinStemRed: { width: 3, height: 10, backgroundColor: "#EF4444" },
+  pinShadow: {
+    width: 14,
+    height: 5,
+    borderRadius: 7,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    marginTop: 2,
+  },
+  nudgeContainer: {
+    position: "absolute",
+    top: 14,
+    left: 16,
+    right: 16,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    padding: 10,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
+    alignItems: "center",
+  },
+  dragHelpText: { fontSize: 10, fontWeight: "800", color: "#475569", marginBottom: 6 },
+  nudgeButtonsRow: { flexDirection: "row", gap: 6 },
+  nudgeBtn: {
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: 6,
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-  offerBadge: {
-    alignSelf: "flex-start",
-    backgroundColor: "#0284C7",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginBottom: 8,
+  nudgeBtnText: { fontSize: 10, fontWeight: "800", color: "#0F172A" },
+  floatingGpsBtn: {
+    position: "absolute",
+    right: 16,
+    bottom: 16,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+    elevation: 6,
+    borderWidth: 1,
+    borderColor: "#CBD5E1",
   },
-  offerBadgeText: { color: "#FFFFFF", fontSize: 10, fontWeight: "900" },
-  offerCode: { fontSize: 14, fontWeight: "900", color: "#0F172A" },
-  offerDesc: { fontSize: 11, color: "#64748B", marginTop: 4, marginBottom: 12 },
-  applyOfferBtn: { backgroundColor: "#F1F5F9", paddingVertical: 10, borderRadius: 8, alignItems: "center" },
-  appliedBtn: { backgroundColor: "#DCFCE7" },
-  applyOfferText: { fontSize: 11, fontWeight: "800", color: "#0F172A" },
+  bottomSheetConfirm: {
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 22,
+    borderTopRightRadius: 22,
+    padding: 18,
+    borderTopWidth: 1,
+    borderColor: "#F1F5F9",
+    elevation: 10,
+  },
+  confirmSheetLabel: { fontSize: 9, fontWeight: "900", color: "#94A3B8", letterSpacing: 0.5 },
+  selectedAddressBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    padding: 12,
+    gap: 10,
+    marginVertical: 10,
+  },
+  selectedAddressText: { fontSize: 13, fontWeight: "800", color: "#0F172A", flex: 1 },
+  hubChip: {
+    backgroundColor: "#F1F5F9",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 12,
+  },
+  hubChipText: { fontSize: 11, fontWeight: "700", color: "#334155" },
+  confirmLocationBtn: {
+    backgroundColor: "#FFC000",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  confirmLocationBtnText: { fontSize: 14, fontWeight: "900", color: "#0F172A" },
 });
