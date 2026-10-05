@@ -104,7 +104,7 @@ export default function PassengerHome({ navigation }: any) {
 
   const t = TRANSLATIONS[selectedLanguage] || TRANSLATIONS.English;
 
-  // Local Storage Sync
+  // Local Storage Sync (ఇక్కడ 2000 తీసేసి 7000 కి మార్చాం - సూపర్ ఫాస్ట్ పెర్ఫార్మెన్స్)
   useEffect(() => {
     try {
       const savedUser = localStorage.getItem("PASSENGER_USER_PROFILE");
@@ -129,7 +129,7 @@ export default function PassengerHome({ navigation }: any) {
     };
 
     syncRides();
-    const interval = setInterval(syncRides, 2000);
+    const interval = setInterval(syncRides, 7000); // 7 సెకన్లకు ఒకసారి మాత్రమే బ్యాక్‌గ్రౌండ్ సింక్
     return () => clearInterval(interval);
   }, []);
 
