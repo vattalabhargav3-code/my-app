@@ -67,6 +67,7 @@ export function PassengerHome({ navigation }: any) {
 
   const modalMapRef = useRef<HTMLDivElement | null>(null);
   const modalLeafletInstance = useRef<any>(null);
+  const debounceTimerRef = useRef<any>(null);
 
   useEffect(() => {
     try {
@@ -92,26 +93,32 @@ export function PassengerHome({ navigation }: any) {
     } catch {}
   }, []);
 
-  const reverseGeocode = async (lat: number, lon: number) => {
+  // Debounced High-Speed Reverse Geocode
+  const triggerDebouncedGeocode = (lat: number, lon: number) => {
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     setIsModalResolving(true);
-    try {
-      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-      const data = await res.json();
-      if (data && data.display_name) {
-        const parts = data.display_name.split(",");
-        const p0 = parts[0] ? parts[0].trim() : "";
-        const p1 = parts[1] ? parts[1].trim() : "";
-        setModalResolvedAddress(`${p0}, ${p1}, Hyderabad`);
-      } else {
+
+    debounceTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+        const data = await res.json();
+        if (data && data.display_name) {
+          const parts = data.display_name.split(",");
+          const p0 = parts[0] ? parts[0].trim() : "";
+          const p1 = parts[1] ? parts[1].trim() : "";
+          setModalResolvedAddress(`${p0}, ${p1}, Hyderabad`);
+        } else {
+          setModalResolvedAddress(`Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`);
+        }
+      } catch {
         setModalResolvedAddress(`Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`);
+      } finally {
+        setIsModalResolving(false);
       }
-    } catch {
-      setModalResolvedAddress(`Location (${lat.toFixed(4)}, ${lon.toFixed(4)})`);
-    } finally {
-      setIsModalResolving(false);
-    }
+    }, 280);
   };
 
+  // High-Performance Leaflet Map Engine
   useEffect(() => {
     if (!showMapModal || typeof window === "undefined") return;
 
@@ -131,7 +138,7 @@ export function PassengerHome({ navigation }: any) {
         script.onload = () => initModalMap();
         document.body.appendChild(script);
       } else {
-        setTimeout(initModalMap, 80);
+        setTimeout(initModalMap, 50);
       }
     };
 
@@ -146,32 +153,46 @@ export function PassengerHome({ navigation }: any) {
 
       const initialCoords = activeTarget === "PICKUP" ? pickupCoords : modalPinCoords;
 
+      // Ultra-smooth GPU accelerated map configuration
       const map = L.map(modalMapRef.current, {
         zoomControl: false,
         attributionControl: false,
         center: [initialCoords.lat, initialCoords.lon],
         zoom: 16,
+        preferCanvas: true,
+        wheelPxPerZoomLevel: 120,
+        zoomAnimation: true,
+        fadeAnimation: true,
+        markerZoomAnimation: true,
+        inertia: true,
+        inertiaDeceleration: 3200,
+        inertiaMaxSpeed: Infinity,
+        easeLinearity: 0.2,
       });
 
-      L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {
+      // Free OpenStreetMap Tiles with Subdomain Sharding (a, b, c)
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 19,
-        subdomains: "abcd",
+        subdomains: ["a", "b", "c"],
+        updateWhenIdle: true,
+        updateWhenZooming: false,
+        keepBuffer: 6,
       }).addTo(map);
 
       map.on("moveend", () => {
         const center = map.getCenter();
         setModalPinCoords({ lat: center.lat, lon: center.lng });
-        reverseGeocode(center.lat, center.lng);
-        map.invalidateSize();
+        triggerDebouncedGeocode(center.lat, center.lng);
       });
 
-      setTimeout(() => map.invalidateSize(), 200);
+      setTimeout(() => map.invalidateSize(), 150);
       modalLeafletInstance.current = map;
     };
 
     loadLeafletAssets();
 
     return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
       if (modalLeafletInstance.current) {
         modalLeafletInstance.current.remove();
         modalLeafletInstance.current = null;
@@ -222,8 +243,7 @@ export function PassengerHome({ navigation }: any) {
     setSearchQuery("");
 
     if (modalLeafletInstance.current) {
-      modalLeafletInstance.current.setView([lat, lon], 17);
-      setTimeout(() => modalLeafletInstance.current.invalidateSize(), 100);
+      modalLeafletInstance.current.flyTo([lat, lon], 17, { duration: 0.8 });
     }
   };
 
@@ -235,10 +255,9 @@ export function PassengerHome({ navigation }: any) {
           const lat = pos.coords.latitude;
           const lon = pos.coords.longitude;
           setModalPinCoords({ lat, lon });
-          reverseGeocode(lat, lon);
+          triggerDebouncedGeocode(lat, lon);
           if (modalLeafletInstance.current) {
-            modalLeafletInstance.current.setView([lat, lon], 17);
-            setTimeout(() => modalLeafletInstance.current.invalidateSize(), 100);
+            modalLeafletInstance.current.flyTo([lat, lon], 17, { duration: 0.8 });
           }
           setIsFetchingGps(false);
         },
