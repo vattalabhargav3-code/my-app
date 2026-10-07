@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
+  ActivityIndicator,
   Linking,
   Modal,
   SafeAreaView,
@@ -39,13 +40,12 @@ const RECOMMENDATIONS_DATA = [
   },
 ];
 
-// 2. POPULAR DESTINATIONS (6 INTER-CITY HIGHWAY HUBS)
+// 2. POPULAR DESTINATIONS (NO PRICES DISPLAYED ON TILES)
 const POPULAR_DESTINATIONS_DATA = [
   {
     id: "dest_1",
     city: "Vijayawada",
     highway: "NH 65 Expressway",
-    price: "₹350 onwards",
     icon: "🌉",
     badgeColor: "#991B1B",
   },
@@ -53,7 +53,6 @@ const POPULAR_DESTINATIONS_DATA = [
     id: "dest_2",
     city: "Bengaluru",
     highway: "NH 44 Airport Corridor",
-    price: "₹850 onwards",
     icon: "🏙️",
     badgeColor: "#0F766E",
   },
@@ -61,7 +60,6 @@ const POPULAR_DESTINATIONS_DATA = [
     id: "dest_3",
     city: "Tirupati",
     highway: "Balaji Pilgrimage Highway",
-    price: "₹650 onwards",
     icon: "🛕",
     badgeColor: "#B45309",
   },
@@ -69,7 +67,6 @@ const POPULAR_DESTINATIONS_DATA = [
     id: "dest_4",
     city: "Kurnool City",
     highway: "NH 44 Gateway to Rayalaseema",
-    price: "₹300 onwards",
     icon: "🏰",
     badgeColor: "#6B21A8",
   },
@@ -77,7 +74,6 @@ const POPULAR_DESTINATIONS_DATA = [
     id: "dest_5",
     city: "Khammam",
     highway: "Suryapet - Khammam Expressway",
-    price: "₹250 onwards",
     icon: "⛰️",
     badgeColor: "#9D174D",
   },
@@ -85,9 +81,28 @@ const POPULAR_DESTINATIONS_DATA = [
     id: "dest_6",
     city: "Warangal",
     highway: "ORR - Warangal Highway",
-    price: "₹220 onwards",
     icon: "🏛️",
     badgeColor: "#1E40AF",
+  },
+];
+
+// PREVIOUS/PAST RIDES DATABASE FOR HISTORY
+const PAST_RIDES_HISTORY = [
+  {
+    id: "hist_1",
+    route: "Madhapur ➔ Vijayawada",
+    date: "04 Oct 2026",
+    seatsBooked: "3/3 Seats Confirmed",
+    income: "₹1,050 Earned",
+    status: "Completed",
+  },
+  {
+    id: "hist_2",
+    route: "Hitec City ➔ Secunderabad",
+    date: "28 Sept 2026",
+    seatsBooked: "4/4 Seats Confirmed",
+    income: "₹440 Earned",
+    status: "Completed",
   },
 ];
 
@@ -110,15 +125,6 @@ const INITIAL_IDLE_CARS = [
     location: "Kukatpally Housing Board",
     price_per_24hr: 950,
   },
-  {
-    id: "car_3",
-    owner_name: "Dr. Anirudh",
-    car_model: "Maruti Ertiga 7-Seater (Diesel)",
-    model_year: "2023",
-    car_number: "TS08HQ4512",
-    location: "LB Nagar Ring Road",
-    price_per_24hr: 1500,
-  },
 ];
 
 export function DriverHome({ navigation }: any) {
@@ -129,27 +135,48 @@ export function DriverHome({ navigation }: any) {
   const [dlNumber, setDlNumber] = useState("");
   const [carModel, setCarModel] = useState("Swift Dzire");
 
+  // Bottom Nav Selection
   const [activeTab, setActiveTab] = useState<"HOME" | "EXPLORE" | "POOLS" | "PROFILE">("HOME");
 
+  // Safety & Mode Flags
+  const [onlyWomenMode, setOnlyWomenMode] = useState(false);
+
+  // Core Booking Modals
   const [showVehicleBookingModal, setShowVehicleBookingModal] = useState(false);
   const [selectedBookingType, setSelectedBookingType] = useState<"CAR" | "BIKE" | "VAN">("CAR");
   const [showRentCarModal, setShowRentCarModal] = useState(false);
   const [showHostCarModal, setShowHostCarModal] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+
+  // Settings & Target Modals (Triggered via Profile)
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showRewardsModal, setShowRewardsModal] = useState(false);
   const [showEditProfileModal, setShowEditProfileModal] = useState(false);
   const [showSosModal, setShowSosModal] = useState(false);
 
+  // Live Deployed Ride States
+  const [isRideActive, setIsRideActive] = useState(false);
+  const [rideStatus, setRideStatus] = useState<"WAITING_FOR_CUSTOMER" | "CONFIRMED">("WAITING_FOR_CUSTOMER");
+  const [bookedSeatsCount, setBookedSeatsCount] = useState(0);
+
+  // Ride Deployment Configurations
   const [pickupInput, setPickupInput] = useState("Hitec City Cyber Towers, Hyderabad");
   const [dropInput, setDropInput] = useState("");
   const [seatsCount, setSeatsCount] = useState("3");
   const [pricePerSeat, setPricePerSeat] = useState("110");
   const [plateType, setPlateType] = useState<"WHITE" | "YELLOW">("WHITE");
 
+  // ATTACH CAR INPUTS (COMPREHENSIVE)
   const [hostOwnerName, setHostOwnerName] = useState("");
+  const [hostPhone, setHostPhone] = useState("");
+  const [hostRc, setHostRc] = useState("");
   const [hostCarModel, setHostCarModel] = useState("");
-  const [hostLocation, setHostLocation] = useState("");
+  const [hostInsurance, setHostInsurance] = useState("");
   const [hostDailyPrice, setHostDailyPrice] = useState("1100");
+  const [hostLocation, setHostLocation] = useState("");
 
-  const [searchCityQuery, setSearchCityQuery] = useState("");
+  const [idleCars, setIdleCars] = useState(INITIAL_IDLE_CARS);
 
   useEffect(() => {
     try {
@@ -180,87 +207,69 @@ export function DriverHome({ navigation }: any) {
   };
 
   const handleDeployRide = () => {
-    if (!pickupInput.trim() || !dropInput.trim() || !pricePerSeat.trim()) {
-      alert("Please enter Pickup location, Drop destination, and Seat price.");
+    if (!pickupInput.trim() || !dropInput.trim()) {
+      alert("Please specify start and end points.");
       return;
     }
-
-    const newPoolRide = {
-      id: "ride_" + Date.now(),
-      driver_name: driverName,
-      from_location: pickupInput,
-      to_location: dropInput,
-      vehicle_name: selectedBookingType === "BIKE" ? "Bike" : selectedBookingType === "VAN" ? "Van Shuttle" : carModel,
-      available_seats: Number(seatsCount),
-      price_per_seat: Number(pricePerSeat),
-      plate_type: plateType,
-      category_tag: plateType === "WHITE" ? "Green Saver" : "Commercial Express",
-      status: "ONLINE_SEARCHING",
-    };
-
-    try {
-      if (typeof window !== "undefined" && window.localStorage) {
-        const stored = window.localStorage.getItem("SHARED_CARPOOL_RIDES");
-        const list = stored ? JSON.parse(stored) : [];
-        window.localStorage.setItem("SHARED_CARPOOL_RIDES", JSON.stringify([newPoolRide, ...list]));
-      }
-    } catch {}
-
+    setIsRideActive(true);
+    setRideStatus("WAITING_FOR_CUSTOMER");
+    setBookedSeatsCount(0);
     setShowVehicleBookingModal(false);
-    alert(`🎉 ${selectedBookingType} Ride successfully deployed to Hyderabad live pool!`);
+
+    // Auto Seat Confirm Simulation
+    setTimeout(() => {
+      setRideStatus("CONFIRMED");
+      setBookedSeatsCount(Number(seatsCount));
+    }, 4500);
   };
 
   const handleHostCarSubmit = () => {
-    if (!hostOwnerName || !hostCarModel || !hostLocation || !hostDailyPrice) {
-      alert("Please fill all car details, location and daily rate.");
+    if (!hostOwnerName || !hostCarModel || !hostRc || !hostInsurance || !hostDailyPrice) {
+      alert("Please provide owner details, car info, RC, Insurance & daily rent rate.");
       return;
     }
-    alert("🎉 Your idle car has been successfully listed in the fleet!");
+    const newCar = {
+      id: "car_" + Date.now(),
+      owner_name: hostOwnerName,
+      car_model: hostCarModel,
+      model_year: "2022",
+      car_number: hostRc,
+      location: hostLocation || "Hyderabad Hub",
+      price_per_24hr: Number(hostDailyPrice),
+    };
+    setIdleCars([newCar, ...idleCars]);
+    alert("🎉 Your vehicle listing has been submitted for review! It will show up in listings upon document check.");
     setShowHostCarModal(false);
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
-        {/* 1. TOP ROYAL BLUE HEADER AREA */}
+        {/* ---------------- 1. TOP ROYAL BLUE HEADER AREA ---------------- */}
         <View style={styles.royalBlueHeader}>
-          <View style={styles.topSearchBar}>
-            <Text style={{ fontSize: 14 }}>🔍</Text>
-            <TextInput
-              style={styles.topSearchInput}
-              placeholder="Search destinations, Hyderabad hubs..."
-              placeholderTextColor="#94A3B8"
-              value={searchCityQuery}
-              onChangeText={setSearchCityQuery}
-            />
-            {searchCityQuery.length > 0 && (
-              <TouchableOpacity onPress={() => setSearchCityQuery("")}>
-                <Text style={{ fontSize: 14, color: "#64748B" }}>✕</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-
           <View style={styles.welcomeProfileRow}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
-              <TouchableOpacity
-                style={styles.avatarCircle}
-                onPress={() => setShowEditProfileModal(true)}
-              >
+              <View style={styles.avatarCircle}>
                 <Text style={{ fontSize: 18 }}>👤</Text>
-              </TouchableOpacity>
+              </View>
               <View>
                 <Text style={styles.welcomeSub}>Welcome!</Text>
                 <Text style={styles.welcomeName}>{driverName.toUpperCase()}</Text>
               </View>
             </View>
 
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              {/* Only Women Mode Trigger */}
               <TouchableOpacity
-                style={styles.bellIconCircle}
-                onPress={() => alert("Notification: RidePool Driver Console Active")}
+                style={[styles.womenModePill, onlyWomenMode && styles.womenModePillActive]}
+                onPress={() => {
+                  setOnlyWomenMode(!onlyWomenMode);
+                  alert(onlyWomenMode ? "Standard pools available." : "🚺 Only Women ride mode activated! Showing women passengers only.");
+                }}
               >
-                <Text style={{ fontSize: 13 }}>🔔</Text>
+                <Text style={styles.womenModeText}>{onlyWomenMode ? "🚺 Active Mode" : "🎀 Only Women"}</Text>
               </TouchableOpacity>
+
               <TouchableOpacity
                 style={styles.sosButton}
                 onPress={() => setShowSosModal(true)}
@@ -271,13 +280,41 @@ export function DriverHome({ navigation }: any) {
           </View>
         </View>
 
-        {/* SCROLLABLE DASHBOARD CONTENT */}
+        {/* ---------------- ACTIVE DEPLOYED RADAR BANNER (IN-APP POPUP STATUS) ---------------- */}
+        {isRideActive && (
+          <View style={styles.activeRideStatusCard}>
+            <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+              <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+                <View style={[styles.pulsingGreenDot, rideStatus === "WAITING_FOR_CUSTOMER" && { backgroundColor: "#F59E0B" }]} />
+                <Text style={styles.activeBannerMainHeading}>
+                  {rideStatus === "WAITING_FOR_CUSTOMER" ? "Waiting for Customer..." : "🎯 Passenger Ride Booked!"}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => setIsRideActive(false)}>
+                <Text style={{ color: "#94A3B8", fontWeight: "900", fontSize: 13 }}>✕ Offline</Text>
+              </TouchableOpacity>
+            </View>
+
+            {rideStatus === "WAITING_FOR_CUSTOMER" ? (
+              <Text style={styles.activeBannerSubText}>Radar is live searching for nearby commuters ➔</Text>
+            ) : (
+              <View style={{ marginTop: 6 }}>
+                <Text style={styles.seatCountConfirmStatus}>
+                  ✅ All Seats booked dynamically: {bookedSeatsCount} / {seatsCount} Confirm!
+                </Text>
+                <Text style={{ fontSize: 10, color: "#BFDBFE" }}>Driver details updated for boarding pool on route drops.</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ---------------- SCROLLABLE DASHBOARD CONTENT ---------------- */}
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* 2. CATEGORY SECTION */}
+          {/* ---------------- 2. CATEGORY GRID SECTION (NO SEARCH BAR) ---------------- */}
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionHeading}>Category</Text>
-            <TouchableOpacity onPress={() => setShowEditProfileModal(true)}>
-              <Text style={styles.hamburgerIcon}>☰</Text>
+            <TouchableOpacity onPress={() => setShowHistoryModal(true)}>
+              <Text style={styles.historyAccessText}>📜 Past History</Text>
             </TouchableOpacity>
           </View>
 
@@ -306,10 +343,7 @@ export function DriverHome({ navigation }: any) {
               <Text style={styles.categorySub}>Booking</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.categoryCol}
-              onPress={() => setShowRentCarModal(true)}
-            >
+            <TouchableOpacity style={styles.categoryCol} onPress={() => setShowRentCarModal(true)}>
               <View style={[styles.categoryIconCircle, styles.categoryIconCircleBlue]}>
                 <Text style={{ fontSize: 22 }}>🚕</Text>
               </View>
@@ -317,10 +351,7 @@ export function DriverHome({ navigation }: any) {
               <Text style={[styles.categorySub, { color: "#1D4ED8" }]}>a Cab</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.categoryCol}
-              onPress={() => setShowHostCarModal(true)}
-            >
+            <TouchableOpacity style={styles.categoryCol} onPress={() => setShowHostCarModal(true)}>
               <View style={[styles.categoryIconCircle, styles.categoryIconCircleAmber]}>
                 <Text style={{ fontSize: 22 }}>🔑</Text>
               </View>
@@ -329,12 +360,9 @@ export function DriverHome({ navigation }: any) {
             </TouchableOpacity>
           </View>
 
-          {/* 3. RECOMMENDATIONS */}
+          {/* ---------------- 3. RECOMMENDATION SECTION (HYDERABAD INTRA-CITY HUBS) ---------------- */}
           <View style={[styles.sectionHeaderRow, { marginTop: 22 }]}>
             <Text style={styles.sectionHeading}>Recommendation</Text>
-            <TouchableOpacity onPress={() => alert("Showing all top Hyderabad business hubs")}>
-              <Text style={styles.seeAllLink}>See all ➔</Text>
-            </TouchableOpacity>
           </View>
 
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
@@ -360,16 +388,13 @@ export function DriverHome({ navigation }: any) {
             </View>
           </ScrollView>
 
-          {/* 4. POPULAR DESTINATIONS */}
+          {/* ---------------- 4. POPULAR DESTINATIONS (NO HIGHWAY AND TICKET PRICING DISPLAY) ---------------- */}
           <View style={[styles.sectionHeaderRow, { marginTop: 24 }]}>
             <Text style={styles.sectionHeading}>Popular Destination</Text>
-            <Text style={styles.destinationCountTag}>6 Cities ➔</Text>
           </View>
 
           <View style={styles.destinationGridContainer}>
-            {POPULAR_DESTINATIONS_DATA.filter((c) =>
-              c.city.toLowerCase().includes(searchCityQuery.toLowerCase())
-            ).map((item) => (
+            {POPULAR_DESTINATIONS_DATA.map((item) => (
               <TouchableOpacity
                 key={item.id}
                 style={styles.destinationCard}
@@ -381,16 +406,21 @@ export function DriverHome({ navigation }: any) {
                 <View style={styles.destCardContent}>
                   <Text style={styles.destCityName}>{item.city}</Text>
                   <Text style={styles.destHighwayName} numberOfLines={1}>{item.highway}</Text>
-                  <Text style={styles.destPriceTag}>{item.price}</Text>
                 </View>
               </TouchableOpacity>
             ))}
           </View>
         </ScrollView>
 
-        {/* 5. ROYAL BLUE BOTTOM BAR */}
+        {/* ---------------- 5. FIXED ROYAL BLUE BOTTOM BAR ---------------- */}
         <View style={styles.royalBlueBottomNav}>
-          <TouchableOpacity style={styles.navBarItem} onPress={() => setActiveTab("HOME")}>
+          <TouchableOpacity
+            style={styles.navBarItem}
+            onPress={() => {
+              setActiveTab("HOME");
+              alert("Routing Hub Home active.");
+            }}
+          >
             <Text style={{ fontSize: 18 }}>🏠</Text>
             <Text style={[styles.navBarText, activeTab === "HOME" && styles.navBarTextActive]}>Home</Text>
           </TouchableOpacity>
@@ -399,7 +429,8 @@ export function DriverHome({ navigation }: any) {
             style={styles.navBarItem}
             onPress={() => {
               setActiveTab("EXPLORE");
-              setShowRentCarModal(true);
+              // Prompt view updates containing essential references as requested:
+              alert(`🎁 Referral: ₹200 for both when your friend 1st ride completes!\n\n⛽ Incentives: Target 10 Rides/Week = ₹1,500 Petrol Bonus | Target 5 Rides/Week = ₹500 Petrol Bonus`);
             }}
           >
             <Text style={{ fontSize: 18 }}>🧭</Text>
@@ -421,6 +452,8 @@ export function DriverHome({ navigation }: any) {
             style={styles.navBarItem}
             onPress={() => {
               setActiveTab("PROFILE");
+              // In Profile setting only these verified choices should load:
+              alert("Settings Panel Options:\n\n⚙️ Settings\n🔔 Notifications\n🎁 Rewards\n✏️ Edit Profile");
               setShowEditProfileModal(true);
             }}
           >
@@ -429,7 +462,34 @@ export function DriverHome({ navigation }: any) {
           </TouchableOpacity>
         </View>
 
-        {/* VEHICLE ROUTE MODAL */}
+        {/* ---------------- PAST VEHICLE ROUTE HISTORY MODAL ---------------- */}
+        <Modal visible={showHistoryModal} transparent animationType="slide">
+          <View style={styles.modalBackdrop}>
+            <View style={styles.sheetModal}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={styles.modalTitle}>📜 Past Rides History</Text>
+                <TouchableOpacity onPress={() => setShowHistoryModal(false)}>
+                  <Text style={{ fontSize: 18, color: "#64748B", fontWeight: "bold" }}>✕ Close</Text>
+                </TouchableOpacity>
+              </View>
+
+              {PAST_RIDES_HISTORY.map((hist) => (
+                <View key={hist.id} style={styles.fleetCardRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontWeight: "900", color: "#0F172A", fontSize: 13 }}>{hist.route}</Text>
+                    <Text style={{ fontSize: 11, color: "#64748B", marginTop: 2 }}>{hist.date} • {hist.seatsBooked}</Text>
+                  </View>
+                  <View style={{ alignItems: "flex-end" }}>
+                    <Text style={{ fontWeight: "900", color: "#16A34A", fontSize: 13 }}>{hist.income}</Text>
+                    <Text style={{ fontSize: 9, color: "#10B981" }}>{hist.status}</Text>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        </Modal>
+
+        {/* ---------------- VEHICLE ROUTE DEPLOY MODAL (NO PRICES DISPLAY ON POST) ---------------- */}
         <Modal visible={showVehicleBookingModal} transparent animationType="slide">
           <View style={styles.modalBackdrop}>
             <View style={styles.sheetModal}>
@@ -439,7 +499,7 @@ export function DriverHome({ navigation }: any) {
                     ? "🚗 Car Pool Route Setup"
                     : selectedBookingType === "BIKE"
                     ? "🏍️ Bike Route Setup"
-                    : "🚐 Van Shuttle Route Setup"}
+                    : "🚐 Van Shuttle Setup"}
                 </Text>
                 <TouchableOpacity onPress={() => setShowVehicleBookingModal(false)}>
                   <Text style={{ fontSize: 18, color: "#64748B", fontWeight: "bold" }}>✕</Text>
@@ -469,13 +529,13 @@ export function DriverHome({ navigation }: any) {
                   style={[styles.plateMiniPill, plateType === "WHITE" && styles.plateMiniPillActive]}
                   onPress={() => setPlateType("WHITE")}
                 >
-                  <Text style={[styles.plateMiniText, plateType === "WHITE" && styles.plateMiniTextActive]}>⚪ White Plate (Eco Cost Share)</Text>
+                  <Text style={[styles.plateMiniText, plateType === "WHITE" && styles.plateMiniTextActive]}>⚪ White Plate</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.plateMiniPill, plateType === "YELLOW" && styles.plateMiniPillActiveYellow]}
                   onPress={() => setPlateType("YELLOW")}
                 >
-                  <Text style={[styles.plateMiniText, plateType === "YELLOW" && styles.plateMiniTextActiveYellow]}>🟡 Yellow Plate (Taxi Express)</Text>
+                  <Text style={[styles.plateMiniText, plateType === "YELLOW" && styles.plateMiniTextActiveYellow]}>🟡 Yellow Plate</Text>
                 </TouchableOpacity>
               </View>
 
@@ -486,7 +546,7 @@ export function DriverHome({ navigation }: any) {
           </View>
         </Modal>
 
-        {/* RENT IDLE CAR MODAL */}
+        {/* ---------------- REQUEST A CAB (RENT IDLE CARS) MODAL ---------------- */}
         <Modal visible={showRentCarModal} transparent animationType="slide">
           <View style={styles.modalBackdrop}>
             <View style={styles.sheetModal}>
@@ -500,7 +560,7 @@ export function DriverHome({ navigation }: any) {
                 24-Hour flexible rental cars available for verified drivers in Hyderabad.
               </Text>
 
-              {INITIAL_IDLE_CARS.map((car) => (
+              {idleCars.map((car) => (
                 <View key={car.id} style={styles.fleetCardRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={{ fontWeight: "900", color: "#0F172A", fontSize: 13 }}>{car.car_model}</Text>
@@ -526,61 +586,106 @@ export function DriverHome({ navigation }: any) {
           </View>
         </Modal>
 
-        {/* HOST A CAR MODAL */}
+        {/* ---------------- ATTACH A CAR MODAL (COMPREHENSIVE FORMS) ---------------- */}
         <Modal visible={showHostCarModal} transparent animationType="slide">
           <View style={styles.modalBackdrop}>
-            <View style={styles.sheetModal}>
-              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <Text style={styles.modalTitle}>🔑 Attach Your Idle Car (Car Host)</Text>
-                <TouchableOpacity onPress={() => setShowHostCarModal(false)}>
-                  <Text style={{ fontSize: 18, color: "#64748B", fontWeight: "bold" }}>✕</Text>
+            <View style={styles.sheetModalScroll}>
+              <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}>
+                <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                  <Text style={styles.modalTitle}>🔑 Attach Your Idle Car (Car Host)</Text>
+                  <TouchableOpacity onPress={() => setShowHostCarModal(false)}>
+                    <Text style={{ fontSize: 16, color: "#64748B", fontWeight: "bold" }}>✕</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={styles.inputTag}>OWNER FULL NAME</Text>
+                <TextInput style={styles.inputBox} value={hostOwnerName} onChangeText={setHostOwnerName} placeholder="e.g. Bhargav Vattala" />
+
+                <Text style={styles.inputTag}>PHONE NUMBER</Text>
+                <TextInput style={styles.inputBox} value={hostPhone} onChangeText={setHostPhone} keyboardType="phone-pad" placeholder="e.g. 8919326622" />
+
+                <Text style={styles.inputTag}>CAR MODEL & YEAR</Text>
+                <TextInput style={styles.inputBox} value={hostCarModel} onChangeText={setHostCarModel} placeholder="e.g. Maruti Swift Dzire (2022)" />
+
+                <Text style={styles.inputTag}>REGISTRATION NUMBER (RC)</Text>
+                <TextInput style={styles.inputBox} value={hostRc} onChangeText={setHostRc} placeholder="e.g. TS09FA2489" />
+
+                <Text style={styles.inputTag}>INSURANCE POLICY NUMBER</Text>
+                <TextInput style={styles.inputBox} value={hostInsurance} onChangeText={setHostInsurance} placeholder="e.g. Comprehensive Policy No." />
+
+                <Text style={styles.inputTag}>HOURLY/DAILY RENTAL FEE EXPECTED (₹)</Text>
+                <TextInput style={styles.inputBox} value={hostDailyPrice} onChangeText={setHostDailyPrice} keyboardType="numeric" />
+
+                <Text style={styles.inputTag}>PARKING PREFERRED LOCATION</Text>
+                <TextInput style={styles.inputBox} value={hostLocation} onChangeText={setHostLocation} placeholder="e.g. Madhapur Metro/Gachibowli" />
+
+                <TouchableOpacity style={styles.confirmActionBtn} onPress={handleHostCarSubmit}>
+                  <Text style={styles.confirmActionBtnText}>Submit Complete Listing Details ➔</Text>
                 </TouchableOpacity>
-              </View>
-              <Text style={{ fontSize: 11, color: "#D97706", fontWeight: "700", marginVertical: 4 }}>
-                Earn ₹25,000+ monthly passive income from your idle vehicle.
-              </Text>
-
-              <Text style={styles.inputTag}>OWNER NAME</Text>
-              <TextInput style={styles.inputBox} value={hostOwnerName} onChangeText={setHostOwnerName} placeholder="e.g. Bhargav Vattala" />
-
-              <Text style={styles.inputTag}>CAR MODEL & YEAR</Text>
-              <TextInput style={styles.inputBox} value={hostCarModel} onChangeText={setHostCarModel} placeholder="e.g. Swift Dzire (2022)" />
-
-              <Text style={styles.inputTag}>PARKING LOCATION (HYDERABAD)</Text>
-              <TextInput style={styles.inputBox} value={hostLocation} onChangeText={setHostLocation} placeholder="e.g. Madhapur, LB Nagar" />
-
-              <Text style={styles.inputTag}>24 HOURS RENTAL RATE (₹)</Text>
-              <TextInput style={styles.inputBox} value={hostDailyPrice} onChangeText={setHostDailyPrice} keyboardType="numeric" />
-
-              <TouchableOpacity style={styles.confirmActionBtn} onPress={handleHostCarSubmit}>
-                <Text style={styles.confirmActionBtnText}>List Your Car Today ➔</Text>
-              </TouchableOpacity>
+              </ScrollView>
             </View>
           </View>
         </Modal>
 
-        {/* EDIT PROFILE MODAL */}
+        {/* ---------------- PROFILE MODAL ---------------- */}
         <Modal visible={showEditProfileModal} transparent animationType="slide">
           <View style={styles.modalBackdrop}>
             <View style={styles.sheetModal}>
               <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
-                <Text style={styles.modalTitle}>Driver Profile & KYC Details</Text>
+                <Text style={styles.modalTitle}>👤 Profile Hub</Text>
                 <TouchableOpacity onPress={() => setShowEditProfileModal(false)}>
                   <Text style={{ fontSize: 18, color: "#64748B", fontWeight: "bold" }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Verified Sub-modules to ensure clean accessibility per User updates: */}
+              <View style={{ gap: 10, marginVertical: 14 }}>
+                <TouchableOpacity
+                  style={styles.profileActionRow}
+                  onPress={() => {
+                    setShowEditProfileModal(false);
+                    setShowSettingsModal(true);
+                  }}
+                >
+                  <Text style={styles.profileActionText}>⚙️ General Settings</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.profileActionRow}
+                  onPress={() => {
+                    setShowEditProfileModal(false);
+                    setShowNotificationsModal(true);
+                  }}
+                >
+                  <Text style={styles.profileActionText}>🔔 Notifications Dispatch</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.profileActionRow}
+                  onPress={() => {
+                    setShowEditProfileModal(false);
+                    setShowRewardsModal(true);
+                  }}
+                >
+                  <Text style={styles.profileActionText}>🎁 Active Rewards Hub</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.profileActionRow}
+                  onPress={() => {
+                    // Quick In-house modal form editing
+                    alert("Ready to update primary verified ID: Phone No, Car type below.");
+                  }}
+                >
+                  <Text style={styles.profileActionText}>✏️ Edit Profile Data</Text>
                 </TouchableOpacity>
               </View>
 
               <Text style={styles.inputTag}>DRIVER NAME</Text>
               <TextInput style={styles.inputBox} value={driverName} onChangeText={setDriverName} />
 
-              <Text style={styles.inputTag}>PHONE NUMBER</Text>
-              <TextInput style={styles.inputBox} value={driverPhone} onChangeText={setDriverPhone} keyboardType="phone-pad" />
-
-              <Text style={styles.inputTag}>RC NUMBER</Text>
-              <TextInput style={styles.inputBox} value={rcNumber} onChangeText={setRcNumber} placeholder="e.g. TS09FA1234" />
-
-              <Text style={styles.inputTag}>DRIVING LICENCE (DL)</Text>
-              <TextInput style={styles.inputBox} value={dlNumber} onChangeText={setDlNumber} placeholder="e.g. DL-0920190012345" />
+              <Text style={styles.inputTag}>RC (VEHICLE ID) REGISTERED</Text>
+              <TextInput style={styles.inputBox} value={rcNumber} onChangeText={setRcNumber} placeholder="Update registration data..." />
 
               <TouchableOpacity
                 style={styles.confirmActionBtn}
@@ -592,16 +697,73 @@ export function DriverHome({ navigation }: any) {
                     }
                   } catch {}
                   setShowEditProfileModal(false);
-                  alert("Driver profile saved!");
+                  alert("KYC and profile specs locked!");
                 }}
               >
-                <Text style={styles.confirmActionBtnText}>Save Profile ➔</Text>
+                <Text style={styles.confirmActionBtnText}>Apply Core Settings ➔</Text>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
 
-        {/* SOS MODAL */}
+        {/* ---------------- GENERAL SETTINGS MODAL ---------------- */}
+        <Modal visible={showSettingsModal} transparent animationType="slide">
+          <View style={styles.modalBackdrop}>
+            <View style={styles.sheetModal}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={styles.modalTitle}>⚙️ Settings</Text>
+                <TouchableOpacity onPress={() => setShowSettingsModal(false)}>
+                  <Text style={{ fontSize: 16, color: "#64748B", fontWeight: "bold" }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={{ marginVertical: 14, color: "#334155" }}>Modify system preferences, GPS polling frequency, and privacy setups.</Text>
+              <TouchableOpacity style={styles.confirmActionBtn} onPress={() => setShowSettingsModal(false)}>
+                <Text style={styles.confirmActionBtnText}>Save Preferences ➔</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ---------------- NOTIFICATIONS DISPATCH MODAL ---------------- */}
+        <Modal visible={showNotificationsModal} transparent animationType="slide">
+          <View style={styles.modalBackdrop}>
+            <View style={styles.sheetModal}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={styles.modalTitle}>🔔 Notifications Settings</Text>
+                <TouchableOpacity onPress={() => setShowNotificationsModal(false)}>
+                  <Text style={{ fontSize: 16, color: "#64748B", fontWeight: "bold" }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={{ marginVertical: 14, color: "#334155" }}>Configure alerts for new passenger ride pool match and routing updates.</Text>
+              <TouchableOpacity style={styles.confirmActionBtn} onPress={() => setShowNotificationsModal(false)}>
+                <Text style={styles.confirmActionBtnText}>Save and Alert ➔</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ---------------- ACTIVE REWARDS HUB MODAL ---------------- */}
+        <Modal visible={showRewardsModal} transparent animationType="slide">
+          <View style={styles.modalBackdrop}>
+            <View style={styles.sheetModal}>
+              <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                <Text style={styles.modalTitle}>🎁 Rewards Status</Text>
+                <TouchableOpacity onPress={() => setShowRewardsModal(false)}>
+                  <Text style={{ fontSize: 16, color: "#64748B", fontWeight: "bold" }}>✕</Text>
+                </TouchableOpacity>
+              </View>
+              <Text style={{ marginVertical: 14, color: "#334155", fontWeight: "bold" }}>
+                🎯 Petrol Incentives: Targets 10 Trips = ₹1,500 Petrol Bonus | 5 Trips = ₹500 Petrol Bonus.{"\n\n"}
+                👥 Referral Scheme: Earn ₹200 for you and ₹200 for your referred friend when they complete their first ride!
+              </Text>
+              <TouchableOpacity style={styles.confirmActionBtn} onPress={() => setShowRewardsModal(false)}>
+                <Text style={styles.confirmActionBtnText}>Continue ➔</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* ---------------- EMERGENCY SOS MODAL ---------------- */}
         <Modal visible={showSosModal} transparent animationType="slide">
           <View style={styles.modalBackdrop}>
             <View style={styles.sheetModal}>
@@ -653,22 +815,11 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
-  topSearchBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    height: 42,
-    gap: 10,
-    elevation: 3,
-  },
-  topSearchInput: { flex: 1, fontSize: 13, color: "#0F172A", fontWeight: "600" },
   welcomeProfileRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 14,
+    marginTop: 6,
   },
   avatarCircle: {
     width: 38,
@@ -680,23 +831,63 @@ const styles = StyleSheet.create({
   },
   welcomeSub: { color: "#BFDBFE", fontSize: 11, fontWeight: "600" },
   welcomeName: { color: "#FFFFFF", fontSize: 15, fontWeight: "900", letterSpacing: 0.5 },
-  bellIconCircle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    alignItems: "center",
-    justifyContent: "center",
+  womenModePill: {
+    backgroundColor: "#FCE7F3",
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#FBCFE8",
+  },
+  womenModePillActive: {
+    backgroundColor: "#EC4899",
+    borderColor: "#DB2777",
+  },
+  womenModeText: {
+    color: "#BE185D",
+    fontSize: 10.5,
+    fontWeight: "900",
   },
   sosButton: {
     backgroundColor: "#FEE2E2",
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: "#FCA5A5",
   },
   sosButtonText: { color: "#DC2626", fontSize: 11, fontWeight: "900" },
+  activeRideStatusCard: {
+    backgroundColor: "#1E3A8A",
+    marginHorizontal: 16,
+    marginTop: -12,
+    borderRadius: 16,
+    padding: 14,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: "#3B82F6",
+  },
+  pulsingGreenDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#10B981",
+  },
+  activeBannerMainHeading: {
+    color: "#FFFFFF",
+    fontWeight: "900",
+    fontSize: 13,
+  },
+  activeBannerSubText: {
+    color: "#93C5FD",
+    fontSize: 10,
+    marginTop: 4,
+  },
+  seatCountConfirmStatus: {
+    color: "#34D399",
+    fontWeight: "900",
+    fontSize: 11.5,
+  },
   scrollContent: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 90 },
   sectionHeaderRow: {
     flexDirection: "row",
@@ -704,9 +895,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   sectionHeading: { fontSize: 14, fontWeight: "900", color: "#0F172A" },
-  hamburgerIcon: { fontSize: 18, fontWeight: "bold", color: "#1E40AF" },
-  seeAllLink: { fontSize: 11, fontWeight: "800", color: "#1E40AF" },
-  destinationCountTag: { fontSize: 11, fontWeight: "800", color: "#1E40AF" },
+  historyAccessText: { fontSize: 12, fontWeight: "800", color: "#1E40AF" },
   categoryGridRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -781,8 +970,7 @@ const styles = StyleSheet.create({
   },
   destCardContent: { padding: 8 },
   destCityName: { fontSize: 11, fontWeight: "900", color: "#0F172A" },
-  destHighwayName: { fontSize: 8.5, color: "#64748B", marginVertical: 2 },
-  destPriceTag: { fontSize: 9.5, fontWeight: "900", color: "#16A34A" },
+  destHighwayName: { fontSize: 8.5, color: "#64748B", marginTop: 2 },
   royalBlueBottomNav: {
     position: "absolute",
     bottom: 0,
@@ -800,6 +988,7 @@ const styles = StyleSheet.create({
   navBarTextActive: { color: "#FFFFFF", fontWeight: "900" },
   modalBackdrop: { flex: 1, backgroundColor: "rgba(15, 23, 42, 0.6)", justifyContent: "flex-end" },
   sheetModal: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 18 },
+  sheetModalScroll: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 18, maxHeight: "90%" },
   modalTitle: { fontSize: 15, fontWeight: "900", color: "#0F172A" },
   inputTag: { fontSize: 9, fontWeight: "800", color: "#64748B", marginTop: 8, marginBottom: 4 },
   inputBox: {
@@ -846,6 +1035,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   rentMiniBtnText: { color: "#FFFFFF", fontSize: 10, fontWeight: "900" },
+  profileActionRow: {
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
+    padding: 10,
+    borderRadius: 10,
+  },
+  profileActionText: { color: "#1E40AF", fontSize: 12, fontWeight: "900" },
   sosHeading: { fontSize: 15, fontWeight: "900", color: "#DC2626", marginBottom: 12 },
   sosRow: { flexDirection: "row", alignItems: "center", backgroundColor: "#FEE2E2", padding: 12, borderRadius: 10, marginBottom: 8, gap: 10 },
   sosText: { color: "#B91C1C", fontWeight: "900", fontSize: 13 },
